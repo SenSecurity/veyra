@@ -5,8 +5,8 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 pub mod migrations;
-pub mod transcriptions;
 pub mod dictionary;
+pub mod transcriptions;
 #[cfg(test)]
 pub mod test_util;
 
