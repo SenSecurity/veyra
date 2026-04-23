@@ -8,6 +8,7 @@ pub mod dictionary;
 pub mod migrations;
 pub mod scratchpad;
 pub mod snippets;
+pub mod stats;
 pub mod transcriptions;
 #[cfg(test)]
 pub mod test_util;
