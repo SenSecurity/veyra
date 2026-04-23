@@ -9,7 +9,7 @@
 //! `stage`, `engine`, `mode`, error kind discriminants. Use
 //! `#[tracing::instrument(skip(...))]` on every pipeline fn to enforce.
 //!
-//! Verified by `test_sanitisation_doc_is_present` below.
+//! Enforced by a presence test introduced in Task 11.
 
 use std::path::Path;
 
@@ -23,7 +23,7 @@ pub fn init_tracing(log_dir: &Path) -> Result<(), Box<dyn std::error::Error + Se
     Box::leak(Box::new(guard));
 
     let filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("info,typr_lib=debug"));
+        .unwrap_or_else(|_| EnvFilter::new(format!("info,{}=debug", env!("CARGO_CRATE_NAME"))));
 
     tracing_subscriber::registry()
         .with(filter)
