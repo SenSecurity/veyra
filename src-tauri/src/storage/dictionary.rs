@@ -64,13 +64,13 @@ impl<'a> DictionaryRepo<'a> {
     }
 
     pub fn delete(&self, id: i64) -> Result<usize, DbError> {
-        self.db.with_conn(|c| Ok(c.execute("DELETE FROM dictionary_terms WHERE id = ?1", [id])?))
+        self.db.with_conn(|c| c.execute("DELETE FROM dictionary_terms WHERE id = ?1", [id]))
     }
 
     pub fn find_matches(&self, terms: &[&str]) -> Result<Vec<DictionaryTerm>, DbError> {
         if terms.is_empty() { return Ok(vec![]); }
         self.db.with_conn(|c| {
-            let placeholders = std::iter::repeat("?").take(terms.len()).collect::<Vec<_>>().join(",");
+            let placeholders = std::iter::repeat_n("?", terms.len()).collect::<Vec<_>>().join(",");
             let sql = format!(
                 "SELECT id, created_at, updated_at, term, replacement,
                         is_abbreviation, auto_added, enabled
