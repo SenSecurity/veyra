@@ -6,6 +6,7 @@ use std::sync::{Arc, Mutex};
 
 pub mod migrations;
 pub mod transcriptions;
+pub mod dictionary;
 #[cfg(test)]
 pub mod test_util;
 
