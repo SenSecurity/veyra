@@ -4,8 +4,9 @@ use rusqlite::Connection;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
-pub mod migrations;
 pub mod dictionary;
+pub mod migrations;
+pub mod snippets;
 pub mod transcriptions;
 #[cfg(test)]
 pub mod test_util;
