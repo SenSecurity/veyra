@@ -1,4 +1,5 @@
 pub mod telemetry;
+pub mod storage;
 pub mod settings;
 pub mod audio;
 pub mod transcribe_local;
