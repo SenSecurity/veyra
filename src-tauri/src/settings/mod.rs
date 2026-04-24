@@ -2,6 +2,7 @@
 
 mod legacy_v1;
 pub mod keyring;
+pub mod migrations;
 pub mod schema;
 
 pub use legacy_v1::Settings;
