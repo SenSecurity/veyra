@@ -4,6 +4,7 @@ use rusqlite::Connection;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
+pub mod app_meta;
 pub mod dictionary;
 pub mod migrations;
 pub mod scratchpad;
