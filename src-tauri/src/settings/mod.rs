@@ -100,7 +100,11 @@ fn run_v1_migration(
     backend: &dyn KeyringBackend,
 ) -> Result<LoadOutcome, SettingsError> {
     // Step A: write backup BEFORE anything else.
-    std::fs::write(bak_path, raw)?;
+    // Don't clobber an existing .bak from a prior failed migration — that would
+    // destroy the only intact copy of the user's v1 config.
+    if !bak_path.exists() {
+        std::fs::write(bak_path, raw)?;
+    }
 
     // Step B: run migrator. On failure, keep .bak and surface event.
     let outcome = match migrate_v1_to_v2(value, backend) {
@@ -133,18 +137,29 @@ fn run_v1_migration(
     if let Some((from, to)) = outcome.remapped_model {
         events.push(MigrationEvent::ModelRemapped { from, to });
     }
-    if outcome.had_groq_key_in_json {
+    if outcome.groq_key_migrated {
         // Spec §7: "prompt user to re-enter Groq key (now stored securely)".
+        // Gated on actual keyring write (not just JSON presence) so a v1 file with
+        // an empty groqApiKey doesn't pester the user.
         events.push(MigrationEvent::NeedsGroqKey);
     }
     Ok(LoadOutcome { settings: outcome.settings, events })
 }
 
+/// Write `settings` to `path` via a `.tmp` sibling + rename. NOTE: this is
+/// durable-rename, not crash-atomic — a power loss between `write` and
+/// `rename` (or before the directory entry hits disk) can still leave the
+/// caller seeing the old file. Good enough for settings; if we ever store
+/// data we cannot rebuild, switch to fsync(file) + fsync(dir) + rename.
 fn write_atomic(path: &Path, settings: &schema::Settings) -> Result<(), SettingsError> {
     let tmp: PathBuf = path.with_extension("json.tmp");
     let json = serde_json::to_string_pretty(settings)?;
-    std::fs::write(&tmp, json)?;
-    std::fs::rename(&tmp, path)?;
+    std::fs::write(&tmp, &json)?;
+    if let Err(e) = std::fs::rename(&tmp, path) {
+        // Don't let an orphaned .tmp shadow future runs.
+        let _ = std::fs::remove_file(&tmp);
+        return Err(e.into());
+    }
     Ok(())
 }
 
