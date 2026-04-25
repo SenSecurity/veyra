@@ -28,7 +28,10 @@ pub fn run() {
 
             let backend = crate::settings::keyring::SystemBackend;
             let outcome = crate::settings::load(&app_dir, &db, &backend)
-                .expect("load settings");
+                .unwrap_or_else(|e| {
+                    tracing::error!(error = %e, "failed to load settings during boot");
+                    panic!("failed to load settings: {e}");
+                });
 
             for ev in &outcome.events {
                 match ev {
@@ -42,7 +45,9 @@ pub fn run() {
                     }
                     crate::settings::MigrationEvent::NeedsGroqKey => {
                         tracing::info!(stage = "settings", "legacy Groq key — prompting for re-entry");
-                        let _ = app.emit("settings:needs-groq-key", ());
+                        if let Err(e) = app.emit("settings:needs-groq-key", ()) {
+                            tracing::warn!(error = %e, event = "settings:needs-groq-key", "failed to emit migration event");
+                        }
                     }
                     crate::settings::MigrationEvent::UnknownVersion(v) => {
                         tracing::warn!(stage = "settings", version = v, "unknown settings version; using defaults");
@@ -50,7 +55,9 @@ pub fn run() {
                     }
                     crate::settings::MigrationEvent::MigrationFailed(msg) => {
                         tracing::error!(stage = "settings", error = %msg, "migration failed; .bak preserved");
-                        let _ = app.emit("settings:migration-failed", msg.clone());
+                        if let Err(e) = app.emit("settings:migration-failed", msg.clone()) {
+                            tracing::warn!(error = %e, event = "settings:migration-failed", "failed to emit migration event");
+                        }
                     }
                 }
             }
