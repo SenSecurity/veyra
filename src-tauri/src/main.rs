@@ -2,19 +2,28 @@
 
 use std::path::PathBuf;
 use std::sync::Mutex;
-use tauri::{Manager, State, WebviewUrl, WebviewWindowBuilder};
+use tauri::{Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 use typr_lib::audio;
 use typr_lib::downloader;
 use typr_lib::recorder::{Recorder, RecordingState};
-use typr_lib::settings::Settings;
+use typr_lib::settings::adapter::{apply_v1_payload, to_v1_view};
+use typr_lib::settings::keyring::{KeyringBackend, SystemBackend};
+use typr_lib::settings::legacy_v1::Settings as V1Settings;
+use typr_lib::settings::schema::Settings as V2Settings;
+use typr_lib::settings::{self, MigrationEvent};
+use typr_lib::storage::Db;
+use typr_lib::telemetry;
 use typr_lib::transcribe_local;
 
 struct AppState {
     recorder: Recorder,
-    settings: Mutex<Settings>,
+    settings: Mutex<V2Settings>,
+    keyring: Box<dyn KeyringBackend>,
     app_dir: PathBuf,
+    #[allow(dead_code)] // Held so SQLite stays open for the app lifetime; consumers come in Phase 2+.
+    db: Db,
 }
 
 fn get_app_dir() -> PathBuf {
@@ -24,14 +33,17 @@ fn get_app_dir() -> PathBuf {
 }
 
 #[tauri::command]
-fn get_settings(state: State<AppState>) -> Settings {
-    state.settings.lock().unwrap().clone()
+fn get_settings(state: State<AppState>) -> V1Settings {
+    let v2 = state.settings.lock().unwrap();
+    to_v1_view(&v2, state.keyring.as_ref())
 }
 
 #[tauri::command]
-fn save_settings(state: State<AppState>, settings: Settings) -> Result<(), String> {
-    settings.save(&state.app_dir)?;
-    *state.settings.lock().unwrap() = settings;
+fn save_settings(state: State<AppState>, settings: V1Settings) -> Result<(), String> {
+    let mut v2 = state.settings.lock().unwrap();
+    apply_v1_payload(&mut v2, settings, state.keyring.as_ref())
+        .map_err(|e| format!("keyring write failed: {e}"))?;
+    settings::save(&state.app_dir, &v2).map_err(|e| format!("settings save failed: {e}"))?;
     Ok(())
 }
 
@@ -71,6 +83,14 @@ async fn toggle_recording(
     do_toggle_recording(&app, &state).await
 }
 
+/// Build a fresh `V1Settings` snapshot for the recorder by reading the v2 tree
+/// and keyring at call time. The recorder still consumes the legacy six-field
+/// shape; Phase 2 will replace this with direct v2 access.
+fn legacy_view(state: &AppState) -> V1Settings {
+    let v2 = state.settings.lock().unwrap();
+    to_v1_view(&v2, state.keyring.as_ref())
+}
+
 /// Shared logic for toggle recording, used by both the Tauri command and hotkey handler.
 async fn do_toggle_recording(
     app: &tauri::AppHandle,
@@ -84,7 +104,7 @@ async fn do_toggle_recording(
             Ok("recording".to_string())
         }
         RecordingState::Recording => {
-            let settings = state.settings.lock().unwrap().clone();
+            let settings = legacy_view(state);
             let result = state
                 .recorder
                 .stop_and_transcribe(app, &settings, &state.app_dir)
@@ -99,16 +119,30 @@ async fn do_toggle_recording(
 
 fn main() {
     let app_dir = get_app_dir();
-    let settings = Settings::load(&app_dir);
-    let initial_hotkey = settings.hotkey.clone();
+    let log_dir = app_dir.join("logs");
+    let _ = telemetry::init_tracing(&log_dir);
+
+    let db = Db::open(&app_dir.join("typr.db")).expect("open typr.db");
+    let keyring: Box<dyn KeyringBackend> = Box::new(SystemBackend);
+
+    let outcome = settings::load(&app_dir, &db, keyring.as_ref()).unwrap_or_else(|e| {
+        tracing::error!(error = %e, "failed to load settings during boot");
+        panic!("failed to load settings: {e}");
+    });
+
+    let v2_settings = outcome.settings.clone();
+    let initial_hotkey = v2_settings.hotkeys.dictation.clone();
+    let migration_events = outcome.events;
 
     tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_shell::init())
         .manage(AppState {
             recorder: Recorder::new(),
-            settings: Mutex::new(settings),
+            settings: Mutex::new(v2_settings),
+            keyring,
             app_dir,
+            db,
         })
         .invoke_handler(tauri::generate_handler![
             get_settings,
@@ -120,6 +154,40 @@ fn main() {
             toggle_recording,
         ])
         .setup(move |app| {
+            // Replay the migration events captured pre-Builder so the frontend
+            // can render the same toasts the lib.rs reference flow produced.
+            for ev in &migration_events {
+                match ev {
+                    MigrationEvent::Migrated => {
+                        tracing::info!(stage = "settings", "migrated v1 -> v2");
+                        let _ = app.emit("settings:migrated", ());
+                    }
+                    MigrationEvent::ModelRemapped { from, to } => {
+                        tracing::info!(stage = "settings", %from, %to, "whisper model remapped");
+                        let _ = app.emit(
+                            "settings:model-remapped",
+                            serde_json::json!({ "from": from, "to": to }),
+                        );
+                    }
+                    MigrationEvent::NeedsGroqKey => {
+                        tracing::info!(stage = "settings", "legacy Groq key - prompting for re-entry");
+                        if let Err(e) = app.emit("settings:needs-groq-key", ()) {
+                            tracing::warn!(error = %e, event = "settings:needs-groq-key", "failed to emit migration event");
+                        }
+                    }
+                    MigrationEvent::UnknownVersion(v) => {
+                        tracing::warn!(stage = "settings", version = v, "unknown settings version; using defaults");
+                        let _ = app.emit("settings:unknown-version", *v);
+                    }
+                    MigrationEvent::MigrationFailed(msg) => {
+                        tracing::error!(stage = "settings", error = %msg, "migration failed; .bak preserved");
+                        if let Err(e) = app.emit("settings:migration-failed", msg.clone()) {
+                            tracing::warn!(error = %e, event = "settings:migration-failed", "failed to emit migration event");
+                        }
+                    }
+                }
+            }
+
             // Create the overlay window (small mic icon, top-right, always on top)
             let monitor = app.primary_monitor().ok().flatten();
             let (x, y) = if let Some(m) = monitor {
@@ -149,22 +217,22 @@ fn main() {
             .build();
 
             match overlay {
-                Ok(_) => println!("[Typr] Overlay window created"),
-                Err(e) => eprintln!("[Typr] Failed to create overlay: {}", e),
+                Ok(_) => tracing::info!("[Typr] Overlay window created"),
+                Err(e) => tracing::error!(error = %e, "[Typr] Failed to create overlay"),
             }
 
             let handle = app.handle().clone();
 
-            println!("[Typr] Registering global shortcut: {}", initial_hotkey);
+            tracing::info!(hotkey = %initial_hotkey, "[Typr] Registering global shortcut");
 
             match app.global_shortcut().on_shortcut(
                 initial_hotkey.as_str(),
                 move |_app, shortcut, event| {
-                    println!("[Typr] Hotkey event: {:?} state={:?}", shortcut, event.state);
+                    tracing::debug!(?shortcut, state = ?event.state, "[Typr] Hotkey event");
                     let handle = handle.clone();
                     let state = handle.state::<AppState>();
-                    let mode = state.settings.lock().unwrap().recording_mode.clone();
-                    println!("[Typr] Recording mode: {}", mode);
+                    let mode = state.settings.lock().unwrap().hotkeys.recording_mode.clone();
+                    tracing::debug!(mode = %mode, "[Typr] Recording mode");
 
                     match event.state {
                         ShortcutState::Pressed => {
@@ -172,25 +240,20 @@ fn main() {
                                 let state = handle.state::<AppState>();
                                 match mode.as_str() {
                                     "toggle" => {
-                                        println!("[Typr] Toggle mode: calling do_toggle_recording");
+                                        tracing::debug!("[Typr] Toggle mode: calling do_toggle_recording");
                                         match do_toggle_recording(&handle, state.inner()).await {
-                                            Ok(result) => println!("[Typr] Toggle result: {}", result),
-                                            Err(e) => eprintln!("[Typr] Toggle error: {}", e),
+                                            Ok(result) => tracing::info!(result = %result, "[Typr] Toggle result"),
+                                            Err(e) => tracing::error!(error = %e, "[Typr] Toggle error"),
                                         }
                                     }
                                     "push-to-talk" => {
                                         let current = state.recorder.get_state();
-                                        println!("[Typr] PTT mode, current state: {:?}", current);
+                                        tracing::debug!(current = ?current, "[Typr] PTT mode");
                                         if current == RecordingState::Ready {
-                                            let mic = state
-                                                .settings
-                                                .lock()
-                                                .unwrap()
-                                                .microphone
-                                                .clone();
+                                            let mic = state.settings.lock().unwrap().microphone.clone();
                                             match state.recorder.start_recording(&handle, &mic) {
-                                                Ok(_) => println!("[Typr] Recording started"),
-                                                Err(e) => eprintln!("[Typr] Start recording error: {}", e),
+                                                Ok(_) => tracing::info!("[Typr] Recording started"),
+                                                Err(e) => tracing::error!(error = %e, "[Typr] Start recording error"),
                                             }
                                         }
                                     }
@@ -204,15 +267,14 @@ fn main() {
                                     let state = handle.state::<AppState>();
                                     let current = state.recorder.get_state();
                                     if current == RecordingState::Recording {
-                                        let settings =
-                                            state.settings.lock().unwrap().clone();
+                                        let settings = legacy_view(state.inner());
                                         match state.recorder.stop_and_transcribe(
                                             &handle,
                                             &settings,
                                             &state.app_dir,
                                         ).await {
-                                            Ok(result) => println!("[Typr] Transcription: {}", result),
-                                            Err(e) => eprintln!("[Typr] Transcription error: {}", e),
+                                            Ok(result) => tracing::info!(result = %result, "[Typr] Transcription"),
+                                            Err(e) => tracing::error!(error = %e, "[Typr] Transcription error"),
                                         }
                                     }
                                 });
@@ -221,10 +283,11 @@ fn main() {
                     }
                 },
             ) {
-                Ok(_) => println!("[Typr] Global shortcut registered successfully"),
-                Err(e) => eprintln!("[Typr] ERROR: Failed to register global shortcut: {}", e),
+                Ok(_) => tracing::info!("[Typr] Global shortcut registered successfully"),
+                Err(e) => tracing::error!(error = %e, "[Typr] Failed to register global shortcut"),
             }
 
+            tracing::info!(stage = "boot", "storage + telemetry + settings initialised");
             Ok(())
         })
         .run(tauri::generate_context!())
