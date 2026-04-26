@@ -8,11 +8,11 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 use typr_lib::audio;
 use typr_lib::downloader;
 use typr_lib::recorder::{Recorder, RecordingState};
-use typr_lib::settings::adapter::{apply_v1_payload, to_v1_view};
+use typr_lib::settings::adapter::{apply_v1_v2_fields, to_v1_view, write_v1_keyring};
 use typr_lib::settings::keyring::{KeyringBackend, SystemBackend};
 use typr_lib::settings::legacy_v1::Settings as V1Settings;
 use typr_lib::settings::schema::Settings as V2Settings;
-use typr_lib::settings::{self, MigrationEvent};
+use typr_lib::settings::{self, LoadOutcome, MigrationEvent};
 use typr_lib::storage::Db;
 use typr_lib::telemetry;
 use typr_lib::transcribe_local;
@@ -34,16 +34,36 @@ fn get_app_dir() -> PathBuf {
 
 #[tauri::command]
 fn get_settings(state: State<AppState>) -> V1Settings {
-    let v2 = state.settings.lock().unwrap();
-    to_v1_view(&v2, state.keyring.as_ref())
+    // Snapshot v2 under the lock, drop the guard, then hit the keyring.
+    // `to_v1_view` calls `backend.get()` which on `SystemBackend` is a
+    // Credential Manager syscall — holding `Mutex<V2Settings>` across that
+    // would serialise every settings read with the recorder hot path.
+    let v2_snapshot = state.settings.lock().unwrap().clone();
+    to_v1_view(&v2_snapshot, state.keyring.as_ref())
 }
 
 #[tauri::command]
 fn save_settings(state: State<AppState>, settings: V1Settings) -> Result<(), String> {
     let mut v2 = state.settings.lock().unwrap();
-    apply_v1_payload(&mut v2, settings, state.keyring.as_ref())
+    let snapshot = v2.clone();
+
+    // Step 1: mutate v2 in-memory only — keyring untouched.
+    apply_v1_v2_fields(&mut v2, &settings);
+
+    // Step 2: write JSON. On failure, roll back the in-memory tree so we
+    // don't drift from disk. No OS-side state has moved yet.
+    if let Err(e) = settings::save(&state.app_dir, &v2) {
+        *v2 = snapshot;
+        return Err(format!("settings save failed: {e}"));
+    }
+
+    // Step 3: write keyring. If this fails, JSON + in-memory already reflect
+    // the payload but the keyring lags. Surface the error so the frontend can
+    // retry; full atomicity needs Phase 2's payload reshape (Option<String>
+    // for "unchanged" vs "cleared" so a failed read can't round-trip an empty
+    // sentinel back through save).
+    write_v1_keyring(&settings, state.keyring.as_ref())
         .map_err(|e| format!("keyring write failed: {e}"))?;
-    settings::save(&state.app_dir, &v2).map_err(|e| format!("settings save failed: {e}"))?;
     Ok(())
 }
 
@@ -86,9 +106,14 @@ async fn toggle_recording(
 /// Build a fresh `V1Settings` snapshot for the recorder by reading the v2 tree
 /// and keyring at call time. The recorder still consumes the legacy six-field
 /// shape; Phase 2 will replace this with direct v2 access.
+///
+/// Lock scope: clone v2 under the guard, drop the guard, then read the
+/// keyring. The keyring backend hits the OS Credential Manager — holding the
+/// settings Mutex across that syscall would serialise the recorder's hot path
+/// with any concurrent `get_settings`/`save_settings` invocation.
 fn legacy_view(state: &AppState) -> V1Settings {
-    let v2 = state.settings.lock().unwrap();
-    to_v1_view(&v2, state.keyring.as_ref())
+    let v2_snapshot = state.settings.lock().unwrap().clone();
+    to_v1_view(&v2_snapshot, state.keyring.as_ref())
 }
 
 /// Shared logic for toggle recording, used by both the Tauri command and hotkey handler.
@@ -125,9 +150,20 @@ fn main() {
     let db = Db::open(&app_dir.join("typr.db")).expect("open typr.db");
     let keyring: Box<dyn KeyringBackend> = Box::new(SystemBackend);
 
+    // Loader returns LoadOutcome with embedded events for recoverable cases
+    // (MigrationFailed, UnknownVersion) and Errs only on hard I/O failures.
+    // We refuse to crash boot on those — fall back to defaults + a synthetic
+    // MigrationFailed event so the frontend gets a toast instead of a silent
+    // exit. Phase 1 design explicitly preserves .bak; a panic here would
+    // short-circuit that recovery flow.
     let outcome = settings::load(&app_dir, &db, keyring.as_ref()).unwrap_or_else(|e| {
-        tracing::error!(error = %e, "failed to load settings during boot");
-        panic!("failed to load settings: {e}");
+        tracing::error!(error = %e, "failed to load settings; falling back to defaults");
+        LoadOutcome {
+            settings: V2Settings::default(),
+            events: vec![MigrationEvent::MigrationFailed(format!(
+                "settings load failed: {e}"
+            ))],
+        }
     });
 
     let v2_settings = outcome.settings.clone();
@@ -160,14 +196,18 @@ fn main() {
                 match ev {
                     MigrationEvent::Migrated => {
                         tracing::info!(stage = "settings", "migrated v1 -> v2");
-                        let _ = app.emit("settings:migrated", ());
+                        if let Err(e) = app.emit("settings:migrated", ()) {
+                            tracing::warn!(error = %e, event = "settings:migrated", "failed to emit migration event");
+                        }
                     }
                     MigrationEvent::ModelRemapped { from, to } => {
                         tracing::info!(stage = "settings", %from, %to, "whisper model remapped");
-                        let _ = app.emit(
+                        if let Err(e) = app.emit(
                             "settings:model-remapped",
                             serde_json::json!({ "from": from, "to": to }),
-                        );
+                        ) {
+                            tracing::warn!(error = %e, event = "settings:model-remapped", "failed to emit migration event");
+                        }
                     }
                     MigrationEvent::NeedsGroqKey => {
                         tracing::info!(stage = "settings", "legacy Groq key - prompting for re-entry");
@@ -177,7 +217,9 @@ fn main() {
                     }
                     MigrationEvent::UnknownVersion(v) => {
                         tracing::warn!(stage = "settings", version = v, "unknown settings version; using defaults");
-                        let _ = app.emit("settings:unknown-version", *v);
+                        if let Err(e) = app.emit("settings:unknown-version", *v) {
+                            tracing::warn!(error = %e, event = "settings:unknown-version", "failed to emit migration event");
+                        }
                     }
                     MigrationEvent::MigrationFailed(msg) => {
                         tracing::error!(stage = "settings", error = %msg, "migration failed; .bak preserved");

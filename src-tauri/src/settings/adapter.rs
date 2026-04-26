@@ -47,30 +47,44 @@ pub fn to_v1_view(v2: &Settings, backend: &dyn KeyringBackend) -> legacy_v1::Set
     }
 }
 
+/// Mutate the v2 tree fields covered by the v1 payload. **No keyring touch.**
+/// Split out so callers can sequence the JSON write between v2 mutation and
+/// the keyring write — see [`write_v1_keyring`].
+pub fn apply_v1_v2_fields(target: &mut Settings, payload: &legacy_v1::Settings) {
+    target.microphone = payload.microphone.clone();
+    target.transcription.engine = payload.engine.clone();
+    target.transcription.whisper_model = payload.whisper_model.clone();
+    target.hotkeys.recording_mode = payload.recording_mode.clone();
+    target.hotkeys.dictation = payload.hotkey.clone();
+}
+
+/// Write the keyring half of a v1 payload. Empty `groq_api_key` ⇒ `delete`;
+/// non-empty ⇒ `set`. Caller orders this relative to the JSON write.
+pub fn write_v1_keyring(
+    payload: &legacy_v1::Settings,
+    backend: &dyn KeyringBackend,
+) -> Result<(), KeyringError> {
+    if payload.groq_api_key.is_empty() {
+        backend.delete()
+    } else {
+        backend.set(&payload.groq_api_key)
+    }
+}
+
 /// Apply a v1-shaped payload from the frontend onto an existing v2 settings
-/// tree. Keyring side-effect: if `groq_api_key` is non-empty we `set` it; if
-/// empty we `delete` it (so users can clear the credential through the UI).
+/// tree, **including** the keyring write. Convenience for tests / callers
+/// that don't need to interleave the JSON write with the keyring write.
 ///
-/// Any error from the keyring is returned — the caller is expected to refuse
-/// to persist the JSON in that case so the on-disk and OS-stored states stay
-/// in sync.
+/// Production `save_settings` uses [`apply_v1_v2_fields`] + JSON write +
+/// [`write_v1_keyring`] in that order so a JSON failure rolls back without
+/// touching the OS keyring (see `main.rs::save_settings`).
 pub fn apply_v1_payload(
     target: &mut Settings,
     payload: legacy_v1::Settings,
     backend: &dyn KeyringBackend,
 ) -> Result<(), KeyringError> {
-    target.microphone = payload.microphone;
-    target.transcription.engine = payload.engine;
-    target.transcription.whisper_model = payload.whisper_model;
-    target.hotkeys.recording_mode = payload.recording_mode;
-    target.hotkeys.dictation = payload.hotkey;
-
-    if payload.groq_api_key.is_empty() {
-        backend.delete()?;
-    } else {
-        backend.set(&payload.groq_api_key)?;
-    }
-    Ok(())
+    apply_v1_v2_fields(target, &payload);
+    write_v1_keyring(&payload, backend)
 }
 
 #[cfg(test)]
