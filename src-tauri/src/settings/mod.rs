@@ -8,16 +8,16 @@
 //!       + set `app_meta.settings_version=2`. On failure keep `.bak`, surface error, fall back to defaults.
 //!     - unknown → keep user's file untouched, return defaults with `UnknownVersion` event.
 //!
-//! NOTE: the public `Settings` alias still points at `legacy_v1::Settings` because
-//! `main.rs` (Task 7's scope) still depends on the v1 shim. The loader here
-//! returns `schema::Settings` (v2) via `LoadOutcome.settings`.
+//! Phase 1.5 cutover: `main.rs` now drives migration directly via [`load`] and
+//! exposes v2 [`schema::Settings`] in `AppState`. The frontend continues to
+//! speak the v1-shaped JSON via [`adapter`], which projects the in-memory v2
+//! tree + the OS keyring secret into [`legacy_v1::Settings`] for serialisation.
 
-mod legacy_v1;
+pub mod adapter;
 pub mod keyring;
+pub mod legacy_v1;
 pub mod migrations;
 pub mod schema;
-
-pub use legacy_v1::Settings;
 
 use crate::settings::keyring::KeyringBackend;
 use crate::settings::migrations::{detect_version, migrate_v1_to_v2, MigrationError};
@@ -144,6 +144,16 @@ fn run_v1_migration(
         events.push(MigrationEvent::NeedsGroqKey);
     }
     Ok(LoadOutcome { settings: outcome.settings, events })
+}
+
+/// Persist a fresh v2 `Settings` snapshot at the canonical `config.json` path
+/// inside `app_dir`. Wraps [`write_atomic`] so callers outside this module
+/// (e.g. the `save_settings` Tauri command) get the same durable-rename
+/// guarantees without depending on the private helper.
+pub fn save(app_dir: &Path, settings: &schema::Settings) -> Result<(), SettingsError> {
+    std::fs::create_dir_all(app_dir)?;
+    let cfg_path = app_dir.join(CONFIG_FILENAME);
+    write_atomic(&cfg_path, settings)
 }
 
 /// Write `settings` to `path` via a `.tmp` sibling + rename. NOTE: this is

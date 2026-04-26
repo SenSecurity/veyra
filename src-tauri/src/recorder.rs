@@ -5,7 +5,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use crate::audio::AudioRecorder;
 use crate::cleanup::cleanup_text;
 use crate::paste::paste_text;
-use crate::settings::Settings;
+use crate::settings::legacy_v1::Settings;
 use crate::transcribe_local;
 use crate::transcribe_groq;
 
