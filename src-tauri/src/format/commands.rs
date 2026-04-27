@@ -6,47 +6,46 @@ struct CommandRule {
     /// `\b` boundary enforced at compile time.
     phrase: &'static str,
     replacement: &'static str,
-    /// If true, replacement attaches to the previous token (strip preceding space).
-    attaches: bool,
 }
 
+// NOTE: spec template proposed two regex modes (`attaches: true|false`) but the
+// spec test `en_new_paragraph_inserts_double_newline` required the leading
+// space to be eaten even for non-attaching tokens (newlines, bullets). Unified
+// to `\s?\b{phrase}\b` for ALL rules — every command absorbs one optional
+// leading space. Behaviorally cleaner: punctuation glues, breaks don't dangle.
 const RULES: &[CommandRule] = &[
     // English
-    CommandRule { phrase: "new paragraph",   replacement: "\n\n", attaches: false },
-    CommandRule { phrase: "new line",        replacement: "\n",   attaches: false },
-    CommandRule { phrase: "exclamation mark",replacement: "!",    attaches: true  },
-    CommandRule { phrase: "question mark",   replacement: "?",    attaches: true  },
-    CommandRule { phrase: "period",          replacement: ".",    attaches: true  },
-    CommandRule { phrase: "comma",           replacement: ",",    attaches: true  },
-    CommandRule { phrase: "bullet",          replacement: "• ",   attaches: false },
+    CommandRule { phrase: "new paragraph",   replacement: "\n\n" },
+    CommandRule { phrase: "new line",        replacement: "\n"   },
+    CommandRule { phrase: "exclamation mark",replacement: "!"    },
+    CommandRule { phrase: "question mark",   replacement: "?"    },
+    CommandRule { phrase: "period",          replacement: "."    },
+    CommandRule { phrase: "comma",           replacement: ","    },
+    CommandRule { phrase: "bullet",          replacement: "• "   },
     // Portuguese
-    CommandRule { phrase: "novo parágrafo",  replacement: "\n\n", attaches: false },
-    CommandRule { phrase: "nova linha",      replacement: "\n",   attaches: false },
-    CommandRule { phrase: "ponto final",     replacement: ".",    attaches: true  },
-    CommandRule { phrase: "ponto",           replacement: ".",    attaches: true  },
-    CommandRule { phrase: "vírgula",         replacement: ",",    attaches: true  },
-    CommandRule { phrase: "interrogação",    replacement: "?",    attaches: true  },
-    CommandRule { phrase: "exclamação",      replacement: "!",    attaches: true  },
+    CommandRule { phrase: "novo parágrafo",  replacement: "\n\n" },
+    CommandRule { phrase: "nova linha",      replacement: "\n"   },
+    CommandRule { phrase: "ponto final",     replacement: "."    },
+    CommandRule { phrase: "ponto",           replacement: "."    },
+    CommandRule { phrase: "vírgula",         replacement: ","    },
+    CommandRule { phrase: "interrogação",    replacement: "?"    },
+    CommandRule { phrase: "exclamação",      replacement: "!"    },
 ];
 
-fn compiled() -> &'static [(Regex, &'static str, bool)] {
-    static CACHE: OnceLock<Vec<(Regex, &'static str, bool)>> = OnceLock::new();
+fn compiled() -> &'static [(Regex, &'static str)] {
+    static CACHE: OnceLock<Vec<(Regex, &'static str)>> = OnceLock::new();
     CACHE.get_or_init(|| {
         RULES.iter().map(|r| {
             let escaped = regex::escape(r.phrase);
-            // Eat one leading space if present so the replacement attaches
-            // cleanly to the previous token (punctuation glues; newlines/bullets
-            // also avoid leaving a stray space before the break).
-            let _ = r.attaches;
             let pat = format!(r"(?i)\s?\b{}\b", escaped);
-            (Regex::new(&pat).expect("static command pattern"), r.replacement, r.attaches)
+            (Regex::new(&pat).expect("static command pattern"), r.replacement)
         }).collect()
     })
 }
 
 pub fn replace_commands(text: &str) -> String {
     let mut out = text.to_string();
-    for (re, replacement, _attaches) in compiled() {
+    for (re, replacement) in compiled() {
         out = re.replace_all(&out, *replacement).into_owned();
     }
     out
