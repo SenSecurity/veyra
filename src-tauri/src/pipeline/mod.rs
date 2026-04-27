@@ -1,0 +1,5 @@
+//! Pipeline orchestrator and stage modules.
+//!
+//! Phase 2 wires only the Dictation arm. Command Mode is Phase 4.
+
+pub mod tmp;

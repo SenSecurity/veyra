@@ -3,6 +3,7 @@ pub mod storage;
 pub mod settings;
 pub mod audio;
 pub mod format;
+pub mod pipeline;
 pub mod transcribe_local;
 pub mod transcribe_groq;
 pub mod cleanup;
