@@ -3,6 +3,23 @@ use hound::{WavSpec, WavWriter};
 use std::sync::{Arc, Mutex};
 use std::path::PathBuf;
 
+/// Target sample rate after resampling — matches whisper.cpp expected input.
+const TARGET_SAMPLE_RATE: usize = 16_000;
+/// Hard cap on captured audio (rolling window). Anything older than this is dropped.
+const MAX_SECONDS: usize = 120;
+/// Rolling-window cap measured against the eventual 16kHz mono stream the test
+/// helpers and `current_duration_ms` assume. Production capture caps in raw
+/// samples computed from the live cpal config (see `apply_cap_with`).
+#[cfg(test)]
+const MAX_SAMPLES_16K_MONO: usize = TARGET_SAMPLE_RATE * MAX_SECONDS;
+
+fn apply_cap_with(buf: &mut Vec<f32>, max_samples: usize) {
+    if buf.len() > max_samples {
+        let overflow = buf.len() - max_samples;
+        buf.drain(..overflow);
+    }
+}
+
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct MicDevice {
     pub name: String,
@@ -90,12 +107,16 @@ impl AudioRecorder {
         };
 
         let samples = self.samples.clone();
+        // Cap at MAX_SECONDS of raw audio. Buffer is interleaved frames at
+        // `sample_rate * channels`, so cap scales with both.
+        let raw_max_samples = (sample_rate as usize) * (channels as usize) * MAX_SECONDS;
         let stream = device
             .build_input_stream(
                 &config,
                 move |data: &[f32], _: &cpal::InputCallbackInfo| {
                     let mut buf = samples.lock().unwrap();
                     buf.extend_from_slice(data);
+                    apply_cap_with(&mut buf, raw_max_samples);
                 },
                 |err| {
                     eprintln!("[Typr] Audio stream error: {}", err);
@@ -154,6 +175,50 @@ impl AudioRecorder {
 
         println!("[Typr] WAV saved to {:?}", output_path);
         Ok(output_path.clone())
+    }
+
+    /// Returns how much audio is currently buffered, in milliseconds.
+    ///
+    /// Computed against the 16kHz mono target rate — the buffer is normalised
+    /// to that shape by the test helpers, and represents the eventual
+    /// post-resample stream that whisper.cpp consumes.
+    pub fn current_duration_ms(&self) -> u64 {
+        let buf = self.samples.lock().unwrap();
+        ((buf.len() as u64) * 1000) / (TARGET_SAMPLE_RATE as u64)
+    }
+
+    #[cfg(test)]
+    pub fn push_test_samples(&mut self, frames: Vec<f32>) {
+        let mut buf = self.samples.lock().unwrap();
+        buf.extend(frames);
+        apply_cap_with(&mut buf, MAX_SAMPLES_16K_MONO);
+    }
+
+    #[cfg(test)]
+    pub fn snapshot_test_samples(&self) -> Vec<f32> {
+        self.samples.lock().unwrap().clone()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ring_buffer_caps_at_120_seconds() {
+        let mut rec = AudioRecorder::new();
+        let total_samples = 16_000 * 130; // 130s
+        rec.push_test_samples(vec![0.5f32; total_samples]);
+        let captured = rec.snapshot_test_samples();
+        assert!(captured.len() <= 16_000 * 120, "expected <= 120s, got {} samples", captured.len());
+        assert_eq!(captured.len(), 16_000 * 120, "expected exactly 120s after rolling-window cap");
+    }
+
+    #[test]
+    fn current_duration_ms_reports_buffered_audio() {
+        let mut rec = AudioRecorder::new();
+        rec.push_test_samples(vec![0.0f32; 16_000 * 5]); // 5s
+        assert_eq!(rec.current_duration_ms(), 5_000);
     }
 }
 
