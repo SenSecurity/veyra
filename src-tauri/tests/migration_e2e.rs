@@ -2,6 +2,7 @@
 //! mock keyring + in-memory DB, assert the full lifecycle.
 
 use tempfile::TempDir;
+use typr_lib::settings;
 use typr_lib::settings::keyring::MockBackend;
 use typr_lib::settings::{load, MigrationEvent, SETTINGS_VERSION_KEY};
 use typr_lib::storage::{app_meta::AppMetaRepo, Db};
@@ -25,14 +26,14 @@ fn v1_fixture_migrates_full_lifecycle() {
 
     let out = load(dir.path(), &db, &kr).expect("load succeeds");
 
-    // v2 shape on disk.
-    let v2_raw = std::fs::read_to_string(dir.path().join("config.json")).unwrap();
-    assert!(v2_raw.contains("\"schemaVersion\": 2"));
-    assert!(v2_raw.contains("\"whisperModel\": \"turbo\""));
-    assert!(!v2_raw.contains("groqApiKey"), "secret must not leak to JSON");
+    // v3 shape on disk (v1 → v2 → v3 chained in one boot).
+    let v3_raw = std::fs::read_to_string(dir.path().join("config.json")).unwrap();
+    assert!(v3_raw.contains("\"schemaVersion\": 3"));
+    assert!(v3_raw.contains("\"whisperModel\": \"turbo\""));
+    assert!(!v3_raw.contains("groqApiKey"), "secret must not leak to JSON");
 
     // Struct in memory.
-    assert_eq!(out.settings.schema_version, 2);
+    assert_eq!(out.settings.schema_version, 3);
     assert_eq!(out.settings.microphone, "Stream Deck Mic");
     assert_eq!(out.settings.transcription.engine, "groq");
     assert_eq!(out.settings.transcription.whisper_model, "turbo");
@@ -46,7 +47,7 @@ fn v1_fixture_migrates_full_lifecycle() {
     // Sentinel stamped.
     assert_eq!(
         AppMetaRepo::new(&db).get(SETTINGS_VERSION_KEY).unwrap().as_deref(),
-        Some("2")
+        Some("3")
     );
 
     // Events include Migrated, ModelRemapped(medium→turbo), NeedsGroqKey.
@@ -61,6 +62,53 @@ fn v1_fixture_migrates_full_lifecycle() {
     let out2 = load(dir.path(), &db, &kr).expect("second load");
     assert!(out2.events.is_empty());
     assert_eq!(out2.settings, out.settings);
+}
+
+#[test]
+fn load_v2_with_medium_writes_v3_and_remaps_to_turbo() {
+    let tmp = tempfile::tempdir().unwrap();
+    let path = tmp.path().join("config.json");
+    std::fs::write(&path, r#"{
+        "schemaVersion": 2,
+        "microphone": "default",
+        "transcription": {
+            "engine": "local", "whisperModel": "medium",
+            "languages": ["pt","en"], "autoDetect": true,
+            "gpuAcceleration": "auto", "vadEnabled": true, "noSpeechThreshold": 0.6
+        },
+        "hotkeys": {"dictation":"F24","commandMode":"Shift+F24","recordingMode":"push-to-talk"},
+        "overlay": {"style":"pill","position":"near-cursor"},
+        "formatting": {"enhanceEnabled":false,"removeFillers":true,"fillerWords":[],"explicitCommands":true},
+        "dictionary": {"autoAdd":false},
+        "stats": {"enabled":true,"milestoneNotifications":true},
+        "data": {"wordCountCap":500000,"purgeOnExceed":true},
+        "system": {"launchAtLogin":false,"closeToTray":true,"dictationSounds":true,"muteMusicOnDictate":false},
+        "ui": {"language":"en","theme":"system","accent":"indigo"}
+    }"#).unwrap();
+
+    let s = settings::load_for_test(&path).expect("load v2");
+    assert_eq!(s.schema_version, 3);
+    assert_eq!(s.transcription.whisper_model, "turbo");
+
+    let on_disk: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+    assert_eq!(on_disk["schemaVersion"], 3);
+    assert_eq!(on_disk["transcription"]["whisperModel"], "turbo");
+}
+
+#[test]
+fn load_v3_passes_through_untouched() {
+    let tmp = tempfile::tempdir().unwrap();
+    let path = tmp.path().join("config.json");
+    let mut def = settings::Settings::default();
+    def.transcription.whisper_model = "large-v3".into();
+    std::fs::write(&path, serde_json::to_string_pretty(&def).unwrap()).unwrap();
+    let mtime_before = std::fs::metadata(&path).unwrap().modified().unwrap();
+
+    let s = settings::load_for_test(&path).unwrap();
+    assert_eq!(s.transcription.whisper_model, "large-v3");
+    let mtime_after = std::fs::metadata(&path).unwrap().modified().unwrap();
+    assert_eq!(mtime_before, mtime_after, "v3 load must not rewrite file");
 }
 
 #[test]

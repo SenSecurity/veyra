@@ -102,7 +102,7 @@ pub struct Ui {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            schema_version: 2,
+            schema_version: 3,
             microphone: "default".to_string(),
             transcription: Transcription {
                 engine: "local".to_string(),
@@ -165,7 +165,7 @@ mod tests {
     #[test]
     fn default_matches_spec_defaults() {
         let s = Settings::default();
-        assert_eq!(s.schema_version, 2);
+        assert_eq!(s.schema_version, 3);
         assert_eq!(s.microphone, "default");
         assert_eq!(s.transcription.engine, "local");
         assert_eq!(s.transcription.whisper_model, "turbo");
@@ -187,7 +187,7 @@ mod tests {
     fn serializes_with_camelcase_keys() {
         let s = Settings::default();
         let json = serde_json::to_value(&s).unwrap();
-        assert_eq!(json["schemaVersion"], 2);
+        assert_eq!(json["schemaVersion"], 3);
         assert_eq!(json["transcription"]["whisperModel"], "turbo");
         assert_eq!(json["hotkeys"]["recordingMode"], "push-to-talk");
         assert_eq!(json["data"]["wordCountCap"], 500_000);

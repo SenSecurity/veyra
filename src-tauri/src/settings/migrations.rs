@@ -62,6 +62,10 @@ pub fn migrate_v1_to_v2(
         .ok_or_else(|| MigrationError::Malformed("root is not an object".into()))?;
 
     let mut out = Settings::default();
+    // Default's schema_version is 3 (current). Stamp v2 so the loader can
+    // chain v1 → v2 → v3 deterministically, instead of assuming the v1
+    // migrator output's version equals whatever default happens to be today.
+    out.schema_version = 2;
 
     if let Some(Value::String(mic)) = obj.get("microphone") {
         out.microphone = mic.clone();
@@ -112,6 +116,36 @@ pub fn migrate_v1_to_v2(
         groq_key_migrated,
         had_groq_key_in_json,
     })
+}
+
+/// Outcome of a v2 → v3 migration. Smaller than [`MigrationOutcome`] because
+/// no keyring touch is involved; the sole side-effect is the remap.
+#[derive(Debug, Clone, PartialEq)]
+pub struct MigrationOutcomeV3 {
+    pub settings: Settings,
+    pub remapped_model: Option<(String, String)>,
+}
+
+/// Phase 2 cutover: stamps `schema_version=3` and remaps retired whisper models
+/// (`tiny`, `small`, `medium`) to `turbo`. Idempotent — running on a v3 input
+/// with `turbo` already returns `remapped_model=None`.
+pub fn migrate_v2_to_v3(mut s: Settings) -> MigrationOutcomeV3 {
+    let from = s.transcription.whisper_model.clone();
+    let to: String = match from.as_str() {
+        "tiny" | "small" | "medium" => "turbo".to_string(),
+        other => other.to_string(),
+    };
+    let remapped_model = if from != to {
+        s.transcription.whisper_model = to.clone();
+        Some((from, to))
+    } else {
+        None
+    };
+    s.schema_version = 3;
+    MigrationOutcomeV3 {
+        settings: s,
+        remapped_model,
+    }
 }
 
 #[cfg(test)]
@@ -240,5 +274,66 @@ mod tests {
         let out = migrate_v1_to_v2(&v1, &kr).unwrap();
         assert!(out.remapped_model.is_none());
         assert_eq!(out.settings.transcription.whisper_model, "turbo");
+    }
+
+    #[test]
+    fn migrate_v2_to_v3_remaps_medium_to_turbo() {
+        let mut s = Settings::default();
+        s.schema_version = 2;
+        s.transcription.whisper_model = "medium".to_string();
+        let outcome = migrate_v2_to_v3(s);
+        assert_eq!(outcome.settings.schema_version, 3);
+        assert_eq!(outcome.settings.transcription.whisper_model, "turbo");
+        assert_eq!(outcome.remapped_model, Some(("medium".into(), "turbo".into())));
+    }
+
+    #[test]
+    fn migrate_v2_to_v3_remaps_small_to_turbo() {
+        let mut s = Settings::default();
+        s.schema_version = 2;
+        s.transcription.whisper_model = "small".into();
+        let outcome = migrate_v2_to_v3(s);
+        assert_eq!(outcome.settings.transcription.whisper_model, "turbo");
+        assert_eq!(outcome.remapped_model, Some(("small".into(), "turbo".into())));
+    }
+
+    #[test]
+    fn migrate_v2_to_v3_remaps_tiny_to_turbo() {
+        let mut s = Settings::default();
+        s.schema_version = 2;
+        s.transcription.whisper_model = "tiny".into();
+        let outcome = migrate_v2_to_v3(s);
+        assert_eq!(outcome.settings.transcription.whisper_model, "turbo");
+        assert_eq!(outcome.remapped_model, Some(("tiny".into(), "turbo".into())));
+    }
+
+    #[test]
+    fn migrate_v2_to_v3_idempotent_on_turbo() {
+        let mut s = Settings::default();
+        s.schema_version = 2;
+        s.transcription.whisper_model = "turbo".into();
+        let outcome = migrate_v2_to_v3(s);
+        assert_eq!(outcome.settings.schema_version, 3);
+        assert_eq!(outcome.remapped_model, None);
+    }
+
+    #[test]
+    fn migrate_v2_to_v3_preserves_large_v3() {
+        let mut s = Settings::default();
+        s.schema_version = 2;
+        s.transcription.whisper_model = "large-v3".into();
+        let outcome = migrate_v2_to_v3(s);
+        assert_eq!(outcome.settings.transcription.whisper_model, "large-v3");
+        assert_eq!(outcome.remapped_model, None);
+    }
+
+    #[test]
+    fn migrate_v2_to_v3_preserves_base() {
+        let mut s = Settings::default();
+        s.schema_version = 2;
+        s.transcription.whisper_model = "base".into();
+        let outcome = migrate_v2_to_v3(s);
+        assert_eq!(outcome.settings.transcription.whisper_model, "base");
+        assert_eq!(outcome.remapped_model, None);
     }
 }
