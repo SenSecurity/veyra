@@ -5,5 +5,6 @@
 //! - `vad`      — energy-based push-to-talk auto-stop (added in Task 3).
 
 pub mod recorder;
+pub mod vad;
 
 pub use recorder::{list_microphones, AudioRecorder, MicDevice};
