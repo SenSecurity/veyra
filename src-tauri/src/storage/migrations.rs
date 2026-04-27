@@ -2,6 +2,7 @@ use super::{Db, DbError};
 
 const MIGRATIONS: &[(i64, &str)] = &[
     (1, include_str!("migrations/001_initial.sql")),
+    (2, include_str!("migrations/002_auto_add_candidates.sql")),
 ];
 
 pub fn run(db: &Db) -> Result<(), DbError> {

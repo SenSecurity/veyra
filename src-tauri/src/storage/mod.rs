@@ -5,6 +5,7 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 pub mod app_meta;
+pub mod auto_add_candidates;
 pub mod dictionary;
 pub mod migrations;
 pub mod scratchpad;
