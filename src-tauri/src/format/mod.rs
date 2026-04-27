@@ -6,3 +6,4 @@
 pub mod commands;
 pub mod dictionary;
 pub mod fillers;
+pub mod snippets;
