@@ -1,3 +1,7 @@
+//! whisper-cli `--output-file <stem>` writes the transcription sidecar at
+//! `<stem>.txt` (probed 2026-04-26 against bundled `whisper-cli.exe` with
+//! `--output-txt`). Task 13 of Phase 2 relies on this exact filename.
+
 use std::path::PathBuf;
 use tauri::AppHandle;
 use tauri_plugin_shell::ShellExt;
