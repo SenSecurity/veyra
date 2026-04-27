@@ -4,3 +4,4 @@
 //! happens in `pipeline::format::run_format`.
 
 pub mod fillers;
+pub mod commands;
