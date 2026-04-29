@@ -85,14 +85,18 @@ impl Recorder {
             recorder.stop_and_save(&temp_path)?;
         }
 
-        // Transcribe
+        // Transcribe — temporary bridge: T11 changed both engines to return
+        // TranscriptionResult; recorder.rs is deleted in T15 once run_session
+        // takes over, so for now just unwrap `.text` to keep the crate building.
         let raw_text = match settings.engine.as_str() {
             "local" => {
                 let model_path = app_dir.join(transcribe_local::model_filename(&settings.whisper_model));
-                transcribe_local::transcribe_local(app, &model_path, &temp_path).await?
+                let res = transcribe_local::transcribe_local(app, &model_path, &temp_path).await?;
+                res.text
             }
             "cloud" => {
-                transcribe_groq::transcribe_groq(&settings.groq_api_key, &temp_path).await?
+                let res = transcribe_groq::transcribe_groq(&settings.groq_api_key, &temp_path).await?;
+                res.text
             }
             _ => return Err(format!("Unknown engine: {}", settings.engine)),
         };

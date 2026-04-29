@@ -3,19 +3,37 @@
 //! `--output-txt`). Task 13 of Phase 2 relies on this exact filename.
 
 use std::path::PathBuf;
+use std::time::Instant;
 use tauri::AppHandle;
 use tauri_plugin_shell::ShellExt;
 
+use crate::pipeline::transcribe::TranscriptionResult;
+
+/// Run the bundled `whisper-cpp` sidecar against `audio_path` using the model
+/// at `model_path`. Returns a typed [`TranscriptionResult`] with `language`
+/// `None` (current `-otxt`-only flow doesn't expose a language tag) and
+/// `duration_ms` set to the wall-clock cost of the shell-out.
+///
+/// `model` is derived from `model_path.file_stem()` with the `ggml-` prefix
+/// stripped (e.g. `ggml-turbo.bin` → `"turbo"`).
 pub async fn transcribe_local(
     app: &AppHandle,
     model_path: &PathBuf,
     audio_path: &PathBuf,
-) -> Result<String, String> {
+) -> Result<TranscriptionResult, String> {
     if !model_path.exists() {
         return Err("Whisper model not found. Please download a model first.".to_string());
     }
 
+    let model_name = model_path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .map(|s| s.strip_prefix("ggml-").unwrap_or(s).to_string())
+        .unwrap_or_else(|| "unknown".to_string());
+
     println!("[Typr] Running whisper.cpp sidecar with model {:?}", model_path);
+
+    let started = Instant::now();
 
     let output = app
         .shell()
@@ -42,8 +60,15 @@ pub async fn transcribe_local(
     }
 
     let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    let duration_ms = started.elapsed().as_millis() as u64;
     println!("[Typr] Whisper output: {}", text);
-    Ok(text)
+
+    Ok(TranscriptionResult {
+        text,
+        language: None,
+        duration_ms,
+        model: model_name,
+    })
 }
 
 pub fn model_filename(model_size: &str) -> String {
