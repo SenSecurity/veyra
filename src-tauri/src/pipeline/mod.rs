@@ -4,3 +4,4 @@
 
 pub mod commit;
 pub mod tmp;
+pub mod transcribe;
