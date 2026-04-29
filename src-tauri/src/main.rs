@@ -5,9 +5,9 @@ use std::sync::Mutex;
 use tauri::{Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
-use typr_lib::audio;
+use typr_lib::audio::{self, AudioRecorder};
 use typr_lib::downloader;
-use typr_lib::recorder::{Recorder, RecordingState};
+use typr_lib::recording_state::RecordingState;
 use typr_lib::settings::adapter::{apply_v1_v2_fields, to_v1_view, write_v1_keyring};
 use typr_lib::settings::keyring::{KeyringBackend, SystemBackend};
 use typr_lib::settings::legacy_v1::Settings as V1Settings;
@@ -18,18 +18,33 @@ use typr_lib::telemetry;
 use typr_lib::transcribe_local;
 
 struct AppState {
-    recorder: Recorder,
     settings: Mutex<V2Settings>,
     keyring: Box<dyn KeyringBackend>,
     app_dir: PathBuf,
-    #[allow(dead_code)] // Held so SQLite stays open for the app lifetime; consumers come in Phase 2+.
     db: Db,
+    audio: Mutex<AudioRecorder>,
+    recording_state: Mutex<RecordingState>,
 }
 
 fn get_app_dir() -> PathBuf {
     dirs::config_dir()
         .unwrap_or_else(|| PathBuf::from("."))
         .join("com.typr.app")
+}
+
+/// Tauri-specific overlay UI side-effect. Lives here (not in the pipeline)
+/// because the pipeline must remain headless and reusable from Phase 4
+/// command mode without dragging the overlay window dependency along.
+fn update_overlay(app: &tauri::AppHandle, state: &RecordingState) {
+    if let Some(overlay) = app.get_webview_window("overlay") {
+        let class = match state {
+            RecordingState::Ready => "mic",
+            RecordingState::Recording => "mic recording",
+            RecordingState::Transcribing => "mic transcribing",
+        };
+        let js = format!("document.getElementById('mic').className = '{}';", class);
+        let _ = overlay.eval(&js);
+    }
 }
 
 #[tauri::command]
@@ -74,7 +89,7 @@ fn list_microphones() -> Vec<audio::MicDevice> {
 
 #[tauri::command]
 fn get_recording_state(state: State<AppState>) -> RecordingState {
-    state.recorder.get_state()
+    state.recording_state.lock().unwrap().clone()
 }
 
 #[tauri::command]
@@ -103,42 +118,92 @@ async fn toggle_recording(
     do_toggle_recording(&app, &state).await
 }
 
-/// Build a fresh `V1Settings` snapshot for the recorder by reading the v2 tree
-/// and keyring at call time. The recorder still consumes the legacy six-field
-/// shape; Phase 2 will replace this with direct v2 access.
+/// Drive the pipeline once we are committed to the `Recording → Transcribing
+/// → Ready` transition. Used by both the toggle command and the PTT release
+/// branch so emit/overlay/state housekeeping stays in lock-step.
 ///
-/// Lock scope: clone v2 under the guard, drop the guard, then read the
-/// keyring. The keyring backend hits the OS Credential Manager — holding the
-/// settings Mutex across that syscall would serialise the recorder's hot path
-/// with any concurrent `get_settings`/`save_settings` invocation.
-fn legacy_view(state: &AppState) -> V1Settings {
-    let v2_snapshot = state.settings.lock().unwrap().clone();
-    to_v1_view(&v2_snapshot, state.keyring.as_ref())
+/// Lock discipline: `recording_state` and `settings` are `std::sync::Mutex`,
+/// so every guard is acquired in a `{}` scope and dropped before any `.await`.
+/// `pipeline::run_session` re-locks `state.audio` internally inside
+/// `capture::stop_and_save`, so we must NOT hold any lock around that call.
+async fn run_pipeline_and_reset_state(app: &tauri::AppHandle, state: &AppState) {
+    {
+        let mut rs = state.recording_state.lock().unwrap();
+        *rs = RecordingState::Transcribing;
+    }
+    let _ = app.emit("recording-state", RecordingState::Transcribing);
+    update_overlay(app, &RecordingState::Transcribing);
+
+    let settings = state.settings.lock().unwrap().clone();
+    let groq_key = state.keyring.get().ok().flatten();
+
+    let outcome = {
+        let deps = typr_lib::pipeline::PipelineDeps {
+            db: &state.db,
+            settings: &settings,
+            audio: &state.audio,
+            app,
+            app_dir: &state.app_dir,
+            groq_key: groq_key.as_deref(),
+        };
+        typr_lib::pipeline::run_session(deps, typr_lib::pipeline::PipelineMode::Dictation).await
+    };
+
+    {
+        let mut rs = state.recording_state.lock().unwrap();
+        *rs = RecordingState::Ready;
+    }
+    let _ = app.emit("recording-state", RecordingState::Ready);
+    update_overlay(app, &RecordingState::Ready);
+
+    match outcome {
+        Ok(row_id) => {
+            let _ = app.emit(
+                "transcription:new",
+                serde_json::json!({ "rowId": row_id }),
+            );
+            tracing::info!(row_id, "[Typr] Transcription persisted");
+        }
+        Err(e) => tracing::error!(error = %e, "[Typr] Pipeline error"),
+    }
 }
 
-/// Shared logic for toggle recording, used by both the Tauri command and hotkey handler.
+/// Shared logic for toggle recording, used by both the Tauri command and the
+/// hotkey handler in toggle mode. PTT mode bypasses this and drives state
+/// directly from the `Pressed`/`Released` branches in `setup`.
 async fn do_toggle_recording(
     app: &tauri::AppHandle,
     state: &AppState,
 ) -> Result<String, String> {
-    let current_state = state.recorder.get_state();
-    match current_state {
+    let current = {
+        let rs = state.recording_state.lock().map_err(|e| e.to_string())?;
+        rs.clone()
+    };
+    match current {
         RecordingState::Ready => {
+            // Snapshot mic outside the recording_state lock to keep critical
+            // sections short. `audio.start` does the cpal handshake — we
+            // hold only `state.audio`'s Mutex for that, never `settings`.
             let mic = state.settings.lock().unwrap().microphone.clone();
-            state.recorder.start_recording(app, &mic)?;
-            Ok("recording".to_string())
+            state
+                .audio
+                .lock()
+                .map_err(|e| e.to_string())?
+                .start(&mic)?;
+
+            {
+                let mut rs = state.recording_state.lock().map_err(|e| e.to_string())?;
+                *rs = RecordingState::Recording;
+            }
+            let _ = app.emit("recording-state", RecordingState::Recording);
+            update_overlay(app, &RecordingState::Recording);
+            Ok("recording".into())
         }
         RecordingState::Recording => {
-            let settings = legacy_view(state);
-            let result = state
-                .recorder
-                .stop_and_transcribe(app, &settings, &state.app_dir)
-                .await?;
-            Ok(result)
+            run_pipeline_and_reset_state(app, state).await;
+            Ok("ok".into())
         }
-        RecordingState::Transcribing => {
-            Err("Currently transcribing, please wait".to_string())
-        }
+        RecordingState::Transcribing => Err("Currently transcribing, please wait".into()),
     }
 }
 
@@ -170,15 +235,26 @@ fn main() {
     let initial_hotkey = v2_settings.hotkeys.dictation.clone();
     let migration_events = outcome.events;
 
+    // Boot-time tmp sweep: any *.wav / *.txt left in the per-session tmp dir
+    // older than 10 minutes is junk from a crashed prior run. Best-effort —
+    // failure modes are logged inside `sweep_stale_wavs` and a zero count
+    // here is the common case.
+    let purged =
+        typr_lib::pipeline::tmp::sweep_stale_wavs(std::time::Duration::from_secs(600));
+    if purged > 0 {
+        tracing::info!(purged, "swept stale tmp wav files at boot");
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_shell::init())
         .manage(AppState {
-            recorder: Recorder::new(),
             settings: Mutex::new(v2_settings),
             keyring,
             app_dir,
             db,
+            audio: Mutex::new(AudioRecorder::new()),
+            recording_state: Mutex::new(RecordingState::Ready),
         })
         .invoke_handler(tauri::generate_handler![
             get_settings,
@@ -289,12 +365,24 @@ fn main() {
                                         }
                                     }
                                     "push-to-talk" => {
-                                        let current = state.recorder.get_state();
+                                        let current = {
+                                            let rs = state.recording_state.lock().unwrap();
+                                            rs.clone()
+                                        };
                                         tracing::debug!(current = ?current, "[Typr] PTT mode");
                                         if current == RecordingState::Ready {
                                             let mic = state.settings.lock().unwrap().microphone.clone();
-                                            match state.recorder.start_recording(&handle, &mic) {
-                                                Ok(_) => tracing::info!("[Typr] Recording started"),
+                                            let start_res = state.audio.lock().unwrap().start(&mic);
+                                            match start_res {
+                                                Ok(_) => {
+                                                    {
+                                                        let mut rs = state.recording_state.lock().unwrap();
+                                                        *rs = RecordingState::Recording;
+                                                    }
+                                                    let _ = handle.emit("recording-state", RecordingState::Recording);
+                                                    update_overlay(&handle, &RecordingState::Recording);
+                                                    tracing::info!("[Typr] Recording started");
+                                                }
                                                 Err(e) => tracing::error!(error = %e, "[Typr] Start recording error"),
                                             }
                                         }
@@ -307,17 +395,12 @@ fn main() {
                             if mode == "push-to-talk" {
                                 tauri::async_runtime::spawn(async move {
                                     let state = handle.state::<AppState>();
-                                    let current = state.recorder.get_state();
+                                    let current = {
+                                        let rs = state.recording_state.lock().unwrap();
+                                        rs.clone()
+                                    };
                                     if current == RecordingState::Recording {
-                                        let settings = legacy_view(state.inner());
-                                        match state.recorder.stop_and_transcribe(
-                                            &handle,
-                                            &settings,
-                                            &state.app_dir,
-                                        ).await {
-                                            Ok(result) => tracing::info!(result = %result, "[Typr] Transcription"),
-                                            Err(e) => tracing::error!(error = %e, "[Typr] Transcription error"),
-                                        }
+                                        run_pipeline_and_reset_state(&handle, state.inner()).await;
                                     }
                                 });
                             }

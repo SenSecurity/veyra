@@ -6,9 +6,7 @@ pub mod format;
 pub mod pipeline;
 pub mod transcribe_local;
 pub mod transcribe_groq;
-pub mod cleanup;
-pub mod paste;
-pub mod recorder;
+pub mod recording_state;
 pub mod downloader;
 
 use tauri::Emitter;
