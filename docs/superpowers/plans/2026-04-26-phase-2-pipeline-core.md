@@ -2832,3 +2832,72 @@ Each task ends with one or more commits; every commit on `wispr-parity` builds. 
 - **Type consistency:** `TranscriptionResult` defined in T11 used by T13 + T14. `RecordingState` extracted in T15 used inside same task. `PipelineDeps`/`PipelineMode`/`StageError` defined in T14 used by T15. `TranscriptionRecord` defined in T10 used by T14.
 - **Schema gap noted:** the design says "tracked in `dictionary.seen_count`" but the existing schema lacks that column. T4 adds a separate `auto_add_candidates` table; this is a deliberate deviation called out at the top of the plan and inside T4's goal line. The reviewer should validate this choice.
 - **`Db` cloning concern:** T14 step 3 flags that `Db: Clone` is a precondition for the `spawn_blocking` design. If Phase 0 made `Db` non-Clone, the implementer falls back to wrapping it in `Arc<Db>` during T15 (when `AppState` is restructured anyway).
+
+---
+
+## Phase 2 Completion Status — 2026-04-29
+
+**Code complete on `wispr-parity`.** All 16 tasks landed; Bruno smoke matrix pending physical run.
+
+### Commits (21 on `wispr-parity` since `036b948`)
+
+| Task | SHA | Headline |
+|------|------|----------|
+| Plan + spec | `da06370`, `036b948` | sub-spec + plan |
+| T0 | `3083e42` | pin whisper-cli `--output-file` sidecar path |
+| T1 | `b8cd998` | settings v2→v3 migrator (medium/small/tiny → turbo) |
+| T2 | `bac29e2`, `b2bf12a` | split recorder into `audio/`; 120s ring-buffer cap; native-rate fix |
+| T3 | `0477e52` | energy-based VAD module |
+| T4 | `1bcbfb8` | `auto_add_candidates` table + repo |
+| T5 | `3b107f3` | filler-word removal (word-boundary regex) |
+| T6 | `60710cd`, `c8b69be` | EN+PT command tokens; `attaches` field dropped |
+| T7 | `42ba0c5` | dictionary pass with case preservation + auto-add |
+| T8 | `5f63b5c`, `a9afc57` | phrase-start snippet expansion |
+| T9 | `6c24f1d` | pipeline tmp WAV path generator + 600s sweep |
+| T10 | `3bb5c97` | `commit_session` (insert + bump_day + cap-purge) |
+| T11 | `955df74` | `transcribe::dispatch` returning `TranscriptionResult`; retired-model gate |
+| T12 | `bd4bc36` | `format::run_format` orchestrator |
+| T13 | `7e564de` | switch local Whisper to `-otxt` sidecar (stdout fallback) |
+| T14 | `31fbae0` | `pipeline::run_session` orchestrator |
+| T15 | `a5e9a56` | Tauri command cutover; deleted `recorder.rs`/`paste.rs`/`cleanup.rs` |
+| T16 | _this commit_ | completion docs |
+
+### Test posture
+
+- `cargo test --lib`: **140 passed; 0 failed** (was 151 mid-Phase 2; T15 deleted ~11 `cleanup_text` + `Recorder::new` tests with the orphaned modules).
+- `cargo build` (debug): clean, 0 warnings.
+- `cargo build --release`: clean, 0 warnings.
+- `npx tauri build --no-bundle`: green production binary at `src-tauri/target/release/typr.exe`.
+- Reviewer pass per task: 16/16 APPROVED.
+
+### Final cross-cutting reviewer pass
+
+Approved for merge. Four non-blocking findings forwarded as Phase 3+ backlog (see below). No merge-blocker.
+
+### Bruno smoke matrix — physical run pending
+
+To be ticked off by Bruno before `git push origin wispr-parity`:
+
+- [ ] **1.1 Settings v2→v3 migration** — back up `config.json`, set `schemaVersion: 2` + `whisperModel: medium`, boot `target/release/typr.exe`, verify rewritten to v3 + turbo + log line `v2->v3 model remap from=medium to=turbo`.
+- [ ] **1.2 Push-to-talk PT** — hold F24, say `"olá mundo, vírgula, isto é um teste"`, release. Expected paste: `"olá mundo, isto é um teste"`.
+- [ ] **1.3 Toggle EN basic** — F24, say `"hello world period"`, F24. Expected paste: `"hello world."`.
+- [ ] **1.4 Engine switch** — settings UI, switch engine to `cloud`, save Groq key, repeat 1.3. Log shows `engine=cloud`.
+- [ ] **1.5 Mic disconnect mid-session** — start, pull USB mic, stop. Error toast, state returns to `Ready`, no crash.
+- [ ] **1.6 DB inspection** — `sqlite3 "$env:APPDATA\com.typr.app\typr.db" "SELECT id, final_text, word_count, engine, model FROM transcriptions ORDER BY id DESC LIMIT 5;"` shows last 5 sessions.
+- [ ] **1.7 Cap purge** — lower `data.wordCountCap` below current sum, dictate once, verify `SELECT SUM(word_count)` ≤ cap.
+
+### Phase 3+ carry-forward backlog
+
+- **[IMPORTANT]** Honour `settings.transcription.auto_detect` + `languages[]` in both `transcribe_local` (currently hardcodes `-l pt`) and `transcribe_groq` (currently hardcodes `language=en`). Drop the fixed Portuguese `--prompt` seed (master spec §4 risk: hallucinated "Obrigado/Amara.org"). Bruno's smoke 1.4 may surface this if the cloud session comes back English-tagged.
+- **[IMPORTANT]** Wire `audio::vad::EnergyVad` into a PTT poll thread (sub-spec §6) — currently dead code. Or defer to Phase 5 with the rest of the constants tuning and document the deferral.
+- **[IMPORTANT]** `pipeline::run_session` logs full WAV path (`%LOCALAPPDATA%\com.typr.app\tmp\<uuid>.wav`) — leaks Windows username. Replace with `wav_name = …file_name().to_str()` or drop the path entirely.
+- **[NIT]** `lib.rs::run()` has diverged from `main.rs` (mobile-only entry, never invoked on desktop). Either delete or extract a shared `boot::init(app)` helper.
+- **[NIT]** Rename `TranscriptionResult.duration_ms` → `engine_elapsed_ms` (currently shadows `TranscriptionRecord.duration_ms` which is audio duration).
+- **[NIT]** Replace `audio/recorder.rs` `println!` calls with `tracing::*` so the rotating log captures device events.
+- **[NIT]** Add `tests/pipeline_dictation.rs` integration test once a stub-transcribe seam exists (sub-spec §10 names this; T16 manual smoke covers in the meantime).
+- **Phase 4 fills:** `app_context` (currently `String::new()`), `enhanced` (always `false`), Compose Mode (sub-spec §13), Command Mode (currently early-returns `StageError::Capture("command mode is Phase 4")`), milestone toasts (`stats.milestone_notifications` setting present, no consumer).
+- **Phase 1 deferrals carried forward:** tx-rollback comment in storage migrations, `cap < 0` doc in `delete_to_fit_word_cap`, empty MATCH-string handling in FTS search, Groq key tri-state (`Option<String>` for unchanged-vs-cleared) in `save_settings`, save_settings rollback test.
+
+### Push gate
+
+Push to `origin/wispr-parity` ONLY after Bruno completes the smoke matrix. Worst-case revert path: `git revert <task-sha>` per failing task — every commit on `wispr-parity` builds independently.
