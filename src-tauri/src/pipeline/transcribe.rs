@@ -80,7 +80,7 @@ pub async fn dispatch(
                     model_path.to_string_lossy().to_string(),
                 ));
             }
-            transcribe_local::transcribe_local(app, &model_path, &wav_path.to_path_buf())
+            transcribe_local::transcribe_local(app, &model_path, wav_path)
                 .await
                 .map_err(TranscribeError::Engine)
         }
