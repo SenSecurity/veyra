@@ -122,8 +122,11 @@ pub async fn run_session(
             stage: StageError::Capture("zero speech captured".into()),
         });
     }
+    // Log only the basename so the rotating log doesn't embed
+    // %LOCALAPPDATA%\<username>\... paths. Spec §9 (telemetry) bans
+    // user-identifying paths in the rotating log.
     tracing::info!(
-        wav = %cap.wav_path.display(),
+        wav_name = %cap.wav_path.file_name().and_then(|s| s.to_str()).unwrap_or("<no-name>"),
         duration_ms = cap.duration_ms,
         bytes = cap.byte_size,
         "capture done",
@@ -202,7 +205,11 @@ pub async fn run_session(
     // 6. Cleanup — best-effort. The tmp sweep added in T15 will mop up
     // any WAV we leak on the rare failure path here.
     if let Err(e) = std::fs::remove_file(&cap.wav_path) {
-        tracing::warn!(error = %e, wav = %cap.wav_path.display(), "tmp wav cleanup failed");
+        tracing::warn!(
+            error = %e,
+            wav_name = %cap.wav_path.file_name().and_then(|s| s.to_str()).unwrap_or("<no-name>"),
+            "tmp wav cleanup failed",
+        );
     }
 
     Ok(row_id)
