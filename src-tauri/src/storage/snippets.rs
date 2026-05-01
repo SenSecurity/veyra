@@ -1,7 +1,9 @@
 use super::{Db, DbError};
 use rusqlite::params;
+use serde::Serialize;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Snippet {
     pub id: i64,
     pub created_at: i64,
@@ -74,6 +76,10 @@ impl<'a> SnippetRepo<'a> {
             Ok(())
         })
     }
+
+    pub fn delete(&self, id: i64) -> Result<usize, DbError> {
+        self.db.with_conn(|c| c.execute("DELETE FROM snippets WHERE id = ?1", [id]))
+    }
 }
 
 fn map_snippet(r: &rusqlite::Row) -> rusqlite::Result<Snippet> {
@@ -128,6 +134,17 @@ mod tests {
             trigger: ":off", expansion: "x", description: None, enabled: false,
         }).unwrap();
         assert!(repo.find_by_trigger(":off").unwrap().is_none());
+    }
+
+    #[test]
+    fn delete_removes_row() {
+        let db = mem_db();
+        let repo = SnippetRepo::new(&db);
+        let id = repo.upsert(1, NewSnippet {
+            trigger: ":x", expansion: "x", description: None, enabled: true,
+        }).unwrap();
+        assert_eq!(repo.delete(id).unwrap(), 1);
+        assert!(repo.list().unwrap().is_empty());
     }
 
     #[test]

@@ -14,3 +14,8 @@ export interface MicDevice {
 
 export type { Settings } from "./settings";
 export type { Transcription } from "./transcription";
+export type { DictionaryTerm, NewDictionaryTermInput } from "./dictionary";
+export type { Snippet, NewSnippetInput } from "./snippet";
+export type { ScratchpadNote, NewScratchpadNoteInput } from "./scratchpad";
+export type { Totals, StreakInfo, DailyStats } from "./stats";
+export type { WizardStatus } from "./wizard";

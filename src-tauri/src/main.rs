@@ -2,6 +2,7 @@
 
 use std::path::PathBuf;
 use std::sync::Mutex;
+use serde::{Deserialize, Serialize};
 use tauri::{Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
@@ -13,6 +14,12 @@ use typr_lib::settings::keyring::{KeyringBackend, SystemBackend};
 use typr_lib::settings::legacy_v1::Settings as V1Settings;
 use typr_lib::settings::schema::Settings as V2Settings;
 use typr_lib::settings::{self, LoadOutcome, MigrationEvent};
+use typr_lib::storage::app_meta::AppMetaRepo;
+use typr_lib::storage::dictionary::{DictionaryRepo, DictionaryTerm, NewDictionaryTerm};
+use typr_lib::storage::scratchpad::{NewNote, ScratchpadNote, ScratchpadRepo};
+use typr_lib::storage::snippets::{NewSnippet, Snippet, SnippetRepo};
+use typr_lib::storage::stats::{DailyStats, StatsRepo, StreakInfo, Totals};
+use typr_lib::storage::transcriptions::{Transcription, TranscriptionRepo};
 use typr_lib::storage::Db;
 use typr_lib::telemetry;
 use typr_lib::transcribe_local;
@@ -207,6 +214,262 @@ async fn do_toggle_recording(
     }
 }
 
+// ---------------------------------------------------------------------------
+// Phase 3 UI commands — CRUD/stats/wizard/groq-key.
+//
+// All commands return `Result<T, String>` so the JS side gets a string error.
+// The storage repos already provide the heavy lifting; these are thin
+// pass-throughs with payload-shape conversion at the boundary.
+// ---------------------------------------------------------------------------
+
+fn now_secs() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0)
+}
+
+fn today_iso() -> String {
+    use time::format_description::well_known::Iso8601;
+    time::OffsetDateTime::now_utc()
+        .date()
+        .format(&Iso8601::DATE)
+        .unwrap_or_else(|_| "1970-01-01".into())
+}
+
+// --- transcriptions --------------------------------------------------------
+
+#[tauri::command]
+fn list_transcriptions(
+    state: State<AppState>,
+    limit: u32,
+    offset: u32,
+) -> Result<Vec<Transcription>, String> {
+    TranscriptionRepo::new(&state.db)
+        .list_paginated(limit as i64, offset as i64)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn search_transcriptions(
+    state: State<AppState>,
+    query: String,
+    limit: u32,
+) -> Result<Vec<Transcription>, String> {
+    TranscriptionRepo::new(&state.db)
+        .search_fts(&query, limit as i64)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn delete_transcription(state: State<AppState>, id: i64) -> Result<(), String> {
+    TranscriptionRepo::new(&state.db)
+        .delete_by_id(id)
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+// --- dictionary ------------------------------------------------------------
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct NewDictionaryTermPayload {
+    term: String,
+    replacement: Option<String>,
+    is_abbreviation: bool,
+    auto_added: bool,
+    enabled: bool,
+}
+
+#[tauri::command]
+fn list_dictionary_terms(state: State<AppState>) -> Result<Vec<DictionaryTerm>, String> {
+    DictionaryRepo::new(&state.db).list().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn upsert_dictionary_term(
+    state: State<AppState>,
+    term: NewDictionaryTermPayload,
+) -> Result<i64, String> {
+    DictionaryRepo::new(&state.db)
+        .upsert(
+            now_secs(),
+            NewDictionaryTerm {
+                term: &term.term,
+                replacement: term.replacement.as_deref(),
+                is_abbreviation: term.is_abbreviation,
+                auto_added: term.auto_added,
+                enabled: term.enabled,
+            },
+        )
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn delete_dictionary_term(state: State<AppState>, id: i64) -> Result<(), String> {
+    DictionaryRepo::new(&state.db)
+        .delete(id)
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+// --- snippets --------------------------------------------------------------
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct NewSnippetPayload {
+    trigger: String,
+    expansion: String,
+    description: Option<String>,
+    enabled: bool,
+}
+
+#[tauri::command]
+fn list_snippets(state: State<AppState>) -> Result<Vec<Snippet>, String> {
+    SnippetRepo::new(&state.db).list().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn upsert_snippet(state: State<AppState>, snippet: NewSnippetPayload) -> Result<i64, String> {
+    SnippetRepo::new(&state.db)
+        .upsert(
+            now_secs(),
+            NewSnippet {
+                trigger: &snippet.trigger,
+                expansion: &snippet.expansion,
+                description: snippet.description.as_deref(),
+                enabled: snippet.enabled,
+            },
+        )
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn delete_snippet(state: State<AppState>, id: i64) -> Result<(), String> {
+    SnippetRepo::new(&state.db)
+        .delete(id)
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+// --- scratchpad ------------------------------------------------------------
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct NewNotePayload {
+    id: Option<i64>,
+    title: Option<String>,
+    body: String,
+    pinned: bool,
+}
+
+#[tauri::command]
+fn list_scratchpad_notes(state: State<AppState>) -> Result<Vec<ScratchpadNote>, String> {
+    ScratchpadRepo::new(&state.db)
+        .list_ordered()
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn upsert_scratchpad_note(state: State<AppState>, note: NewNotePayload) -> Result<i64, String> {
+    ScratchpadRepo::new(&state.db)
+        .upsert(
+            now_secs(),
+            note.id,
+            NewNote {
+                title: note.title.as_deref(),
+                body: &note.body,
+                pinned: note.pinned,
+            },
+        )
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn delete_scratchpad_note(state: State<AppState>, id: i64) -> Result<(), String> {
+    ScratchpadRepo::new(&state.db)
+        .delete(id)
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn pin_scratchpad_note(state: State<AppState>, id: i64, pinned: bool) -> Result<(), String> {
+    ScratchpadRepo::new(&state.db)
+        .set_pinned(id, pinned)
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+// --- stats -----------------------------------------------------------------
+
+#[tauri::command]
+fn get_stats_totals(state: State<AppState>) -> Result<Totals, String> {
+    StatsRepo::new(&state.db).totals().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_stats_streak(state: State<AppState>) -> Result<StreakInfo, String> {
+    StatsRepo::new(&state.db)
+        .streak_info(&today_iso())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_stats_by_day(state: State<AppState>) -> Result<Vec<DailyStats>, String> {
+    StatsRepo::new(&state.db)
+        .list_all_days()
+        .map_err(|e| e.to_string())
+}
+
+// --- wizard ---------------------------------------------------------------
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WizardStatus {
+    completed: bool,
+}
+
+#[tauri::command]
+fn wizard_status(state: State<AppState>) -> Result<WizardStatus, String> {
+    let completed = AppMetaRepo::new(&state.db)
+        .get("wizard_completed")
+        .map_err(|e| e.to_string())?
+        .as_deref()
+        == Some("1");
+    Ok(WizardStatus { completed })
+}
+
+#[tauri::command]
+fn mark_wizard_complete(state: State<AppState>) -> Result<(), String> {
+    AppMetaRepo::new(&state.db)
+        .set("wizard_completed", "1")
+        .map_err(|e| e.to_string())
+}
+
+// --- groq key test --------------------------------------------------------
+
+#[tauri::command]
+async fn test_groq_key(key: String) -> Result<(), String> {
+    if key.is_empty() {
+        return Err("API key is empty".into());
+    }
+    let client = reqwest::Client::new();
+    let resp = client
+        .get("https://api.groq.com/openai/v1/models")
+        .bearer_auth(&key)
+        .send()
+        .await
+        .map_err(|e| format!("request failed: {e}"))?;
+    if resp.status().is_success() {
+        Ok(())
+    } else {
+        let status = resp.status();
+        let body = resp.text().await.unwrap_or_default();
+        Err(format!("Groq API error ({status}): {body}"))
+    }
+}
+
 fn main() {
     let app_dir = get_app_dir();
     let log_dir = app_dir.join("logs");
@@ -257,6 +520,7 @@ fn main() {
             recording_state: Mutex::new(RecordingState::Ready),
         })
         .invoke_handler(tauri::generate_handler![
+            // Phase 1+2 (existing)
             get_settings,
             save_settings,
             list_microphones,
@@ -264,6 +528,32 @@ fn main() {
             check_model_downloaded,
             download_model,
             toggle_recording,
+            // Phase 3: transcriptions
+            list_transcriptions,
+            search_transcriptions,
+            delete_transcription,
+            // Phase 3: dictionary
+            list_dictionary_terms,
+            upsert_dictionary_term,
+            delete_dictionary_term,
+            // Phase 3: snippets
+            list_snippets,
+            upsert_snippet,
+            delete_snippet,
+            // Phase 3: scratchpad
+            list_scratchpad_notes,
+            upsert_scratchpad_note,
+            delete_scratchpad_note,
+            pin_scratchpad_note,
+            // Phase 3: stats
+            get_stats_totals,
+            get_stats_streak,
+            get_stats_by_day,
+            // Phase 3: wizard
+            wizard_status,
+            mark_wizard_complete,
+            // Phase 3: groq
+            test_groq_key,
         ])
         .setup(move |app| {
             // Replay the migration events captured pre-Builder so the frontend

@@ -1,7 +1,9 @@
 use super::{Db, DbError};
 use rusqlite::params;
+use serde::Serialize;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DailyStats {
     pub day: String,
     pub word_count: i64,
@@ -10,13 +12,15 @@ pub struct DailyStats {
     pub avg_wpm: Option<f64>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct StreakInfo {
     pub current: i64,
     pub longest: i64,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Totals {
     pub word_count: i64,
     pub session_count: i64,
@@ -73,6 +77,23 @@ impl<'a> StatsRepo<'a> {
                     total_duration_ms: r.get(2)?,
                 }),
             )
+        })
+    }
+
+    pub fn list_all_days(&self) -> Result<Vec<DailyStats>, DbError> {
+        self.db.with_conn(|c| {
+            let mut stmt = c.prepare(
+                "SELECT day, word_count, session_count, total_duration_ms, avg_wpm
+                 FROM stats_daily ORDER BY day DESC",
+            )?;
+            let rows = stmt.query_map([], |r| Ok(DailyStats {
+                day: r.get(0)?,
+                word_count: r.get(1)?,
+                session_count: r.get(2)?,
+                total_duration_ms: r.get(3)?,
+                avg_wpm: r.get(4)?,
+            }))?.collect::<Result<Vec<_>, _>>()?;
+            Ok(rows)
         })
     }
 
@@ -160,6 +181,20 @@ mod tests {
         let s = repo.streak_info("2026-04-23").unwrap();
         assert_eq!(s.current, 3);
         assert_eq!(s.longest, 3);
+    }
+
+    #[test]
+    fn list_all_days_returns_descending() {
+        let db = mem_db();
+        let repo = StatsRepo::new(&db);
+        repo.bump_day("2026-04-20", 10, 1_000).unwrap();
+        repo.bump_day("2026-04-22", 20, 2_000).unwrap();
+        repo.bump_day("2026-04-21", 5, 500).unwrap();
+        let days = repo.list_all_days().unwrap();
+        assert_eq!(days.len(), 3);
+        assert_eq!(days[0].day, "2026-04-22");
+        assert_eq!(days[1].day, "2026-04-21");
+        assert_eq!(days[2].day, "2026-04-20");
     }
 
     #[test]
