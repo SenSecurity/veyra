@@ -1,7 +1,9 @@
 use super::{Db, DbError};
 use rusqlite::params;
+use serde::Serialize;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Transcription {
     pub id: i64,
     pub created_at: i64,
@@ -125,6 +127,10 @@ impl<'a> TranscriptionRepo<'a> {
         })
     }
 
+    pub fn delete_by_id(&self, id: i64) -> Result<usize, DbError> {
+        self.db.with_conn(|c| c.execute("DELETE FROM transcriptions WHERE id = ?1", [id]))
+    }
+
     pub fn group_by_day(&self) -> Result<Vec<(String, i64)>, DbError> {
         self.db.with_conn(|c| {
             let mut stmt = c.prepare(
@@ -239,6 +245,21 @@ mod tests {
         // FTS must also be purged via trigger
         let hits = repo.search_fts("a", 10).unwrap();
         assert!(hits.is_empty(), "FTS rows for deleted transcriptions should be gone");
+    }
+
+    #[test]
+    fn delete_by_id_removes_row_and_fts() {
+        let db = mem_db();
+        let repo = TranscriptionRepo::new(&db);
+        let id = repo.insert(sample(1, "doomed", 1)).unwrap();
+        repo.insert(sample(2, "keeper", 1)).unwrap();
+        let n = repo.delete_by_id(id).unwrap();
+        assert_eq!(n, 1);
+        let rows = repo.list_paginated(10, 0).unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].final_text, "keeper");
+        let hits = repo.search_fts("doomed", 10).unwrap();
+        assert!(hits.is_empty());
     }
 
     #[test]

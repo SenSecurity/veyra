@@ -1,7 +1,9 @@
 use super::{Db, DbError};
 use rusqlite::params;
+use serde::Serialize;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DictionaryTerm {
     pub id: i64,
     pub created_at: i64,

@@ -1,7 +1,9 @@
 use super::{Db, DbError};
 use rusqlite::params;
+use serde::Serialize;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ScratchpadNote {
     pub id: i64,
     pub created_at: i64,
@@ -68,6 +70,13 @@ impl<'a> ScratchpadRepo<'a> {
     pub fn delete(&self, id: i64) -> Result<usize, DbError> {
         self.db.with_conn(|c| c.execute("DELETE FROM scratchpad_notes WHERE id = ?1", [id]))
     }
+
+    pub fn set_pinned(&self, id: i64, pinned: bool) -> Result<usize, DbError> {
+        self.db.with_conn(|c| c.execute(
+            "UPDATE scratchpad_notes SET pinned = ?1 WHERE id = ?2",
+            params![pinned as i64, id],
+        ))
+    }
 }
 
 #[cfg(test)]
@@ -110,6 +119,19 @@ mod tests {
         assert_eq!(notes[0].body, "pinned");
         assert_eq!(notes[1].body, "new-unpinned");
         assert_eq!(notes[2].body, "old-unpinned");
+    }
+
+    #[test]
+    fn set_pinned_flips_flag() {
+        let db = mem_db();
+        let repo = ScratchpadRepo::new(&db);
+        let id = repo.upsert(1, None, NewNote { title: None, body: "x", pinned: false }).unwrap();
+        repo.set_pinned(id, true).unwrap();
+        let notes = repo.list_ordered().unwrap();
+        assert!(notes[0].pinned);
+        repo.set_pinned(id, false).unwrap();
+        let notes = repo.list_ordered().unwrap();
+        assert!(!notes[0].pinned);
     }
 
     #[test]
