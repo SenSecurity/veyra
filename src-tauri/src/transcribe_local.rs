@@ -122,14 +122,24 @@ fn model_filename_to_label(model_path: &Path) -> String {
         .unwrap_or_else(|| "unknown".into())
 }
 
+/// Map a settings-level model key (e.g. "turbo") to the on-disk filename used
+/// by whisper.cpp / huggingface. "turbo" is a UX nickname; the actual model on
+/// HF is `ggml-large-v3-turbo.bin`. Other keys map 1:1.
+fn model_stem(model_size: &str) -> &str {
+    match model_size {
+        "turbo" => "large-v3-turbo",
+        other => other,
+    }
+}
+
 pub fn model_filename(model_size: &str) -> String {
-    format!("ggml-{}.bin", model_size)
+    format!("ggml-{}.bin", model_stem(model_size))
 }
 
 pub fn model_download_url(model_size: &str) -> String {
     format!(
         "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-{}.bin",
-        model_size
+        model_stem(model_size)
     )
 }
 
@@ -139,15 +149,21 @@ mod tests {
 
     #[test]
     fn test_model_filename() {
-        assert_eq!(model_filename("small"), "ggml-small.bin");
-        assert_eq!(model_filename("medium"), "ggml-medium.bin");
+        assert_eq!(model_filename("base"), "ggml-base.bin");
+        assert_eq!(model_filename("large-v3"), "ggml-large-v3.bin");
+        // Turbo is a UX label; on-disk file is the large-v3-turbo variant.
+        assert_eq!(model_filename("turbo"), "ggml-large-v3-turbo.bin");
     }
 
     #[test]
     fn test_model_download_url() {
         assert_eq!(
-            model_download_url("small"),
-            "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin"
+            model_download_url("base"),
+            "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin"
+        );
+        assert_eq!(
+            model_download_url("turbo"),
+            "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin"
         );
     }
 
