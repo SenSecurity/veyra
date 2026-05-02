@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::ffi::OsStr;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -593,7 +594,7 @@ fn create_ollama_model(bonsai: BonsaiModel, modelfile_path: &Path) -> Result<(),
         .into_iter()
         .find(|candidate| !candidate.is_absolute() || candidate.exists())
         .ok_or_else(|| "Ollama executable not found.".to_string())?;
-    let output = Command::new(executable)
+    let output = background_command(executable)
         .env("NO_COLOR", "1")
         .arg("create")
         .arg(bonsai.ollama_name)
@@ -768,7 +769,7 @@ async fn ensure_ollama_running() -> Result<(), String> {
         if candidate.is_absolute() && !candidate.exists() {
             continue;
         }
-        match Command::new(&candidate)
+        match background_command(&candidate)
             .arg("serve")
             .stdin(Stdio::null())
             .stdout(Stdio::null())
@@ -831,6 +832,22 @@ fn ollama_executable_candidates() -> Vec<PathBuf> {
     }
     candidates
 }
+
+fn background_command<S: AsRef<OsStr>>(program: S) -> Command {
+    let mut command = Command::new(program);
+    configure_background_command(&mut command);
+    command
+}
+
+#[cfg(windows)]
+fn configure_background_command(command: &mut Command) {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x08000000;
+    command.creation_flags(CREATE_NO_WINDOW);
+}
+
+#[cfg(not(windows))]
+fn configure_background_command(_command: &mut Command) {}
 
 fn ollama_model_matches(installed: &str, selected: &str) -> bool {
     installed == selected
