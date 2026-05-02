@@ -23,6 +23,8 @@ export function SettingsTranscriptionRoute() {
   const [downloading, setDownloading] = useState(false);
   const [downloadingEmailModel, setDownloadingEmailModel] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [emailProgress, setEmailProgress] = useState(0);
+  const [emailDownloadStatus, setEmailDownloadStatus] = useState("");
 
   const whisperModel =
     settings?.whisperModel === "large-v3-turbo" ||
@@ -85,6 +87,18 @@ export function SettingsTranscriptionRoute() {
     return () => void un.then((fn) => fn()).catch(() => {});
   }, [whisperModel]);
 
+  useEffect(() => {
+    const un = listen<{ model: string; downloaded: number; total: number; percent: number; status: string }>(
+      "email-model:download:progress",
+      (event) => {
+        if (event.payload.model !== emailDraftModel) return;
+        setEmailProgress(Math.max(0, Math.min(100, event.payload.percent)));
+        setEmailDownloadStatus(event.payload.status || "Downloading");
+      },
+    );
+    return () => void un.then((fn) => fn()).catch(() => {});
+  }, [emailDraftModel]);
+
   if (loading || !settings) {
     return <SettingsPanel title="Transcription" muted="Loading settings." />;
   }
@@ -115,9 +129,14 @@ export function SettingsTranscriptionRoute() {
 
   async function downloadCurrentEmailModel() {
     setDownloadingEmailModel(true);
+    setCheckingEmailModel(false);
+    setEmailProgress(0);
+    setEmailDownloadStatus("Starting download");
     try {
       await ipc.downloadEmailDraftModel(emailDraftEngine, emailDraftModel);
       setEmailModelReady(true);
+      setEmailProgress(100);
+      setEmailDownloadStatus("Downloaded");
       toast.success("Email model downloaded");
     } catch (error) {
       setEmailModelReady(false);
@@ -262,6 +281,8 @@ export function SettingsTranscriptionRoute() {
             {emailModelReady ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
             {emailDraftEngine === "groq" && !hasGroqKey
               ? "Needs API key"
+              : downloadingEmailModel
+                ? "Downloading"
               : checkingEmailModel
                 ? "Checking"
                 : emailModelReady
@@ -336,6 +357,24 @@ export function SettingsTranscriptionRoute() {
           Check email model
         </Button>
       </div>
+      {downloadingEmailModel && (
+        <div className="space-y-2 rounded-lg border border-border bg-card p-3">
+          <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+            <span className="truncate">{emailDownloadStatus || `Downloading ${emailDraftModel}`}</span>
+            <span>{emailProgress > 0 ? `${Math.round(emailProgress)}%` : "Preparing"}</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-muted">
+            <div
+              className={
+                emailProgress > 0
+                  ? "h-full rounded-full bg-primary transition-[width]"
+                  : "h-full w-1/3 animate-pulse rounded-full bg-primary/70"
+              }
+              style={emailProgress > 0 ? { width: `${emailProgress}%` } : undefined}
+            />
+          </div>
+        </div>
+      )}
 
       {needsGroqKey ? (
         <>

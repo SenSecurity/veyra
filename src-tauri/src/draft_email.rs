@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::time::Duration;
+use tauri::{AppHandle, Emitter};
 
 pub const DEFAULT_GROQ_DRAFT_MODEL: &str = "llama-3.3-70b-versatile";
 pub const DEFAULT_OLLAMA_DRAFT_MODEL: &str = "llama3.2";
@@ -83,6 +84,23 @@ struct OllamaTagsResponse {
 struct OllamaModelInfo {
     name: Option<String>,
     model: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OllamaPullChunk {
+    status: Option<String>,
+    completed: Option<u64>,
+    total: Option<u64>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct EmailModelDownloadProgress {
+    model: String,
+    downloaded: u64,
+    total: u64,
+    percent: f64,
+    status: String,
 }
 
 pub async fn generate_email_draft(
@@ -286,35 +304,92 @@ async fn check_ollama_email_draft_model(model: &str) -> Result<(), String> {
     }
 }
 
-pub async fn download_email_draft_model(engine: &str, model: &str) -> Result<(), String> {
+pub async fn download_email_draft_model(
+    app: Option<AppHandle>,
+    engine: &str,
+    model: &str,
+) -> Result<(), String> {
     match engine {
         "groq" => Ok(()),
-        "ollama" => download_ollama_email_draft_model(model).await,
+        "ollama" => download_ollama_email_draft_model(app, model).await,
         other => Err(format!("Unsupported email draft engine `{other}`.")),
     }
 }
 
-async fn download_ollama_email_draft_model(model: &str) -> Result<(), String> {
+async fn download_ollama_email_draft_model(
+    app: Option<AppHandle>,
+    model: &str,
+) -> Result<(), String> {
     let model = normalize_ollama_draft_model(model)?;
     ensure_ollama_running().await?;
     let client = ollama_client(Duration::from_secs(900))?;
     let response = client
         .post("http://localhost:11434/api/pull")
         .json(&OllamaPullRequest {
-            model,
-            stream: false,
+            model: model.clone(),
+            stream: true,
         })
         .send()
         .await
         .map_err(|e| format!("Ollama pull failed. Is Ollama running? {e}"))?;
 
-    if response.status().is_success() {
-        Ok(())
-    } else {
+    if !response.status().is_success() {
         let status = response.status();
         let body = response.text().await.unwrap_or_default();
-        Err(format!("Ollama pull error ({status}): {body}"))
+        return Err(format!("Ollama pull error ({status}): {body}"));
     }
+
+    emit_email_download_progress(&app, &model, 0, 0, "Starting download");
+    let mut stream = response.bytes_stream();
+    let mut buffer = String::new();
+    let mut last_status = String::new();
+    use futures_util::StreamExt;
+
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|e| format!("Ollama pull stream failed: {e}"))?;
+        buffer.push_str(&String::from_utf8_lossy(&chunk));
+
+        while let Some(newline) = buffer.find('\n') {
+            let line = buffer[..newline].trim().to_string();
+            buffer = buffer[newline + 1..].to_string();
+            if line.is_empty() {
+                continue;
+            }
+            let parsed: OllamaPullChunk = serde_json::from_str(&line)
+                .map_err(|e| format!("Failed to parse Ollama pull progress: {e}"))?;
+            let status = parsed.status.unwrap_or_else(|| last_status.clone());
+            if !status.is_empty() {
+                last_status = status.clone();
+            }
+            emit_email_download_progress(
+                &app,
+                &model,
+                parsed.completed.unwrap_or(0),
+                parsed.total.unwrap_or(0),
+                if status.is_empty() {
+                    "Downloading"
+                } else {
+                    &status
+                },
+            );
+        }
+    }
+
+    let rest = buffer.trim();
+    if !rest.is_empty() {
+        let parsed: OllamaPullChunk = serde_json::from_str(rest)
+            .map_err(|e| format!("Failed to parse Ollama pull progress: {e}"))?;
+        let status = parsed.status.unwrap_or_else(|| "success".to_string());
+        emit_email_download_progress(
+            &app,
+            &model,
+            parsed.completed.unwrap_or(0),
+            parsed.total.unwrap_or(0),
+            &status,
+        );
+    }
+
+    Ok(())
 }
 
 pub fn normalize_groq_draft_model(model: &str) -> Result<String, String> {
@@ -345,6 +420,30 @@ fn ollama_client(timeout: Duration) -> Result<reqwest::Client, String> {
         .timeout(timeout)
         .build()
         .map_err(|e| format!("Ollama client failed: {e}"))
+}
+
+fn emit_email_download_progress(
+    app: &Option<AppHandle>,
+    model: &str,
+    downloaded: u64,
+    total: u64,
+    status: &str,
+) {
+    let percent = if total > 0 {
+        (downloaded as f64 / total as f64) * 100.0
+    } else {
+        0.0
+    };
+    let payload = EmailModelDownloadProgress {
+        model: model.to_string(),
+        downloaded,
+        total,
+        percent,
+        status: status.to_string(),
+    };
+    if let Some(app) = app {
+        let _ = app.emit("email-model:download:progress", payload);
+    }
 }
 
 async fn ensure_ollama_running() -> Result<(), String> {
