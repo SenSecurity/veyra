@@ -6,9 +6,8 @@ import {
   ChevronRight,
   Clock,
   Home,
+  Mail,
   Settings,
-  Sparkles,
-  StickyNote,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -23,9 +22,8 @@ interface NavItem {
 const items: NavItem[] = [
   { to: "/", label: "Home", icon: Home },
   { to: "/history", label: "History", icon: Clock },
+  { to: "/email-drafts", label: "Email Drafter", icon: Mail },
   { to: "/dictionary", label: "Dictionary", icon: BookOpen },
-  { to: "/snippets", label: "Snippets", icon: Sparkles },
-  { to: "/scratchpad", label: "Scratchpad", icon: StickyNote },
   { to: "/settings/general", label: "Settings", icon: Settings },
 ];
 

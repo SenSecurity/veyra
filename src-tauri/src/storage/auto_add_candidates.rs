@@ -56,9 +56,8 @@ impl<'a> AutoAddCandidatesRepo<'a> {
     }
 
     pub fn delete(&self, term: &str) -> Result<usize, DbError> {
-        self.db.with_conn(|c| {
-            c.execute("DELETE FROM auto_add_candidates WHERE term = ?1", [term])
-        })
+        self.db
+            .with_conn(|c| c.execute("DELETE FROM auto_add_candidates WHERE term = ?1", [term]))
     }
 }
 

@@ -36,8 +36,8 @@ export function WizardRoute() {
           {step === 1 && `Current microphone: ${settings?.microphone || "system default"}.`}
           {step === 2 && `Engine: ${settings?.engine ?? "local"}. Configure Groq in Settings when needed.`}
           {step === 3 && `Hotkey: ${settings?.hotkey ?? "not loaded"}.`}
-          {step === 4 && "Language detection is automatic in this Phase 3 build."}
-          {step === 5 && "Setup complete. You can rerun this wizard from About."}
+          {step === 4 && "Language detection is automatic."}
+          {step === 5 && "Setup complete."}
         </p>
         <div className="mt-8 flex justify-between">
           <Button type="button" variant="outline" disabled={step === 0} onClick={() => setStep((s) => Math.max(0, s - 1))}>Back</Button>

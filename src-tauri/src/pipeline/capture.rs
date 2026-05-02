@@ -67,6 +67,9 @@ mod tests {
         };
         assert_eq!(cap.duration_ms, 1234);
         assert_eq!(cap.byte_size, 4096);
-        assert_eq!(cap.wav_path.extension().and_then(|s| s.to_str()), Some("wav"));
+        assert_eq!(
+            cap.wav_path.extension().and_then(|s| s.to_str()),
+            Some("wav")
+        );
     }
 }

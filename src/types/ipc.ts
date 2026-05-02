@@ -1,5 +1,4 @@
-// IPC type skeleton. Expanded in subsequent Phase 3 tasks as routes
-// gain real Tauri command bindings.
+// IPC types used by the current Veyra UI.
 
 export type RecordingState = "Ready" | "Recording" | "Transcribing";
 
@@ -15,7 +14,5 @@ export interface MicDevice {
 export type { Settings } from "./settings";
 export type { Transcription } from "./transcription";
 export type { DictionaryTerm, NewDictionaryTermInput } from "./dictionary";
-export type { Snippet, NewSnippetInput } from "./snippet";
-export type { ScratchpadNote, NewScratchpadNoteInput } from "./scratchpad";
 export type { Totals, StreakInfo, DailyStats } from "./stats";
 export type { WizardStatus } from "./wizard";

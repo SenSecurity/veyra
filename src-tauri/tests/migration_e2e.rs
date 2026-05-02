@@ -30,7 +30,10 @@ fn v1_fixture_migrates_full_lifecycle() {
     let v3_raw = std::fs::read_to_string(dir.path().join("config.json")).unwrap();
     assert!(v3_raw.contains("\"schemaVersion\": 3"));
     assert!(v3_raw.contains("\"whisperModel\": \"turbo\""));
-    assert!(!v3_raw.contains("groqApiKey"), "secret must not leak to JSON");
+    assert!(
+        !v3_raw.contains("groqApiKey"),
+        "secret must not leak to JSON"
+    );
 
     // Struct in memory.
     assert_eq!(out.settings.schema_version, 3);
@@ -46,7 +49,10 @@ fn v1_fixture_migrates_full_lifecycle() {
 
     // Sentinel stamped.
     assert_eq!(
-        AppMetaRepo::new(&db).get(SETTINGS_VERSION_KEY).unwrap().as_deref(),
+        AppMetaRepo::new(&db)
+            .get(SETTINGS_VERSION_KEY)
+            .unwrap()
+            .as_deref(),
         Some("3")
     );
 

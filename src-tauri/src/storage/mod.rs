@@ -11,9 +11,9 @@ pub mod migrations;
 pub mod scratchpad;
 pub mod snippets;
 pub mod stats;
-pub mod transcriptions;
 #[cfg(test)]
 pub mod test_util;
+pub mod transcriptions;
 
 /// Shared DB handle. Single-writer; `BEGIN IMMEDIATE` serialises writes.
 #[derive(Clone)]
@@ -38,7 +38,9 @@ impl Db {
         conn.pragma_update(None, "journal_mode", "WAL")?;
         conn.pragma_update(None, "foreign_keys", "ON")?;
         conn.pragma_update(None, "synchronous", "NORMAL")?;
-        let db = Db { conn: Arc::new(Mutex::new(conn)) };
+        let db = Db {
+            conn: Arc::new(Mutex::new(conn)),
+        };
         migrations::run(&db)?;
         Ok(db)
     }
@@ -46,17 +48,25 @@ impl Db {
     pub fn open_in_memory() -> Result<Self, DbError> {
         let conn = Connection::open_in_memory()?;
         conn.pragma_update(None, "foreign_keys", "ON")?;
-        let db = Db { conn: Arc::new(Mutex::new(conn)) };
+        let db = Db {
+            conn: Arc::new(Mutex::new(conn)),
+        };
         migrations::run(&db)?;
         Ok(db)
     }
 
-    pub fn with_conn<R>(&self, f: impl FnOnce(&Connection) -> Result<R, rusqlite::Error>) -> Result<R, DbError> {
+    pub fn with_conn<R>(
+        &self,
+        f: impl FnOnce(&Connection) -> Result<R, rusqlite::Error>,
+    ) -> Result<R, DbError> {
         let guard = self.conn.lock().expect("db mutex poisoned");
         Ok(f(&guard)?)
     }
 
-    pub fn with_conn_mut<R>(&self, f: impl FnOnce(&mut Connection) -> Result<R, rusqlite::Error>) -> Result<R, DbError> {
+    pub fn with_conn_mut<R>(
+        &self,
+        f: impl FnOnce(&mut Connection) -> Result<R, rusqlite::Error>,
+    ) -> Result<R, DbError> {
         let mut guard = self.conn.lock().expect("db mutex poisoned");
         Ok(f(&mut guard)?)
     }
@@ -69,26 +79,33 @@ mod tests {
     #[test]
     fn open_in_memory_runs_migrations() {
         let db = Db::open_in_memory().expect("open");
-        let tables: i64 = db.with_conn(|c| {
-            c.query_row(
+        let tables: i64 = db
+            .with_conn(|c| {
+                c.query_row(
                 "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='transcriptions'",
                 [],
                 |r| r.get(0),
             )
-        }).unwrap();
-        assert_eq!(tables, 1, "transcriptions table should exist after migrations");
+            })
+            .unwrap();
+        assert_eq!(
+            tables, 1,
+            "transcriptions table should exist after migrations"
+        );
     }
 
     #[test]
     fn fts_table_exists() {
         let db = Db::open_in_memory().expect("open");
-        let count: i64 = db.with_conn(|c| {
-            c.query_row(
-                "SELECT count(*) FROM sqlite_master WHERE name='transcriptions_fts'",
-                [],
-                |r| r.get(0),
-            )
-        }).unwrap();
+        let count: i64 = db
+            .with_conn(|c| {
+                c.query_row(
+                    "SELECT count(*) FROM sqlite_master WHERE name='transcriptions_fts'",
+                    [],
+                    |r| r.get(0),
+                )
+            })
+            .unwrap();
         assert_eq!(count, 1);
     }
 }

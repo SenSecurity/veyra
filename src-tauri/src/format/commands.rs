@@ -15,31 +15,79 @@ struct CommandRule {
 // leading space. Behaviorally cleaner: punctuation glues, breaks don't dangle.
 const RULES: &[CommandRule] = &[
     // English
-    CommandRule { phrase: "new paragraph",   replacement: "\n\n" },
-    CommandRule { phrase: "new line",        replacement: "\n"   },
-    CommandRule { phrase: "exclamation mark",replacement: "!"    },
-    CommandRule { phrase: "question mark",   replacement: "?"    },
-    CommandRule { phrase: "period",          replacement: "."    },
-    CommandRule { phrase: "comma",           replacement: ","    },
-    CommandRule { phrase: "bullet",          replacement: "• "   },
+    CommandRule {
+        phrase: "new paragraph",
+        replacement: "\n\n",
+    },
+    CommandRule {
+        phrase: "new line",
+        replacement: "\n",
+    },
+    CommandRule {
+        phrase: "exclamation mark",
+        replacement: "!",
+    },
+    CommandRule {
+        phrase: "question mark",
+        replacement: "?",
+    },
+    CommandRule {
+        phrase: "period",
+        replacement: ".",
+    },
+    CommandRule {
+        phrase: "comma",
+        replacement: ",",
+    },
+    CommandRule {
+        phrase: "bullet",
+        replacement: "• ",
+    },
     // Portuguese
-    CommandRule { phrase: "novo parágrafo",  replacement: "\n\n" },
-    CommandRule { phrase: "nova linha",      replacement: "\n"   },
-    CommandRule { phrase: "ponto final",     replacement: "."    },
-    CommandRule { phrase: "ponto",           replacement: "."    },
-    CommandRule { phrase: "vírgula",         replacement: ","    },
-    CommandRule { phrase: "interrogação",    replacement: "?"    },
-    CommandRule { phrase: "exclamação",      replacement: "!"    },
+    CommandRule {
+        phrase: "novo parágrafo",
+        replacement: "\n\n",
+    },
+    CommandRule {
+        phrase: "nova linha",
+        replacement: "\n",
+    },
+    CommandRule {
+        phrase: "ponto final",
+        replacement: ".",
+    },
+    CommandRule {
+        phrase: "ponto",
+        replacement: ".",
+    },
+    CommandRule {
+        phrase: "vírgula",
+        replacement: ",",
+    },
+    CommandRule {
+        phrase: "interrogação",
+        replacement: "?",
+    },
+    CommandRule {
+        phrase: "exclamação",
+        replacement: "!",
+    },
 ];
 
 fn compiled() -> &'static [(Regex, &'static str)] {
     static CACHE: OnceLock<Vec<(Regex, &'static str)>> = OnceLock::new();
     CACHE.get_or_init(|| {
-        RULES.iter().map(|r| {
-            let escaped = regex::escape(r.phrase);
-            let pat = format!(r"(?i)\s?\b{}\b", escaped);
-            (Regex::new(&pat).expect("static command pattern"), r.replacement)
-        }).collect()
+        RULES
+            .iter()
+            .map(|r| {
+                let escaped = regex::escape(r.phrase);
+                let pat = format!(r"(?i)\s?\b{}\b", escaped);
+                (
+                    Regex::new(&pat).expect("static command pattern"),
+                    r.replacement,
+                )
+            })
+            .collect()
     })
 }
 
@@ -70,7 +118,10 @@ mod tests {
 
     #[test]
     fn en_new_paragraph_inserts_double_newline() {
-        assert_eq!(replace_commands("first new paragraph second"), "first\n\n second");
+        assert_eq!(
+            replace_commands("first new paragraph second"),
+            "first\n\n second"
+        );
     }
 
     #[test]

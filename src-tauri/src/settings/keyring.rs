@@ -28,8 +28,8 @@ pub struct SystemBackend;
 
 impl KeyringBackend for SystemBackend {
     fn get(&self) -> Result<Option<String>, KeyringError> {
-        let entry = ::keyring::Entry::new(SERVICE, USER)
-            .map_err(|e| KeyringError::Other(e.to_string()))?;
+        let entry =
+            ::keyring::Entry::new(SERVICE, USER).map_err(|e| KeyringError::Other(e.to_string()))?;
         match entry.get_password() {
             Ok(s) => Ok(Some(s)),
             Err(::keyring::Error::NoEntry) => Ok(None),
@@ -39,16 +39,16 @@ impl KeyringBackend for SystemBackend {
     }
 
     fn set(&self, secret: &str) -> Result<(), KeyringError> {
-        let entry = ::keyring::Entry::new(SERVICE, USER)
-            .map_err(|e| KeyringError::Other(e.to_string()))?;
+        let entry =
+            ::keyring::Entry::new(SERVICE, USER).map_err(|e| KeyringError::Other(e.to_string()))?;
         entry
             .set_password(secret)
             .map_err(|e| KeyringError::Other(e.to_string()))
     }
 
     fn delete(&self) -> Result<(), KeyringError> {
-        let entry = ::keyring::Entry::new(SERVICE, USER)
-            .map_err(|e| KeyringError::Other(e.to_string()))?;
+        let entry =
+            ::keyring::Entry::new(SERVICE, USER).map_err(|e| KeyringError::Other(e.to_string()))?;
         match entry.delete_credential() {
             Ok(()) => Ok(()),
             Err(::keyring::Error::NoEntry) => Ok(()),

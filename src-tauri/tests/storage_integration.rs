@@ -1,4 +1,7 @@
-use typr_lib::storage::{Db, transcriptions::{TranscriptionRepo, NewTranscription}};
+use typr_lib::storage::{
+    transcriptions::{NewTranscription, TranscriptionRepo},
+    Db,
+};
 
 #[test]
 fn open_on_disk_runs_migrations_and_round_trips() {
@@ -19,7 +22,8 @@ fn open_on_disk_runs_migrations_and_round_trips() {
         app_context: Some("Notepad"),
         mode: "dictation",
         enhanced: false,
-    }).unwrap();
+    })
+    .unwrap();
 
     // Reopen the same file — migrations must be idempotent.
     drop(db);
@@ -29,8 +33,8 @@ fn open_on_disk_runs_migrations_and_round_trips() {
     assert_eq!(hits.len(), 1);
     assert_eq!(hits[0].final_text, "hello world");
 
-    let has_wal = std::fs::read_dir(tmp.path()).unwrap().any(|e| {
-        e.unwrap().file_name().to_string_lossy().ends_with("-wal")
-    });
+    let has_wal = std::fs::read_dir(tmp.path())
+        .unwrap()
+        .any(|e| e.unwrap().file_name().to_string_lossy().ends_with("-wal"));
     assert!(has_wal, "WAL journal mode should leave a -wal file");
 }

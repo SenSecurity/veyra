@@ -22,7 +22,11 @@ impl EnergyVad {
     }
 
     pub fn with_threshold(threshold: f32, silence_window_ms: u32) -> Self {
-        Self { threshold, silence_window_ms, accumulated_silence_ms: 0 }
+        Self {
+            threshold,
+            silence_window_ms,
+            accumulated_silence_ms: 0,
+        }
     }
 
     pub fn tick(&mut self, samples: &[f32], sample_rate: u32) -> VadDecision {
@@ -62,7 +66,8 @@ mod tests {
     fn pure_silence_accumulates_then_auto_stops() {
         let mut vad = EnergyVad::new();
         // 16 kHz: 200ms = 3200 samples per tick.
-        for _ in 0..3 { // 600ms total
+        for _ in 0..3 {
+            // 600ms total
             assert_eq!(vad.tick(&rms(0.0, 3200), 16_000), VadDecision::Silence);
         }
         // 4th tick brings accumulated >= 800ms → AutoStop.
@@ -85,7 +90,9 @@ mod tests {
     #[test]
     fn reset_clears_accumulator() {
         let mut vad = EnergyVad::new();
-        for _ in 0..3 { vad.tick(&rms(0.0, 3200), 16_000); }
+        for _ in 0..3 {
+            vad.tick(&rms(0.0, 3200), 16_000);
+        }
         vad.reset();
         assert_eq!(vad.tick(&rms(0.0, 3200), 16_000), VadDecision::Silence);
     }

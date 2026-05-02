@@ -1,14 +1,14 @@
-pub mod telemetry;
-pub mod storage;
-pub mod settings;
 pub mod audio;
-pub mod format;
-pub mod pipeline;
-pub mod transcribe_local;
-pub mod transcribe_groq;
-pub mod recording_state;
 pub mod downloader;
 pub mod draft_email;
+pub mod format;
+pub mod pipeline;
+pub mod recording_state;
+pub mod settings;
+pub mod storage;
+pub mod telemetry;
+pub mod transcribe_groq;
+pub mod transcribe_local;
 
 use tauri::Emitter;
 use tauri::Manager;

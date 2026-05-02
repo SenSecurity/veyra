@@ -4,20 +4,16 @@ import type {
   DictionaryTerm,
   MicDevice,
   NewDictionaryTermInput,
-  NewScratchpadNoteInput,
-  NewSnippetInput,
   RecordingState,
-  ScratchpadNote,
   Settings,
-  Snippet,
   StreakInfo,
   Totals,
   Transcription,
   WizardStatus,
 } from "@/types/ipc";
 
-// Typed wrapper over the Phase 1+2+3 Tauri command surface. UI code consumes
-// `ipc` from this adapter; no raw `invoke` calls in components.
+// Typed wrapper over the Tauri command surface used by the current UI.
+// UI code consumes `ipc` from this adapter; no raw `invoke` calls in components.
 //
 // Tauri 2 auto-converts snake_case command argument names to camelCase on the
 // JS side, so `model_size: String` on the Rust handler becomes `modelSize`
@@ -44,6 +40,8 @@ export const ipc = {
   // transcriptions
   listTranscriptions: (limit: number, offset: number) =>
     invoke<Transcription[]>("list_transcriptions", { limit, offset }),
+  listEmailDrafts: (limit: number, offset: number) =>
+    invoke<Transcription[]>("list_email_drafts", { limit, offset }),
   searchTranscriptions: (query: string, limit: number) =>
     invoke<Transcription[]>("search_transcriptions", { query, limit }),
   deleteTranscription: (id: number) =>
@@ -56,22 +54,6 @@ export const ipc = {
     invoke<number>("upsert_dictionary_term", { term }),
   deleteDictionaryTerm: (id: number) =>
     invoke<void>("delete_dictionary_term", { id }),
-
-  // snippets
-  listSnippets: () => invoke<Snippet[]>("list_snippets"),
-  upsertSnippet: (snippet: NewSnippetInput) =>
-    invoke<number>("upsert_snippet", { snippet }),
-  deleteSnippet: (id: number) => invoke<void>("delete_snippet", { id }),
-
-  // scratchpad
-  listScratchpadNotes: () =>
-    invoke<ScratchpadNote[]>("list_scratchpad_notes"),
-  upsertScratchpadNote: (note: NewScratchpadNoteInput) =>
-    invoke<number>("upsert_scratchpad_note", { note }),
-  deleteScratchpadNote: (id: number) =>
-    invoke<void>("delete_scratchpad_note", { id }),
-  pinScratchpadNote: (id: number, pinned: boolean) =>
-    invoke<void>("pin_scratchpad_note", { id, pinned }),
 
   // stats
   getStatsTotals: () => invoke<Totals>("get_stats_totals"),

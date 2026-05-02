@@ -39,7 +39,9 @@ pub struct TranscriptionRepo<'a> {
 }
 
 impl<'a> TranscriptionRepo<'a> {
-    pub fn new(db: &'a Db) -> Self { Self { db } }
+    pub fn new(db: &'a Db) -> Self {
+        Self { db }
+    }
 
     pub fn insert(&self, row: NewTranscription) -> Result<i64, DbError> {
         self.db.with_conn(|c| {
@@ -49,9 +51,17 @@ impl<'a> TranscriptionRepo<'a> {
                   engine, model, app_context, mode, enhanced)
                  VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)",
                 params![
-                    row.created_at, row.raw_text, row.final_text, row.word_count,
-                    row.duration_ms, row.language, row.engine, row.model,
-                    row.app_context, row.mode, row.enhanced as i64
+                    row.created_at,
+                    row.raw_text,
+                    row.final_text,
+                    row.word_count,
+                    row.duration_ms,
+                    row.language,
+                    row.engine,
+                    row.model,
+                    row.app_context,
+                    row.mode,
+                    row.enhanced as i64
                 ],
             )?;
             Ok(c.last_insert_rowid())
@@ -67,7 +77,30 @@ impl<'a> TranscriptionRepo<'a> {
                  ORDER BY created_at DESC, id DESC
                  LIMIT ?1 OFFSET ?2",
             )?;
-            let rows = stmt.query_map(params![limit, offset], map_transcription)?
+            let rows = stmt
+                .query_map(params![limit, offset], map_transcription)?
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(rows)
+        })
+    }
+
+    pub fn list_by_mode(
+        &self,
+        mode: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<Transcription>, DbError> {
+        self.db.with_conn(|c| {
+            let mut stmt = c.prepare(
+                "SELECT id, created_at, raw_text, final_text, word_count, duration_ms,
+                        language, engine, model, app_context, mode, enhanced
+                 FROM transcriptions
+                 WHERE mode = ?1
+                 ORDER BY created_at DESC, id DESC
+                 LIMIT ?2 OFFSET ?3",
+            )?;
+            let rows = stmt
+                .query_map(params![mode, limit, offset], map_transcription)?
                 .collect::<Result<Vec<_>, _>>()?;
             Ok(rows)
         })
@@ -84,7 +117,8 @@ impl<'a> TranscriptionRepo<'a> {
                  ORDER BY rank
                  LIMIT ?2",
             )?;
-            let rows = stmt.query_map(params![query, limit], map_transcription)?
+            let rows = stmt
+                .query_map(params![query, limit], map_transcription)?
                 .collect::<Result<Vec<_>, _>>()?;
             Ok(rows)
         })
@@ -92,7 +126,11 @@ impl<'a> TranscriptionRepo<'a> {
 
     pub fn total_word_count(&self) -> Result<i64, DbError> {
         self.db.with_conn(|c| {
-            c.query_row("SELECT COALESCE(SUM(word_count),0) FROM transcriptions", [], |r| r.get(0))
+            c.query_row(
+                "SELECT COALESCE(SUM(word_count),0) FROM transcriptions",
+                [],
+                |r| r.get(0),
+            )
         })
     }
 
@@ -128,7 +166,8 @@ impl<'a> TranscriptionRepo<'a> {
     }
 
     pub fn delete_by_id(&self, id: i64) -> Result<usize, DbError> {
-        self.db.with_conn(|c| c.execute("DELETE FROM transcriptions WHERE id = ?1", [id]))
+        self.db
+            .with_conn(|c| c.execute("DELETE FROM transcriptions WHERE id = ?1", [id]))
     }
 
     pub fn group_by_day(&self) -> Result<Vec<(String, i64)>, DbError> {
@@ -140,7 +179,8 @@ impl<'a> TranscriptionRepo<'a> {
                  GROUP BY day
                  ORDER BY day DESC",
             )?;
-            let rows = stmt.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?)))?
+            let rows = stmt
+                .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?)))?
                 .collect::<Result<Vec<_>, _>>()?;
             Ok(rows)
         })
@@ -208,6 +248,22 @@ mod tests {
     }
 
     #[test]
+    fn list_by_mode_returns_only_matching_rows() {
+        let db = mem_db();
+        let repo = TranscriptionRepo::new(&db);
+        repo.insert(sample(100, "dictation", 1)).unwrap();
+        let mut command = sample(200, "draft", 1);
+        command.mode = "command";
+        command.enhanced = true;
+        repo.insert(command).unwrap();
+
+        let rows = repo.list_by_mode("command", 10, 0).unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].final_text, "draft");
+        assert_eq!(rows[0].mode, "command");
+    }
+
+    #[test]
     fn fts_search_matches_final_text() {
         let db = mem_db();
         let repo = TranscriptionRepo::new(&db);
@@ -244,7 +300,10 @@ mod tests {
         assert_eq!(remaining[0].final_text, "c");
         // FTS must also be purged via trigger
         let hits = repo.search_fts("a", 10).unwrap();
-        assert!(hits.is_empty(), "FTS rows for deleted transcriptions should be gone");
+        assert!(
+            hits.is_empty(),
+            "FTS rows for deleted transcriptions should be gone"
+        );
     }
 
     #[test]

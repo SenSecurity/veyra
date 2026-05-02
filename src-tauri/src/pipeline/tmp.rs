@@ -6,8 +6,7 @@ use std::time::{Duration, SystemTime};
 /// Uses `%LOCALAPPDATA%\com.typr.app\tmp\` (different from `%APPDATA%`,
 /// which holds `config.json` + `typr.db`). Resolved via `dirs::data_local_dir()`.
 pub fn tmp_dir() -> PathBuf {
-    let base = dirs::data_local_dir()
-        .unwrap_or_else(std::env::temp_dir);
+    let base = dirs::data_local_dir().unwrap_or_else(std::env::temp_dir);
     base.join("com.typr.app").join("tmp")
 }
 
@@ -29,13 +28,23 @@ pub fn sweep_stale_wavs(older_than: Duration) -> usize {
 fn sweep_dir(dir: &Path, older_than: Duration) -> usize {
     let now = SystemTime::now();
     let mut deleted = 0usize;
-    let Ok(entries) = fs::read_dir(dir) else { return 0; };
+    let Ok(entries) = fs::read_dir(dir) else {
+        return 0;
+    };
     for entry in entries.flatten() {
         let path = entry.path();
-        let Some(ext) = path.extension().and_then(|e| e.to_str()) else { continue; };
-        if ext != "wav" && ext != "txt" { continue; }
-        let Ok(meta) = entry.metadata() else { continue; };
-        let Ok(mtime) = meta.modified() else { continue; };
+        let Some(ext) = path.extension().and_then(|e| e.to_str()) else {
+            continue;
+        };
+        if ext != "wav" && ext != "txt" {
+            continue;
+        }
+        let Ok(meta) = entry.metadata() else {
+            continue;
+        };
+        let Ok(mtime) = meta.modified() else {
+            continue;
+        };
         if let Ok(age) = now.duration_since(mtime) {
             if age >= older_than {
                 if fs::remove_file(&path).is_ok() {

@@ -21,8 +21,7 @@ fn main() {
     // Build settings reflecting the on-disk config so cap_purge actually runs.
     // We can't reuse the migrator pipeline cheaply here; reading the JSON
     // directly is enough for the smoke check.
-    let cfg_raw = std::fs::read_to_string(app_dir.join("config.json"))
-        .expect("read config.json");
+    let cfg_raw = std::fs::read_to_string(app_dir.join("config.json")).expect("read config.json");
     let settings: Settings = serde_json::from_str(&cfg_raw).expect("parse config");
 
     println!(
@@ -45,10 +44,7 @@ fn main() {
         enhanced: false,
     };
     let row_id = commit_session(&db, record, &settings).expect("commit_session");
-    println!(
-        "inserted row_id={row_id}, after sum={}",
-        sum(&db),
-    );
+    println!("inserted row_id={row_id}, after sum={}", sum(&db),);
 }
 
 fn sum(db: &Db) -> i64 {

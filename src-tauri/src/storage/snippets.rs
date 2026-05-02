@@ -23,10 +23,14 @@ pub struct NewSnippet<'a> {
     pub enabled: bool,
 }
 
-pub struct SnippetRepo<'a> { db: &'a Db }
+pub struct SnippetRepo<'a> {
+    db: &'a Db,
+}
 
 impl<'a> SnippetRepo<'a> {
-    pub fn new(db: &'a Db) -> Self { Self { db } }
+    pub fn new(db: &'a Db) -> Self {
+        Self { db }
+    }
 
     pub fn upsert(&self, now: i64, row: NewSnippet) -> Result<i64, DbError> {
         self.db.with_conn(|c| {
@@ -39,9 +43,19 @@ impl<'a> SnippetRepo<'a> {
                    description=excluded.description,
                    enabled=excluded.enabled,
                    updated_at=?1",
-                params![now, row.trigger, row.expansion, row.description, row.enabled as i64],
+                params![
+                    now,
+                    row.trigger,
+                    row.expansion,
+                    row.description,
+                    row.enabled as i64
+                ],
             )?;
-            c.query_row("SELECT id FROM snippets WHERE trigger = ?1", [row.trigger], |r| r.get(0))
+            c.query_row(
+                "SELECT id FROM snippets WHERE trigger = ?1",
+                [row.trigger],
+                |r| r.get(0),
+            )
         })
     }
 
@@ -72,13 +86,17 @@ impl<'a> SnippetRepo<'a> {
 
     pub fn increment_use(&self, id: i64) -> Result<(), DbError> {
         self.db.with_conn(|c| {
-            c.execute("UPDATE snippets SET use_count = use_count + 1 WHERE id = ?1", [id])?;
+            c.execute(
+                "UPDATE snippets SET use_count = use_count + 1 WHERE id = ?1",
+                [id],
+            )?;
             Ok(())
         })
     }
 
     pub fn delete(&self, id: i64) -> Result<usize, DbError> {
-        self.db.with_conn(|c| c.execute("DELETE FROM snippets WHERE id = ?1", [id]))
+        self.db
+            .with_conn(|c| c.execute("DELETE FROM snippets WHERE id = ?1", [id]))
     }
 }
 
@@ -104,10 +122,16 @@ mod tests {
     fn upsert_then_find_by_trigger() {
         let db = mem_db();
         let repo = SnippetRepo::new(&db);
-        repo.upsert(1, NewSnippet {
-            trigger: ":email", expansion: "brunorodrigues2627@gmail.com",
-            description: None, enabled: true,
-        }).unwrap();
+        repo.upsert(
+            1,
+            NewSnippet {
+                trigger: ":email",
+                expansion: "brunorodrigues2627@gmail.com",
+                description: None,
+                enabled: true,
+            },
+        )
+        .unwrap();
         let hit = repo.find_by_trigger(":email").unwrap().unwrap();
         assert_eq!(hit.expansion, "brunorodrigues2627@gmail.com");
         assert_eq!(hit.use_count, 0);
@@ -117,9 +141,17 @@ mod tests {
     fn increment_use_bumps_counter() {
         let db = mem_db();
         let repo = SnippetRepo::new(&db);
-        let id = repo.upsert(1, NewSnippet {
-            trigger: ":sig", expansion: "- Bruno", description: None, enabled: true,
-        }).unwrap();
+        let id = repo
+            .upsert(
+                1,
+                NewSnippet {
+                    trigger: ":sig",
+                    expansion: "- Bruno",
+                    description: None,
+                    enabled: true,
+                },
+            )
+            .unwrap();
         repo.increment_use(id).unwrap();
         repo.increment_use(id).unwrap();
         let hit = repo.find_by_trigger(":sig").unwrap().unwrap();
@@ -130,9 +162,16 @@ mod tests {
     fn find_by_trigger_returns_none_when_disabled() {
         let db = mem_db();
         let repo = SnippetRepo::new(&db);
-        repo.upsert(1, NewSnippet {
-            trigger: ":off", expansion: "x", description: None, enabled: false,
-        }).unwrap();
+        repo.upsert(
+            1,
+            NewSnippet {
+                trigger: ":off",
+                expansion: "x",
+                description: None,
+                enabled: false,
+            },
+        )
+        .unwrap();
         assert!(repo.find_by_trigger(":off").unwrap().is_none());
     }
 
@@ -140,9 +179,17 @@ mod tests {
     fn delete_removes_row() {
         let db = mem_db();
         let repo = SnippetRepo::new(&db);
-        let id = repo.upsert(1, NewSnippet {
-            trigger: ":x", expansion: "x", description: None, enabled: true,
-        }).unwrap();
+        let id = repo
+            .upsert(
+                1,
+                NewSnippet {
+                    trigger: ":x",
+                    expansion: "x",
+                    description: None,
+                    enabled: true,
+                },
+            )
+            .unwrap();
         assert_eq!(repo.delete(id).unwrap(), 1);
         assert!(repo.list().unwrap().is_empty());
     }
@@ -151,8 +198,26 @@ mod tests {
     fn list_sorted_by_trigger() {
         let db = mem_db();
         let repo = SnippetRepo::new(&db);
-        repo.upsert(1, NewSnippet { trigger: ":b", expansion: "b", description: None, enabled: true }).unwrap();
-        repo.upsert(1, NewSnippet { trigger: ":a", expansion: "a", description: None, enabled: true }).unwrap();
+        repo.upsert(
+            1,
+            NewSnippet {
+                trigger: ":b",
+                expansion: "b",
+                description: None,
+                enabled: true,
+            },
+        )
+        .unwrap();
+        repo.upsert(
+            1,
+            NewSnippet {
+                trigger: ":a",
+                expansion: "a",
+                description: None,
+                enabled: true,
+            },
+        )
+        .unwrap();
         let rows = repo.list().unwrap();
         assert_eq!(rows[0].trigger, ":a");
         assert_eq!(rows[1].trigger, ":b");
