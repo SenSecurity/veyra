@@ -8,6 +8,11 @@ import { ipc } from "@/lib/tauri";
 import { useSettings } from "@/hooks/use-settings";
 import { SettingsPanel } from "./general";
 
+type EmailDraftEngine = "ollama" | "groq";
+
+const OLLAMA_RECOMMENDED_MODEL = "llama3.2";
+const GROQ_RECOMMENDED_MODEL = "llama-3.3-70b-versatile";
+
 export function SettingsTranscriptionRoute() {
   const { settings, loading, update } = useSettings();
   const [checking, setChecking] = useState(false);
@@ -16,6 +21,7 @@ export function SettingsTranscriptionRoute() {
   const [emailModelReady, setEmailModelReady] = useState(false);
   const [checkingEmailModel, setCheckingEmailModel] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [downloadingEmailModel, setDownloadingEmailModel] = useState(false);
   const [progress, setProgress] = useState(0);
 
   const whisperModel =
@@ -23,10 +29,25 @@ export function SettingsTranscriptionRoute() {
     settings?.whisperModel === "ggml-large-v3-turbo.bin"
       ? "turbo"
       : settings?.whisperModel ?? "turbo";
+  const emailDraftEngine = settings?.emailDraftEngine ?? "ollama";
+  const emailDraftModel =
+    settings?.emailDraftModel ??
+    (emailDraftEngine === "ollama" ? OLLAMA_RECOMMENDED_MODEL : GROQ_RECOMMENDED_MODEL);
+  const recommendedEmailModel =
+    emailDraftEngine === "ollama" ? OLLAMA_RECOMMENDED_MODEL : GROQ_RECOMMENDED_MODEL;
   const hasGroqKey = Boolean(settings?.groqApiKey.trim());
+  const needsGroqKey = settings?.engine === "cloud" || emailDraftEngine === "groq";
 
   const saveWhisperModel = (value: string) => {
     void update({ whisperModel: value });
+  };
+
+  const saveEmailDraftEngine = (engine: EmailDraftEngine) => {
+    void update({
+      emailDraftEngine: engine,
+      emailDraftModel: engine === "ollama" ? OLLAMA_RECOMMENDED_MODEL : GROQ_RECOMMENDED_MODEL,
+    });
+    setEmailModelReady(false);
   };
 
   useEffect(() => {
@@ -41,17 +62,17 @@ export function SettingsTranscriptionRoute() {
 
   useEffect(() => {
     if (!settings) return;
-    if (!hasGroqKey) {
+    if (emailDraftEngine === "groq" && !hasGroqKey) {
       setEmailModelReady(false);
       return;
     }
     setCheckingEmailModel(true);
     void ipc
-      .checkEmailDraftModel(settings.groqApiKey, settings.emailDraftModel)
+      .checkEmailDraftModel(settings.groqApiKey, emailDraftEngine, emailDraftModel)
       .then(() => setEmailModelReady(true))
       .catch(() => setEmailModelReady(false))
       .finally(() => setCheckingEmailModel(false));
-  }, [hasGroqKey, settings?.emailDraftModel, settings?.groqApiKey]);
+  }, [emailDraftEngine, emailDraftModel, hasGroqKey, settings?.groqApiKey]);
 
   useEffect(() => {
     const un = listen<{ modelSize: string; downloaded: number; total: number; percent: number }>(
@@ -64,7 +85,9 @@ export function SettingsTranscriptionRoute() {
     return () => void un.then((fn) => fn()).catch(() => {});
   }, [whisperModel]);
 
-  if (loading || !settings) return <SettingsPanel title="Transcription" muted="Loading settings." />;
+  if (loading || !settings) {
+    return <SettingsPanel title="Transcription" muted="Loading settings." />;
+  }
 
   async function downloadCurrentModel() {
     setDownloading(true);
@@ -90,8 +113,41 @@ export function SettingsTranscriptionRoute() {
     await ipc.cancelModelDownload();
   }
 
+  async function downloadCurrentEmailModel() {
+    setDownloadingEmailModel(true);
+    try {
+      await ipc.downloadEmailDraftModel(emailDraftEngine, emailDraftModel);
+      setEmailModelReady(true);
+      toast.success("Email model downloaded");
+    } catch (error) {
+      setEmailModelReady(false);
+      toast.error(String(error));
+    } finally {
+      setDownloadingEmailModel(false);
+    }
+  }
+
+  async function checkCurrentEmailModel() {
+    if (!settings) return;
+    if (emailDraftEngine === "groq" && !hasGroqKey) {
+      toast.error("Enter a Groq API key first");
+      return;
+    }
+    setCheckingEmailModel(true);
+    try {
+      await ipc.checkEmailDraftModel(settings.groqApiKey, emailDraftEngine, emailDraftModel);
+      setEmailModelReady(true);
+      toast.success("Email model operational");
+    } catch (error) {
+      setEmailModelReady(false);
+      toast.error(String(error));
+    } finally {
+      setCheckingEmailModel(false);
+    }
+  }
+
   return (
-    <SettingsPanel title="Transcription" muted="Engine, local model, and Groq credentials.">
+    <SettingsPanel title="Transcription" muted="Engine, local models, email drafts, and credentials.">
       <label className="grid gap-2 text-sm">
         <span className="font-medium">Engine</span>
         <select
@@ -154,12 +210,10 @@ export function SettingsTranscriptionRoute() {
           variant="outline"
           disabled={downloading}
           onClick={() =>
-            void ipc.checkModelDownloaded(whisperModel).then((ok) =>
-              {
-                setModelReady(ok);
-                toast[ok ? "success" : "warning"](ok ? "Model operational" : "Model missing");
-              },
-            )
+            void ipc.checkModelDownloaded(whisperModel).then((ok) => {
+              setModelReady(ok);
+              toast[ok ? "success" : "warning"](ok ? "Model operational" : "Model missing");
+            })
           }
         >
           Check local model
@@ -176,11 +230,23 @@ export function SettingsTranscriptionRoute() {
           </div>
         </div>
       )}
+
+      <label className="grid gap-2 text-sm">
+        <span className="font-medium">Email draft engine</span>
+        <select
+          className="h-9 rounded-md border border-border bg-background px-3"
+          value={emailDraftEngine}
+          onChange={(e) => saveEmailDraftEngine(e.target.value as EmailDraftEngine)}
+        >
+          <option value="ollama">Local Ollama</option>
+          <option value="groq">Groq cloud</option>
+        </select>
+      </label>
       <label className="grid gap-2 text-sm">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="font-medium">Email draft model</span>
-            {settings.emailDraftModel === "llama-3.3-70b-versatile" ? (
+            {emailDraftModel === recommendedEmailModel ? (
               <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary ring-1 ring-primary/20">
                 Recommended
               </span>
@@ -194,78 +260,109 @@ export function SettingsTranscriptionRoute() {
             }
           >
             {emailModelReady ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
-            {!hasGroqKey ? "Needs API key" : checkingEmailModel ? "Checking" : emailModelReady ? "Operational" : "Not checked"}
+            {emailDraftEngine === "groq" && !hasGroqKey
+              ? "Needs API key"
+              : checkingEmailModel
+                ? "Checking"
+                : emailModelReady
+                  ? "Operational"
+                  : emailDraftEngine === "ollama"
+                    ? "Not installed"
+                    : "Not checked"}
           </span>
         </div>
         <select
           className="h-9 rounded-md border border-border bg-background px-3"
-          value={settings.emailDraftModel}
-          onChange={(e) => void update({ emailDraftModel: e.target.value })}
+          value={emailDraftModel}
+          onChange={(e) => {
+            setEmailModelReady(false);
+            void update({ emailDraftModel: e.target.value });
+          }}
         >
-          <option value="llama-3.3-70b-versatile">Llama 3.3 70B - Recommended</option>
-          <option value="llama-3.1-8b-instant">Llama 3.1 8B - fastest</option>
-          <option value="openai/gpt-oss-120b">GPT-OSS 120B - stronger</option>
-          <option value="openai/gpt-oss-20b">GPT-OSS 20B - fast</option>
+          {emailDraftEngine === "ollama" ? (
+            <>
+              <option value="llama3.2">Llama 3.2 3B - Recommended</option>
+              <option value="llama3.2:1b">Llama 3.2 1B - lightest</option>
+              <option value="qwen3:1.7b">Qwen3 1.7B - fast</option>
+              <option value="qwen3:4b">Qwen3 4B - stronger</option>
+            </>
+          ) : (
+            <>
+              <option value="llama-3.3-70b-versatile">Llama 3.3 70B - Recommended</option>
+              <option value="llama-3.1-8b-instant">Llama 3.1 8B - fastest</option>
+              <option value="openai/gpt-oss-120b">GPT-OSS 120B - stronger</option>
+              <option value="openai/gpt-oss-20b">GPT-OSS 20B - fast</option>
+            </>
+          )}
         </select>
       </label>
       <div className="flex gap-2">
+        {emailDraftEngine === "ollama" ? (
+          <Button
+            type="button"
+            variant="outline"
+            disabled={downloadingEmailModel}
+            onClick={() => void downloadCurrentEmailModel()}
+          >
+            {downloadingEmailModel
+              ? "Downloading email model..."
+              : emailModelReady
+                ? "Re-download email model"
+                : "Download email model"}
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            disabled
+            title="Groq email draft models run in the cloud and do not need a local download."
+          >
+            Cloud model - no download
+          </Button>
+        )}
         <Button
           type="button"
           variant="outline"
-          disabled
-          title="Email draft models run in Groq Cloud and do not need a local download."
-        >
-          Cloud model - no download
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={checkingEmailModel || !hasGroqKey}
-          title={hasGroqKey ? "Check this Groq model" : "Enter a Groq API key first"}
-          onClick={() => {
-            if (!hasGroqKey) {
-              toast.error("Enter a Groq API key first");
-              return;
-            }
-            setCheckingEmailModel(true);
-            void ipc
-              .checkEmailDraftModel(settings.groqApiKey, settings.emailDraftModel)
-              .then(() => {
-                setEmailModelReady(true);
-                toast.success("Email model operational");
-              })
-              .catch((e) => {
-                setEmailModelReady(false);
-                toast.error(String(e));
-              })
-              .finally(() => setCheckingEmailModel(false));
-          }}
+          disabled={checkingEmailModel || downloadingEmailModel || (emailDraftEngine === "groq" && !hasGroqKey)}
+          title={
+            emailDraftEngine === "groq" && !hasGroqKey
+              ? "Enter a Groq API key first"
+              : emailDraftEngine === "ollama"
+                ? "Check this Ollama model"
+                : "Check this Groq model"
+          }
+          onClick={() => void checkCurrentEmailModel()}
         >
           Check email model
         </Button>
       </div>
-      <label className="grid gap-2 text-sm">
-        <span className="font-medium">Groq API key</span>
-        <Input
-          type="password"
-          value={settings.groqApiKey}
-          onChange={(e) => void update({ groqApiKey: e.target.value })}
-          placeholder="gsk_..."
-        />
-      </label>
-      <Button
-        type="button"
-        disabled={checking}
-        onClick={() => {
-          setChecking(true);
-          void ipc.testGroqKey(settings.groqApiKey)
-            .then(() => toast.success("Groq key works"))
-            .catch((e) => toast.error(String(e)))
-            .finally(() => setChecking(false));
-        }}
-      >
-        Test Groq key
-      </Button>
+
+      {needsGroqKey ? (
+        <>
+          <label className="grid gap-2 text-sm">
+            <span className="font-medium">Groq API key</span>
+            <Input
+              type="password"
+              value={settings.groqApiKey}
+              onChange={(e) => void update({ groqApiKey: e.target.value })}
+              placeholder="gsk_..."
+            />
+          </label>
+          <Button
+            type="button"
+            disabled={checking}
+            onClick={() => {
+              setChecking(true);
+              void ipc.testGroqKey(settings.groqApiKey)
+                .then(() => toast.success("Groq key works"))
+                .catch((e) => toast.error(String(e)))
+                .finally(() => setChecking(false));
+            }}
+          >
+            Test Groq key
+          </Button>
+        </>
+      ) : null}
     </SettingsPanel>
   );
 }

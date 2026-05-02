@@ -153,17 +153,10 @@ pub async fn run_session(deps: PipelineDeps<'_>, mode: PipelineMode) -> Result<i
                 stage: StageError::Format(format!("{e:?}")),
             })?,
         PipelineMode::Command => {
-            let key = deps
-                .groq_key
-                .filter(|key| !key.trim().is_empty())
-                .ok_or_else(|| PipelineError {
-                    stage: StageError::Draft(
-                        "Groq API key required for command mode. Add it in Settings > Transcription."
-                            .into(),
-                    ),
-                })?;
+            let key = deps.groq_key.unwrap_or_default();
             draft_email::generate_email_draft(
                 key,
+                &deps.settings.transcription.email_draft_engine,
                 &deps.settings.transcription.email_draft_model,
                 &tx_result.text,
             )
@@ -201,8 +194,10 @@ pub async fn run_session(deps: PipelineDeps<'_>, mode: PipelineMode) -> Result<i
     let model = match mode {
         PipelineMode::Dictation => tx_result.model.clone(),
         PipelineMode::Command => format!(
-            "{}+draft:groq:{}",
-            tx_result.model, deps.settings.transcription.email_draft_model
+            "{}+draft:{}:{}",
+            tx_result.model,
+            deps.settings.transcription.email_draft_engine,
+            deps.settings.transcription.email_draft_model
         ),
     };
     let record = commit::TranscriptionRecord {

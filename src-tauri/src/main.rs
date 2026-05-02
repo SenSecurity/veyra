@@ -1106,8 +1106,13 @@ async fn test_groq_key(key: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn check_email_draft_model(key: String, model: String) -> Result<(), String> {
-    typr_lib::draft_email::check_email_draft_model(&key, &model).await
+async fn check_email_draft_model(key: String, engine: String, model: String) -> Result<(), String> {
+    typr_lib::draft_email::check_email_draft_model(&key, &engine, &model).await
+}
+
+#[tauri::command]
+async fn download_email_draft_model(engine: String, model: String) -> Result<(), String> {
+    typr_lib::draft_email::download_email_draft_model(&engine, &model).await
 }
 
 fn main() {
@@ -1139,10 +1144,27 @@ fn main() {
     });
 
     let mut v2_settings = outcome.settings.clone();
+    let mut settings_changed = false;
     if v2_settings.hotkeys.command_mode == "Shift+F24" {
         v2_settings.hotkeys.command_mode = "F12".to_string();
+        settings_changed = true;
+    }
+    let email_engine = v2_settings.transcription.email_draft_engine.as_str();
+    let email_model = v2_settings.transcription.email_draft_model.as_str();
+    let email_model_valid = match email_engine {
+        "groq" => typr_lib::draft_email::ALLOWED_GROQ_DRAFT_MODELS.contains(&email_model),
+        "ollama" => typr_lib::draft_email::ALLOWED_OLLAMA_DRAFT_MODELS.contains(&email_model),
+        _ => false,
+    };
+    if !email_model_valid {
+        v2_settings.transcription.email_draft_engine = "ollama".to_string();
+        v2_settings.transcription.email_draft_model =
+            typr_lib::draft_email::DEFAULT_OLLAMA_DRAFT_MODEL.to_string();
+        settings_changed = true;
+    }
+    if settings_changed {
         if let Err(e) = settings::save(&app_dir, &v2_settings) {
-            tracing::warn!(error = %e, "[Typr] Failed to save command hotkey default");
+            tracing::warn!(error = %e, "[Typr] Failed to save boot-normalized settings");
         }
     }
     let dictation_hotkey = v2_settings.hotkeys.dictation.clone();
@@ -1213,6 +1235,7 @@ fn main() {
             // Phase 3: groq
             test_groq_key,
             check_email_draft_model,
+            download_email_draft_model,
         ])
         .on_window_event(|window, event| {
             if window.label() != "main" {

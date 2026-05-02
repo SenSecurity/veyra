@@ -10,6 +10,7 @@ export interface Settings {
   // Legacy frontend uses "local" | "cloud"; "cloud" routes to Groq.
   engine: "local" | "cloud";
   whisperModel: string;
+  emailDraftEngine: "ollama" | "groq";
   emailDraftModel: string;
   groqApiKey: string;
   recordingMode: "toggle" | "push-to-talk";

@@ -42,6 +42,7 @@ pub fn to_v1_view(v2: &Settings, backend: &dyn KeyringBackend) -> legacy_v1::Set
         microphone: v2.microphone.clone(),
         engine: v2.transcription.engine.clone(),
         whisper_model: v2.transcription.whisper_model.clone(),
+        email_draft_engine: v2.transcription.email_draft_engine.clone(),
         email_draft_model: v2.transcription.email_draft_model.clone(),
         groq_api_key,
         recording_mode: v2.hotkeys.recording_mode.clone(),
@@ -57,6 +58,7 @@ pub fn apply_v1_v2_fields(target: &mut Settings, payload: &legacy_v1::Settings) 
     target.microphone = payload.microphone.clone();
     target.transcription.engine = payload.engine.clone();
     target.transcription.whisper_model = payload.whisper_model.clone();
+    target.transcription.email_draft_engine = payload.email_draft_engine.clone();
     target.transcription.email_draft_model = payload.email_draft_model.clone();
     target.hotkeys.recording_mode = payload.recording_mode.clone();
     target.hotkeys.dictation = payload.hotkey.clone();
@@ -106,6 +108,7 @@ mod tests {
         assert_eq!(v1.microphone, v2.microphone);
         assert_eq!(v1.engine, v2.transcription.engine);
         assert_eq!(v1.whisper_model, v2.transcription.whisper_model);
+        assert_eq!(v1.email_draft_engine, v2.transcription.email_draft_engine);
         assert_eq!(v1.email_draft_model, v2.transcription.email_draft_model);
         assert_eq!(v1.recording_mode, v2.hotkeys.recording_mode);
         assert_eq!(v1.hotkey, v2.hotkeys.dictation);
@@ -128,6 +131,7 @@ mod tests {
             microphone: "Built-in".to_string(),
             engine: "cloud".to_string(),
             whisper_model: "large-v3".to_string(),
+            email_draft_engine: "groq".to_string(),
             email_draft_model: "llama-3.1-8b-instant".to_string(),
             groq_api_key: "sk-new".to_string(),
             recording_mode: "toggle".to_string(),
@@ -138,6 +142,7 @@ mod tests {
         assert_eq!(v2.microphone, "Built-in");
         assert_eq!(v2.transcription.engine, "cloud");
         assert_eq!(v2.transcription.whisper_model, "large-v3");
+        assert_eq!(v2.transcription.email_draft_engine, "groq");
         assert_eq!(v2.transcription.email_draft_model, "llama-3.1-8b-instant");
         assert_eq!(v2.hotkeys.recording_mode, "toggle");
         assert_eq!(v2.hotkeys.dictation, "F9");
@@ -153,6 +158,7 @@ mod tests {
             microphone: v2.microphone.clone(),
             engine: v2.transcription.engine.clone(),
             whisper_model: v2.transcription.whisper_model.clone(),
+            email_draft_engine: v2.transcription.email_draft_engine.clone(),
             email_draft_model: v2.transcription.email_draft_model.clone(),
             groq_api_key: String::new(),
             recording_mode: v2.hotkeys.recording_mode.clone(),
@@ -195,6 +201,7 @@ mod tests {
             microphone: "MicArray".to_string(),
             engine: "groq".to_string(),
             whisper_model: "base".to_string(),
+            email_draft_engine: "ollama".to_string(),
             email_draft_model: "openai/gpt-oss-20b".to_string(),
             groq_api_key: "sk-rt".to_string(),
             recording_mode: "push-to-talk".to_string(),
