@@ -18,6 +18,62 @@
 
 Veyra is in active development. The product branding is Veyra, while some internal paths and binary names still use `typr` for compatibility with existing local settings, models, and data.
 
+## Install Veyra
+
+Veyra currently targets Windows.
+
+### Option 1: Run the release executable
+
+Build the production executable:
+
+```bash
+npm install
+npx tauri build --no-bundle
+```
+
+Then run:
+
+```text
+src-tauri/target/release/typr.exe
+```
+
+The app opens as **Veyra**. The executable is still named `typr.exe` for now because the internal Rust package has not yet been migrated.
+
+### Option 2: Build an installer
+
+Generate the full Tauri bundle:
+
+```bash
+npm install
+npm run tauri build
+```
+
+The installer/bundle output is created under:
+
+```text
+src-tauri/target/release/bundle/
+```
+
+Use the generated Windows installer from that folder for a product-style installation.
+
+## First Run
+
+1. Open Veyra.
+2. Go to **Settings -> Transcription**.
+3. Choose `Local whisper.cpp`.
+4. Select the `turbo` model.
+5. Click **Download model**.
+6. Set your hotkey/recording mode in **Settings -> General**.
+7. Use the tray icon to show, hide, or exit Veyra.
+
+Local app data currently stays under the existing compatibility identifier:
+
+```text
+%APPDATA%/com.typr.app/
+```
+
+This keeps existing settings, models, and transcription history working while the app is branded as Veyra.
+
 ## Development
 
 ```bash
@@ -38,12 +94,6 @@ npm run build
 npm test
 cargo check --manifest-path src-tauri/Cargo.toml
 npx tauri build --no-bundle
-```
-
-The release executable is currently produced at:
-
-```text
-src-tauri/target/release/typr.exe
 ```
 
 ## Tech Stack
