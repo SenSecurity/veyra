@@ -1119,6 +1119,29 @@ async fn download_email_draft_model(
     typr_lib::draft_email::download_email_draft_model(Some(app), &engine, &model).await
 }
 
+#[tauri::command]
+fn open_ollama_download() -> Result<(), String> {
+    let url = "https://ollama.com/download";
+    #[cfg(target_os = "windows")]
+    let status = std::process::Command::new("cmd")
+        .args(["/C", "start", "", url])
+        .status();
+    #[cfg(target_os = "macos")]
+    let status = std::process::Command::new("open").arg(url).status();
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let status = std::process::Command::new("xdg-open").arg(url).status();
+
+    status
+        .map_err(|e| format!("Failed to open Ollama download page: {e}"))
+        .and_then(|status| {
+            if status.success() {
+                Ok(())
+            } else {
+                Err(format!("Failed to open Ollama download page: {status}"))
+            }
+        })
+}
+
 fn main() {
     let Some(_single_instance) = acquire_single_instance() else {
         return;
@@ -1240,6 +1263,7 @@ fn main() {
             test_groq_key,
             check_email_draft_model,
             download_email_draft_model,
+            open_ollama_download,
         ])
         .on_window_event(|window, event| {
             if window.label() != "main" {

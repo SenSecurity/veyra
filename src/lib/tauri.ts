@@ -88,4 +88,5 @@ export const ipc = {
     invoke<void>("check_email_draft_model", { key, engine, model }),
   downloadEmailDraftModel: (engine: string, model: string) =>
     invoke<void>("download_email_draft_model", { engine, model }),
+  openOllamaDownload: () => invoke<void>("open_ollama_download"),
 };
