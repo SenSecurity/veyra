@@ -5,7 +5,9 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
-use tauri::{Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+use tauri::{Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 use typr_lib::audio::{self, AudioRecorder};
@@ -29,6 +31,9 @@ use typr_lib::transcribe_local;
 const OVERLAY_WIDTH: i32 = 168;
 const OVERLAY_HEIGHT: i32 = 36;
 const OVERLAY_BOTTOM_MARGIN: i32 = 8;
+const TRAY_SHOW_ID: &str = "tray_show";
+const TRAY_HIDE_ID: &str = "tray_hide";
+const TRAY_EXIT_ID: &str = "tray_exit";
 
 #[cfg(target_os = "windows")]
 fn play_transition_sound(state: &RecordingState) {
@@ -359,6 +364,58 @@ struct AppState {
     audio: Mutex<AudioRecorder>,
     recording_state: Mutex<RecordingState>,
     model_download_cancel: AtomicBool,
+}
+
+fn show_main_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+    }
+}
+
+fn hide_main_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.hide();
+    }
+}
+
+fn setup_tray(app: &mut tauri::App) -> tauri::Result<()> {
+    let show = MenuItem::with_id(app, TRAY_SHOW_ID, "Show Veyra", true, None::<&str>)?;
+    let hide = MenuItem::with_id(app, TRAY_HIDE_ID, "Hide Window", true, None::<&str>)?;
+    let separator = PredefinedMenuItem::separator(app)?;
+    let exit = MenuItem::with_id(app, TRAY_EXIT_ID, "Exit Veyra", true, None::<&str>)?;
+    let menu = Menu::with_items(app, &[&show, &hide, &separator, &exit])?;
+
+    let mut tray = TrayIconBuilder::with_id("main")
+        .menu(&menu)
+        .tooltip("Veyra")
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, event| match event.id().as_ref() {
+            TRAY_SHOW_ID => show_main_window(app),
+            TRAY_HIDE_ID => hide_main_window(app),
+            TRAY_EXIT_ID => app.exit(0),
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| match event {
+            TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            }
+            | TrayIconEvent::DoubleClick {
+                button: MouseButton::Left,
+                ..
+            } => show_main_window(tray.app_handle()),
+            _ => {}
+        });
+
+    if let Some(icon) = app.default_window_icon().cloned() {
+        tray = tray.icon(icon);
+    }
+
+    tray.build(app)?;
+    Ok(())
 }
 
 fn get_app_dir() -> PathBuf {
@@ -956,7 +1013,31 @@ fn main() {
             // Phase 3: groq
             test_groq_key,
         ])
+        .on_window_event(|window, event| {
+            if window.label() != "main" {
+                return;
+            }
+
+            let WindowEvent::CloseRequested { api, .. } = event else {
+                return;
+            };
+
+            let close_to_tray = window
+                .app_handle()
+                .state::<AppState>()
+                .settings
+                .lock()
+                .map(|settings| settings.system.close_to_tray)
+                .unwrap_or(true);
+
+            if close_to_tray {
+                api.prevent_close();
+                let _ = window.hide();
+            }
+        })
         .setup(move |app| {
+            setup_tray(app)?;
+
             // Replay the migration events captured pre-Builder so the frontend
             // can render the same toasts the lib.rs reference flow produced.
             for ev in &migration_events {
