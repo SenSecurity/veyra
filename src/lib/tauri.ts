@@ -24,6 +24,9 @@ import type {
 // here. Confirmed against the legacy `src/main.ts` invocation style.
 export const ipc = {
   // settings + recorder + models (Phase 1+2)
+  windowMinimize: () => invoke<void>("window_minimize"),
+  windowToggleMaximize: () => invoke<void>("window_toggle_maximize"),
+  windowClose: () => invoke<void>("window_close"),
   getSettings: () => invoke<Settings>("get_settings"),
   saveSettings: (settings: Settings) =>
     invoke<void>("save_settings", { settings }),

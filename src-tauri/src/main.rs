@@ -380,6 +380,14 @@ fn hide_main_window(app: &tauri::AppHandle) {
     }
 }
 
+fn should_close_to_tray(app: &tauri::AppHandle) -> bool {
+    app.state::<AppState>()
+        .settings
+        .lock()
+        .map(|settings| settings.system.close_to_tray)
+        .unwrap_or(true)
+}
+
 fn setup_tray(app: &mut tauri::App) -> tauri::Result<()> {
     let show = MenuItem::with_id(app, TRAY_SHOW_ID, "Show Veyra", true, None::<&str>)?;
     let hide = MenuItem::with_id(app, TRAY_HIDE_ID, "Hide Window", true, None::<&str>)?;
@@ -487,6 +495,38 @@ fn get_settings(state: State<AppState>) -> V1Settings {
     // would serialise every settings read with the recorder hot path.
     let v2_snapshot = state.settings.lock().unwrap().clone();
     to_v1_view(&v2_snapshot, state.keyring.as_ref())
+}
+
+#[tauri::command]
+fn window_minimize(app: tauri::AppHandle) -> Result<(), String> {
+    app.get_webview_window("main")
+        .ok_or_else(|| "main window not found".to_string())?
+        .minimize()
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn window_toggle_maximize(app: tauri::AppHandle) -> Result<(), String> {
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| "main window not found".to_string())?;
+    if window.is_maximized().map_err(|e| e.to_string())? {
+        window.unmaximize().map_err(|e| e.to_string())
+    } else {
+        window.maximize().map_err(|e| e.to_string())
+    }
+}
+
+#[tauri::command]
+fn window_close(app: tauri::AppHandle) -> Result<(), String> {
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| "main window not found".to_string())?;
+    if should_close_to_tray(&app) {
+        window.hide().map_err(|e| e.to_string())
+    } else {
+        window.close().map_err(|e| e.to_string())
+    }
 }
 
 #[tauri::command]
@@ -976,6 +1016,9 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             // Phase 1+2 (existing)
+            window_minimize,
+            window_toggle_maximize,
+            window_close,
             get_settings,
             save_settings,
             list_microphones,
