@@ -207,27 +207,37 @@ export function SettingsTranscriptionRoute() {
           <option value="openai/gpt-oss-20b">GPT-OSS 20B - fast</option>
         </select>
       </label>
-      <Button
-        type="button"
-        variant="outline"
-        disabled={checkingEmailModel}
-        onClick={() => {
-          setCheckingEmailModel(true);
-          void ipc
-            .checkEmailDraftModel(settings.groqApiKey, settings.emailDraftModel)
-            .then(() => {
-              setEmailModelReady(true);
-              toast.success("Email model operational");
-            })
-            .catch((e) => {
-              setEmailModelReady(false);
-              toast.error(String(e));
-            })
-            .finally(() => setCheckingEmailModel(false));
-        }}
-      >
-        Check email model
-      </Button>
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          disabled
+          title="Email draft models run in Groq Cloud and do not need a local download."
+        >
+          No download required
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={checkingEmailModel}
+          onClick={() => {
+            setCheckingEmailModel(true);
+            void ipc
+              .checkEmailDraftModel(settings.groqApiKey, settings.emailDraftModel)
+              .then(() => {
+                setEmailModelReady(true);
+                toast.success("Email model operational");
+              })
+              .catch((e) => {
+                setEmailModelReady(false);
+                toast.error(String(e));
+              })
+              .finally(() => setCheckingEmailModel(false));
+          }}
+        >
+          Check email model
+        </Button>
+      </div>
       <label className="grid gap-2 text-sm">
         <span className="font-medium">Groq API key</span>
         <Input
