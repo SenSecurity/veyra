@@ -117,18 +117,19 @@ export function SettingsTranscriptionRoute() {
   }
 
   async function downloadCurrentModel() {
+    const toastId = `model-${whisperModel}`;
     setDownloading(true);
     setProgress(0);
     try {
       await ipc.downloadModel(whisperModel);
       setModelReady(true);
       setProgress(100);
-      toast.success("Model downloaded");
+      toast.success("Model downloaded", { id: toastId });
     } catch (error) {
       if (String(error).includes("cancelled")) {
-        toast.info("Download cancelled");
+        toast.info("Download cancelled", { id: toastId });
       } else {
-        toast.error(String(error));
+        toast.error(String(error), { id: toastId });
       }
       setModelReady(await ipc.checkModelDownloaded(whisperModel).catch(() => false));
     } finally {
