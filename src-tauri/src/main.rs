@@ -29,7 +29,7 @@ use typr_lib::storage::Db;
 use typr_lib::telemetry;
 use typr_lib::transcribe_local;
 
-const OVERLAY_WIDTH: i32 = 168;
+const OVERLAY_WIDTH: i32 = 210;
 const OVERLAY_HEIGHT: i32 = 36;
 const OVERLAY_BOTTOM_MARGIN: i32 = 8;
 const TRAY_SHOW_ID: &str = "tray_show";
@@ -364,6 +364,7 @@ struct AppState {
     db: Db,
     audio: Mutex<AudioRecorder>,
     recording_state: Mutex<RecordingState>,
+    active_pipeline_mode: Mutex<PipelineMode>,
     model_download_cancel: AtomicBool,
 }
 
@@ -436,6 +437,27 @@ fn get_app_dir() -> PathBuf {
 /// Tauri-specific overlay UI side-effect. Lives here (not in the pipeline)
 /// because the pipeline must remain headless and reusable from Phase 4
 /// command mode without dragging the overlay window dependency along.
+fn pipeline_mode_label(mode: PipelineMode) -> &'static str {
+    match mode {
+        PipelineMode::Dictation => "dictation",
+        PipelineMode::Command => "command",
+    }
+}
+
+fn emit_overlay_mode(app: &tauri::AppHandle, mode: PipelineMode) {
+    let payload = serde_json::json!({ "mode": pipeline_mode_label(mode) });
+    let _ = app.emit_to("overlay", "overlay:mode", payload.clone());
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_millis(120)).await;
+        let _ = app.emit_to(
+            "overlay",
+            "overlay:mode",
+            serde_json::json!({ "mode": pipeline_mode_label(mode) }),
+        );
+    });
+}
+
 fn update_overlay(app: &tauri::AppHandle, state: &RecordingState) {
     play_transition_sound(state);
     if let Some(overlay) = app.get_webview_window("overlay") {
@@ -637,6 +659,7 @@ async fn run_pipeline_and_reset_state(
         let mut rs = state.recording_state.lock().unwrap();
         *rs = RecordingState::Transcribing;
     }
+    emit_overlay_mode(app, mode);
     let _ = app.emit("recording-state", RecordingState::Transcribing);
     update_overlay(app, &RecordingState::Transcribing);
 
@@ -695,13 +718,28 @@ async fn do_toggle_recording(
                 let mut rs = state.recording_state.lock().map_err(|e| e.to_string())?;
                 *rs = RecordingState::Recording;
             }
+            {
+                let mut active_mode = state
+                    .active_pipeline_mode
+                    .lock()
+                    .map_err(|e| e.to_string())?;
+                *active_mode = mode;
+            }
+            emit_overlay_mode(app, mode);
             let _ = app.emit("recording-state", RecordingState::Recording);
             update_overlay(app, &RecordingState::Recording);
             spawn_level_emitter(app.clone());
             Ok("recording".into())
         }
         RecordingState::Recording => {
-            run_pipeline_and_reset_state(app, state, mode).await;
+            let active_mode = {
+                let active_mode = state
+                    .active_pipeline_mode
+                    .lock()
+                    .map_err(|e| e.to_string())?;
+                *active_mode
+            };
+            run_pipeline_and_reset_state(app, state, active_mode).await;
             Ok("ok".into())
         }
         RecordingState::Transcribing => Err("Currently transcribing, please wait".into()),
@@ -761,6 +799,11 @@ fn register_recording_shortcut(
                                                 let mut rs = state.recording_state.lock().unwrap();
                                                 *rs = RecordingState::Recording;
                                             }
+                                            {
+                                                let mut active_mode = state.active_pipeline_mode.lock().unwrap();
+                                                *active_mode = pipeline_mode;
+                                            }
+                                            emit_overlay_mode(&handle, pipeline_mode);
                                             let _ = handle.emit("recording-state", RecordingState::Recording);
                                             update_overlay(&handle, &RecordingState::Recording);
                                             spawn_level_emitter(handle.clone());
@@ -782,7 +825,11 @@ fn register_recording_shortcut(
                                 let rs = state.recording_state.lock().unwrap();
                                 rs.clone()
                             };
-                            if current == RecordingState::Recording {
+                            let active_mode = {
+                                let active_mode = state.active_pipeline_mode.lock().unwrap();
+                                *active_mode
+                            };
+                            if current == RecordingState::Recording && active_mode == pipeline_mode {
                                 run_pipeline_and_reset_state(&handle, state.inner(), pipeline_mode).await;
                             }
                         });
@@ -1116,6 +1163,7 @@ fn main() {
             db,
             audio: Mutex::new(AudioRecorder::new()),
             recording_state: Mutex::new(RecordingState::Ready),
+            active_pipeline_mode: Mutex::new(PipelineMode::Dictation),
             model_download_cancel: AtomicBool::new(false),
         })
         .invoke_handler(tauri::generate_handler![

@@ -8,6 +8,8 @@ pub struct Settings {
     pub engine: String,
     #[serde(rename = "whisperModel")]
     pub whisper_model: String,
+    #[serde(rename = "emailDraftModel", default = "default_email_draft_model")]
+    pub email_draft_model: String,
     #[serde(rename = "groqApiKey")]
     pub groq_api_key: String,
     #[serde(rename = "recordingMode")]
@@ -21,12 +23,17 @@ fn default_command_hotkey() -> String {
     "F12".to_string()
 }
 
+fn default_email_draft_model() -> String {
+    "llama-3.3-70b-versatile".to_string()
+}
+
 impl Default for Settings {
     fn default() -> Self {
         Self {
             microphone: "default".to_string(),
             engine: "local".to_string(),
             whisper_model: "small".to_string(),
+            email_draft_model: default_email_draft_model(),
             groq_api_key: String::new(),
             recording_mode: "toggle".to_string(),
             hotkey: "F24".to_string(),
@@ -67,6 +74,7 @@ mod tests {
         assert_eq!(settings.microphone, "default");
         assert_eq!(settings.engine, "local");
         assert_eq!(settings.whisper_model, "small");
+        assert_eq!(settings.email_draft_model, "llama-3.3-70b-versatile");
         assert_eq!(settings.groq_api_key, "");
         assert_eq!(settings.recording_mode, "toggle");
         assert_eq!(settings.hotkey, "F24");

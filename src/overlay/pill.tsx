@@ -2,10 +2,11 @@ import { motion } from "framer-motion";
 import { Square, X } from "lucide-react";
 import { ipc } from "@/lib/tauri";
 import { useOverlayStore } from "@/stores/overlay-store";
-import type { OverlayState } from "@/stores/overlay-store";
+import type { OverlayMode, OverlayState } from "@/stores/overlay-store";
 
-export function OverlayPill({ state }: { state: OverlayState }) {
+export function OverlayPill({ state, mode }: { state: OverlayState; mode: OverlayMode }) {
   const busy = state === "transcribing";
+  const commandMode = mode === "command";
   const level = useOverlayStore((s) => s.level);
   const bars = [6, 9, 12, 8, 14, 10, 7, 12, 9, 6];
   const voiceLevel = state === "recording"
@@ -30,6 +31,11 @@ export function OverlayPill({ state }: { state: OverlayState }) {
       >
         <X className="h-3.5 w-3.5" />
       </button>
+      {commandMode ? (
+        <span className="rounded-full bg-sky-400/15 px-2 py-0.5 text-[10px] font-semibold leading-none text-sky-100">
+          Mail
+        </span>
+      ) : null}
       <div className="flex h-4 min-w-20 items-center justify-center gap-0.5" aria-hidden="true">
         {busy ? (
           <span className="typr-transcribing-label text-[11px] font-medium leading-none text-zinc-100">
