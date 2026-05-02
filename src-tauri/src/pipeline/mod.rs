@@ -175,9 +175,21 @@ pub async fn run_session(deps: PipelineDeps<'_>, mode: PipelineMode) -> Result<i
     // 4. Inject (best-effort; an empty final_text skips the keystroke but
     // still proceeds to persist so stats reflect the empty session).
     let inject_method = if !final_text.is_empty() {
-        inject::paste(&final_text).map_err(|e| PipelineError {
-            stage: StageError::Inject(e),
-        })?
+        match inject::paste(&final_text) {
+            Ok(method) => method,
+            Err(e) if mode == PipelineMode::Command => {
+                tracing::warn!(
+                    error = %e,
+                    "command draft injection failed; persisting draft for manual copy"
+                );
+                inject::InjectMethod::ClipboardOnly
+            }
+            Err(e) => {
+                return Err(PipelineError {
+                    stage: StageError::Inject(e),
+                })
+            }
+        }
     } else {
         inject::InjectMethod::Enigo
     };

@@ -24,10 +24,14 @@ pub struct NewDictionaryTerm<'a> {
     pub enabled: bool,
 }
 
-pub struct DictionaryRepo<'a> { db: &'a Db }
+pub struct DictionaryRepo<'a> {
+    db: &'a Db,
+}
 
 impl<'a> DictionaryRepo<'a> {
-    pub fn new(db: &'a Db) -> Self { Self { db } }
+    pub fn new(db: &'a Db) -> Self {
+        Self { db }
+    }
 
     pub fn upsert(&self, now: i64, row: NewDictionaryTerm) -> Result<i64, DbError> {
         self.db.with_conn(|c| {
@@ -42,13 +46,18 @@ impl<'a> DictionaryRepo<'a> {
                    enabled=excluded.enabled,
                    updated_at=?1",
                 params![
-                    now, row.term, row.replacement,
-                    row.is_abbreviation as i64, row.auto_added as i64, row.enabled as i64
+                    now,
+                    row.term,
+                    row.replacement,
+                    row.is_abbreviation as i64,
+                    row.auto_added as i64,
+                    row.enabled as i64
                 ],
             )?;
             c.query_row(
                 "SELECT id FROM dictionary_terms WHERE term = ?1",
-                [row.term], |r| r.get(0),
+                [row.term],
+                |r| r.get(0),
             )
         })
     }
@@ -60,19 +69,26 @@ impl<'a> DictionaryRepo<'a> {
                         is_abbreviation, auto_added, enabled
                  FROM dictionary_terms ORDER BY term ASC",
             )?;
-            let rows = stmt.query_map([], map_term)?.collect::<Result<Vec<_>, _>>()?;
+            let rows = stmt
+                .query_map([], map_term)?
+                .collect::<Result<Vec<_>, _>>()?;
             Ok(rows)
         })
     }
 
     pub fn delete(&self, id: i64) -> Result<usize, DbError> {
-        self.db.with_conn(|c| c.execute("DELETE FROM dictionary_terms WHERE id = ?1", [id]))
+        self.db
+            .with_conn(|c| c.execute("DELETE FROM dictionary_terms WHERE id = ?1", [id]))
     }
 
     pub fn find_matches(&self, terms: &[&str]) -> Result<Vec<DictionaryTerm>, DbError> {
-        if terms.is_empty() { return Ok(vec![]); }
+        if terms.is_empty() {
+            return Ok(vec![]);
+        }
         self.db.with_conn(|c| {
-            let placeholders = std::iter::repeat_n("?", terms.len()).collect::<Vec<_>>().join(",");
+            let placeholders = std::iter::repeat_n("?", terms.len())
+                .collect::<Vec<_>>()
+                .join(",");
             let sql = format!(
                 "SELECT id, created_at, updated_at, term, replacement,
                         is_abbreviation, auto_added, enabled
@@ -81,7 +97,9 @@ impl<'a> DictionaryRepo<'a> {
             );
             let mut stmt = c.prepare(&sql)?;
             let params = rusqlite::params_from_iter(terms.iter());
-            let rows = stmt.query_map(params, map_term)?.collect::<Result<Vec<_>, _>>()?;
+            let rows = stmt
+                .query_map(params, map_term)?
+                .collect::<Result<Vec<_>, _>>()?;
             Ok(rows)
         })
     }
@@ -109,14 +127,30 @@ mod tests {
     fn upsert_inserts_then_updates() {
         let db = mem_db();
         let repo = DictionaryRepo::new(&db);
-        let id1 = repo.upsert(100, NewDictionaryTerm {
-            term: "tauri", replacement: Some("Tauri"),
-            is_abbreviation: false, auto_added: false, enabled: true,
-        }).unwrap();
-        let id2 = repo.upsert(200, NewDictionaryTerm {
-            term: "tauri", replacement: Some("TAURI"),
-            is_abbreviation: false, auto_added: false, enabled: true,
-        }).unwrap();
+        let id1 = repo
+            .upsert(
+                100,
+                NewDictionaryTerm {
+                    term: "tauri",
+                    replacement: Some("Tauri"),
+                    is_abbreviation: false,
+                    auto_added: false,
+                    enabled: true,
+                },
+            )
+            .unwrap();
+        let id2 = repo
+            .upsert(
+                200,
+                NewDictionaryTerm {
+                    term: "tauri",
+                    replacement: Some("TAURI"),
+                    is_abbreviation: false,
+                    auto_added: false,
+                    enabled: true,
+                },
+            )
+            .unwrap();
         assert_eq!(id1, id2, "same term should upsert same row");
         let rows = repo.list().unwrap();
         assert_eq!(rows.len(), 1);
@@ -128,10 +162,18 @@ mod tests {
     fn delete_removes_row() {
         let db = mem_db();
         let repo = DictionaryRepo::new(&db);
-        let id = repo.upsert(1, NewDictionaryTerm {
-            term: "foo", replacement: None, is_abbreviation: false,
-            auto_added: false, enabled: true,
-        }).unwrap();
+        let id = repo
+            .upsert(
+                1,
+                NewDictionaryTerm {
+                    term: "foo",
+                    replacement: None,
+                    is_abbreviation: false,
+                    auto_added: false,
+                    enabled: true,
+                },
+            )
+            .unwrap();
         let n = repo.delete(id).unwrap();
         assert_eq!(n, 1);
         assert!(repo.list().unwrap().is_empty());
@@ -141,18 +183,39 @@ mod tests {
     fn find_matches_returns_only_requested_terms() {
         let db = mem_db();
         let repo = DictionaryRepo::new(&db);
-        repo.upsert(1, NewDictionaryTerm {
-            term: "alpha", replacement: Some("Alpha"),
-            is_abbreviation: false, auto_added: false, enabled: true,
-        }).unwrap();
-        repo.upsert(1, NewDictionaryTerm {
-            term: "beta", replacement: Some("Beta"),
-            is_abbreviation: false, auto_added: false, enabled: true,
-        }).unwrap();
-        repo.upsert(1, NewDictionaryTerm {
-            term: "gamma", replacement: None,
-            is_abbreviation: false, auto_added: false, enabled: false,
-        }).unwrap();
+        repo.upsert(
+            1,
+            NewDictionaryTerm {
+                term: "alpha",
+                replacement: Some("Alpha"),
+                is_abbreviation: false,
+                auto_added: false,
+                enabled: true,
+            },
+        )
+        .unwrap();
+        repo.upsert(
+            1,
+            NewDictionaryTerm {
+                term: "beta",
+                replacement: Some("Beta"),
+                is_abbreviation: false,
+                auto_added: false,
+                enabled: true,
+            },
+        )
+        .unwrap();
+        repo.upsert(
+            1,
+            NewDictionaryTerm {
+                term: "gamma",
+                replacement: None,
+                is_abbreviation: false,
+                auto_added: false,
+                enabled: false,
+            },
+        )
+        .unwrap();
         let hits = repo.find_matches(&["alpha", "gamma"]).unwrap();
         assert_eq!(hits.len(), 1, "disabled terms must be excluded");
         assert_eq!(hits[0].term, "alpha");

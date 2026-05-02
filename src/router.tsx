@@ -6,15 +6,13 @@ import {
 import { App } from "./app";
 import { HomeRoute } from "@/routes";
 import { HistoryRoute } from "@/routes/history";
+import { EmailDraftsRoute } from "@/routes/email-drafts";
 import { DictionaryRoute } from "@/routes/dictionary";
-import { SnippetsRoute } from "@/routes/snippets";
-import { ScratchpadRoute } from "@/routes/scratchpad";
 import { WizardRoute } from "@/routes/wizard";
 import { SettingsLayout } from "@/routes/settings/layout";
 import { SettingsGeneralRoute } from "@/routes/settings/general";
 import { SettingsTranscriptionRoute } from "@/routes/settings/transcription";
 import { SettingsHotkeysRoute } from "@/routes/settings/hotkeys";
-import { SettingsAboutRoute, SettingsSimpleRoute } from "@/routes/settings/simple";
 
 // Root + chrome
 const rootRoute = createRootRoute({ component: App });
@@ -32,22 +30,16 @@ const historyRoute = createRoute({
   component: HistoryRoute,
 });
 
+const emailDraftsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/email-drafts",
+  component: EmailDraftsRoute,
+});
+
 const dictionaryRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/dictionary",
   component: DictionaryRoute,
-});
-
-const snippetsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/snippets",
-  component: SnippetsRoute,
-});
-
-const scratchpadRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/scratchpad",
-  component: ScratchpadRoute,
 });
 
 const wizardRoute = createRoute({
@@ -81,59 +73,16 @@ const settingsHotkeysRoute = createRoute({
   component: SettingsHotkeysRoute,
 });
 
-const settingsOverlayRoute = createRoute({
-  getParentRoute: () => settingsRoute,
-  path: "/overlay",
-  component: () => <SettingsSimpleRoute title="Overlay" text="Overlay visual and monitor options." />,
-});
-
-const settingsFormattingRoute = createRoute({
-  getParentRoute: () => settingsRoute,
-  path: "/formatting",
-  component: () => <SettingsSimpleRoute title="Formatting" text="Filler removal, punctuation, and text cleanup." />,
-});
-
-const settingsSystemRoute = createRoute({
-  getParentRoute: () => settingsRoute,
-  path: "/system",
-  component: () => <SettingsSimpleRoute title="System" text="Startup, logs, and local runtime controls." />,
-});
-
-const settingsStatsRoute = createRoute({
-  getParentRoute: () => settingsRoute,
-  path: "/stats",
-  component: () => <SettingsSimpleRoute title="Stats" text="Milestones and analytics preferences." />,
-});
-
-const settingsDataRoute = createRoute({
-  getParentRoute: () => settingsRoute,
-  path: "/data",
-  component: () => <SettingsSimpleRoute title="Data" text="Retention and export controls." />,
-});
-
-const settingsAboutRoute = createRoute({
-  getParentRoute: () => settingsRoute,
-  path: "/about",
-  component: SettingsAboutRoute,
-});
-
 const routeTree = rootRoute.addChildren([
   indexRoute,
   historyRoute,
+  emailDraftsRoute,
   dictionaryRoute,
-  snippetsRoute,
-  scratchpadRoute,
   wizardRoute,
   settingsRoute.addChildren([
     settingsGeneralRoute,
     settingsTranscriptionRoute,
     settingsHotkeysRoute,
-    settingsOverlayRoute,
-    settingsFormattingRoute,
-    settingsSystemRoute,
-    settingsStatsRoute,
-    settingsDataRoute,
-    settingsAboutRoute,
   ]),
 ]);
 

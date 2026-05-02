@@ -82,7 +82,10 @@ pub fn migrate_v1_to_v2(
             let mapped = remap_whisper_model(m);
             (m.clone(), mapped.to_string())
         }
-        _ => ("small".to_string(), remap_whisper_model("small").to_string()),
+        _ => (
+            "small".to_string(),
+            remap_whisper_model("small").to_string(),
+        ),
     };
     out.transcription.whisper_model = new_model.clone();
     let remapped_model = if old_model != new_model {
@@ -197,10 +200,7 @@ mod tests {
         assert_eq!(out.settings.transcription.whisper_model, "turbo");
         assert_eq!(out.settings.hotkeys.dictation, "F13");
         assert_eq!(out.settings.hotkeys.recording_mode, "toggle");
-        assert_eq!(
-            out.remapped_model,
-            Some(("small".into(), "turbo".into()))
-        );
+        assert_eq!(out.remapped_model, Some(("small".into(), "turbo".into())));
         assert!(out.had_groq_key_in_json);
         assert!(out.groq_key_migrated);
         assert_eq!(kr.peek().as_deref(), Some("sk-abc"));
@@ -284,7 +284,10 @@ mod tests {
         let outcome = migrate_v2_to_v3(s);
         assert_eq!(outcome.settings.schema_version, 3);
         assert_eq!(outcome.settings.transcription.whisper_model, "turbo");
-        assert_eq!(outcome.remapped_model, Some(("medium".into(), "turbo".into())));
+        assert_eq!(
+            outcome.remapped_model,
+            Some(("medium".into(), "turbo".into()))
+        );
     }
 
     #[test]
@@ -294,7 +297,10 @@ mod tests {
         s.transcription.whisper_model = "small".into();
         let outcome = migrate_v2_to_v3(s);
         assert_eq!(outcome.settings.transcription.whisper_model, "turbo");
-        assert_eq!(outcome.remapped_model, Some(("small".into(), "turbo".into())));
+        assert_eq!(
+            outcome.remapped_model,
+            Some(("small".into(), "turbo".into()))
+        );
     }
 
     #[test]
@@ -304,7 +310,10 @@ mod tests {
         s.transcription.whisper_model = "tiny".into();
         let outcome = migrate_v2_to_v3(s);
         assert_eq!(outcome.settings.transcription.whisper_model, "turbo");
-        assert_eq!(outcome.remapped_model, Some(("tiny".into(), "turbo".into())));
+        assert_eq!(
+            outcome.remapped_model,
+            Some(("tiny".into(), "turbo".into()))
+        );
     }
 
     #[test]

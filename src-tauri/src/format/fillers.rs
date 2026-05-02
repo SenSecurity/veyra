@@ -11,7 +11,9 @@ pub fn drop_fillers(text: &str, fillers: &[String]) -> String {
     let mut out = text.to_string();
     for f in fillers {
         let trimmed = f.trim();
-        if trimmed.is_empty() { continue; }
+        if trimmed.is_empty() {
+            continue;
+        }
         let escaped = regex::escape(trimmed);
         let pattern = format!(r"\b{}\b", escaped);
         let re = RegexBuilder::new(&pattern)
@@ -29,7 +31,9 @@ pub fn drop_fillers(text: &str, fillers: &[String]) -> String {
 mod tests {
     use super::*;
 
-    fn s(v: &[&str]) -> Vec<String> { v.iter().map(|x| x.to_string()).collect() }
+    fn s(v: &[&str]) -> Vec<String> {
+        v.iter().map(|x| x.to_string()).collect()
+    }
 
     #[test]
     fn drops_simple_filler() {
@@ -44,7 +48,10 @@ mod tests {
     #[test]
     fn preserves_word_boundary() {
         // "umbrella" must NOT be touched by filler "um".
-        assert_eq!(drop_fillers("umbrella opens", &s(&["um"])), "umbrella opens");
+        assert_eq!(
+            drop_fillers("umbrella opens", &s(&["um"])),
+            "umbrella opens"
+        );
     }
 
     #[test]
@@ -64,6 +71,9 @@ mod tests {
 
     #[test]
     fn drops_pt_filler_ne() {
-        assert_eq!(drop_fillers("isto né funciona", &s(&["né"])), "isto funciona");
+        assert_eq!(
+            drop_fillers("isto né funciona", &s(&["né"])),
+            "isto funciona"
+        );
     }
 }

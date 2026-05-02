@@ -40,8 +40,7 @@ pub fn paste(text: &str) -> Result<InjectMethod, String> {
         return Ok(InjectMethod::Enigo);
     }
 
-    let mut clipboard = arboard::Clipboard::new()
-        .map_err(|e| format!("clipboard init: {e}"))?;
+    let mut clipboard = arboard::Clipboard::new().map_err(|e| format!("clipboard init: {e}"))?;
     clipboard
         .set_text(text.to_string())
         .map_err(|e| format!("clipboard set: {e}"))?;

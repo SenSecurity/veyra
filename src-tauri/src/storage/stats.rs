@@ -27,10 +27,14 @@ pub struct Totals {
     pub total_duration_ms: i64,
 }
 
-pub struct StatsRepo<'a> { db: &'a Db }
+pub struct StatsRepo<'a> {
+    db: &'a Db,
+}
 
 impl<'a> StatsRepo<'a> {
-    pub fn new(db: &'a Db) -> Self { Self { db } }
+    pub fn new(db: &'a Db) -> Self {
+        Self { db }
+    }
 
     pub fn bump_day(&self, day: &str, words: i64, duration_ms: i64) -> Result<(), DbError> {
         self.db.with_conn(|c| {
@@ -53,13 +57,15 @@ impl<'a> StatsRepo<'a> {
                 "SELECT day, word_count, session_count, total_duration_ms, avg_wpm
                  FROM stats_daily WHERE day = ?1",
             )?;
-            let mut rows = stmt.query_map([day], |r| Ok(DailyStats {
-                day: r.get(0)?,
-                word_count: r.get(1)?,
-                session_count: r.get(2)?,
-                total_duration_ms: r.get(3)?,
-                avg_wpm: r.get(4)?,
-            }))?;
+            let mut rows = stmt.query_map([day], |r| {
+                Ok(DailyStats {
+                    day: r.get(0)?,
+                    word_count: r.get(1)?,
+                    session_count: r.get(2)?,
+                    total_duration_ms: r.get(3)?,
+                    avg_wpm: r.get(4)?,
+                })
+            })?;
             rows.next().transpose()
         })
     }
@@ -71,11 +77,14 @@ impl<'a> StatsRepo<'a> {
                         COALESCE(SUM(session_count),0),
                         COALESCE(SUM(total_duration_ms),0)
                  FROM stats_daily",
-                [], |r| Ok(Totals {
-                    word_count: r.get(0)?,
-                    session_count: r.get(1)?,
-                    total_duration_ms: r.get(2)?,
-                }),
+                [],
+                |r| {
+                    Ok(Totals {
+                        word_count: r.get(0)?,
+                        session_count: r.get(1)?,
+                        total_duration_ms: r.get(2)?,
+                    })
+                },
             )
         })
     }
@@ -86,22 +95,25 @@ impl<'a> StatsRepo<'a> {
                 "SELECT day, word_count, session_count, total_duration_ms, avg_wpm
                  FROM stats_daily ORDER BY day DESC",
             )?;
-            let rows = stmt.query_map([], |r| Ok(DailyStats {
-                day: r.get(0)?,
-                word_count: r.get(1)?,
-                session_count: r.get(2)?,
-                total_duration_ms: r.get(3)?,
-                avg_wpm: r.get(4)?,
-            }))?.collect::<Result<Vec<_>, _>>()?;
+            let rows = stmt
+                .query_map([], |r| {
+                    Ok(DailyStats {
+                        day: r.get(0)?,
+                        word_count: r.get(1)?,
+                        session_count: r.get(2)?,
+                        total_duration_ms: r.get(3)?,
+                        avg_wpm: r.get(4)?,
+                    })
+                })?
+                .collect::<Result<Vec<_>, _>>()?;
             Ok(rows)
         })
     }
 
     pub fn streak_info(&self, today: &str) -> Result<StreakInfo, DbError> {
         let days: Vec<String> = self.db.with_conn(|c| {
-            let mut stmt = c.prepare(
-                "SELECT day FROM stats_daily WHERE word_count > 0 ORDER BY day ASC",
-            )?;
+            let mut stmt =
+                c.prepare("SELECT day FROM stats_daily WHERE word_count > 0 ORDER BY day ASC")?;
             let rows = stmt.query_map([], |r| r.get::<_, String>(0))?;
             let result: Result<Vec<_>, _> = rows.collect();
             result
@@ -111,20 +123,25 @@ impl<'a> StatsRepo<'a> {
         fn parse(d: &str) -> Option<time::Date> {
             time::Date::parse(d, &time::format_description::well_known::Iso8601::DATE).ok()
         }
-        let today_d = parse(today).ok_or_else(|| DbError::Sqlite(
-            rusqlite::Error::InvalidParameterName("today".into())
-        ))?;
+        let today_d = parse(today).ok_or_else(|| {
+            DbError::Sqlite(rusqlite::Error::InvalidParameterName("today".into()))
+        })?;
 
         let mut longest = 0i64;
         let mut run = 0i64;
         let mut prev: Option<time::Date> = None;
         for s in &days {
-            let d = match parse(s) { Some(d) => d, None => continue };
+            let d = match parse(s) {
+                Some(d) => d,
+                None => continue,
+            };
             match prev {
                 Some(p) if (d - p).whole_days() == 1 => run += 1,
                 _ => run = 1,
             }
-            if run > longest { longest = run; }
+            if run > longest {
+                longest = run;
+            }
             prev = Some(d);
         }
 

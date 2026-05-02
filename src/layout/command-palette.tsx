@@ -5,11 +5,9 @@ import { useNavigate } from "@tanstack/react-router";
 const pages = [
   { label: "Home", to: "/" },
   { label: "History", to: "/history" },
+  { label: "Email Drafter", to: "/email-drafts" },
   { label: "Dictionary", to: "/dictionary" },
-  { label: "Snippets", to: "/snippets" },
-  { label: "Scratchpad", to: "/scratchpad" },
   { label: "Settings", to: "/settings/general" },
-  { label: "Wizard", to: "/wizard" },
 ] as const;
 
 export function CommandPalette() {

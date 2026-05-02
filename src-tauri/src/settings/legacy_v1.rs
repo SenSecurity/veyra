@@ -22,7 +22,7 @@ pub struct Settings {
 }
 
 fn default_command_hotkey() -> String {
-    "F12".to_string()
+    "Pause".to_string()
 }
 
 fn default_email_draft_model() -> String {
@@ -86,7 +86,7 @@ mod tests {
         assert_eq!(settings.groq_api_key, "");
         assert_eq!(settings.recording_mode, "toggle");
         assert_eq!(settings.hotkey, "F24");
-        assert_eq!(settings.command_hotkey, "F12");
+        assert_eq!(settings.command_hotkey, "Pause");
     }
 
     #[test]

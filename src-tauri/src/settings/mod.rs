@@ -75,7 +75,10 @@ pub fn load(
         let settings = schema::Settings::default();
         write_atomic(&cfg_path, &settings)?;
         meta.set(SETTINGS_VERSION_KEY, "3")?;
-        return Ok(LoadOutcome { settings, events: vec![] });
+        return Ok(LoadOutcome {
+            settings,
+            events: vec![],
+        });
     }
 
     let raw = std::fs::read_to_string(&cfg_path)?;
@@ -86,7 +89,10 @@ pub fn load(
         3 => {
             // v3 is the current shape — pass through without rewriting the file.
             let settings: schema::Settings = serde_json::from_value(value)?;
-            Ok(LoadOutcome { settings, events: vec![] })
+            Ok(LoadOutcome {
+                settings,
+                events: vec![],
+            })
         }
         2 => run_v2_migration(&cfg_path, value, &meta),
         1 => run_v1_migration(&cfg_path, &bak_path, &raw, &value, &meta, backend),
@@ -185,7 +191,10 @@ fn run_v1_migration(
         // an empty groqApiKey doesn't pester the user.
         events.push(MigrationEvent::NeedsGroqKey);
     }
-    Ok(LoadOutcome { settings: v3_outcome.settings, events })
+    Ok(LoadOutcome {
+        settings: v3_outcome.settings,
+        events,
+    })
 }
 
 /// Test/integration helper: load settings from a `config.json` file path
@@ -197,12 +206,12 @@ fn run_v1_migration(
 /// directory is passed to the real loader, matching how the app structures
 /// its on-disk layout.
 pub fn load_for_test(cfg_path: &Path) -> Result<schema::Settings, SettingsError> {
-    let dir = cfg_path
-        .parent()
-        .ok_or_else(|| SettingsError::Io(std::io::Error::new(
+    let dir = cfg_path.parent().ok_or_else(|| {
+        SettingsError::Io(std::io::Error::new(
             std::io::ErrorKind::InvalidInput,
             "load_for_test: config path has no parent directory",
-        )))?;
+        ))
+    })?;
     let db = Db::open_in_memory()?;
     let kr = keyring::MockBackend::new();
     let out = load(dir, &db, &kr)?;
@@ -258,7 +267,10 @@ mod tests {
         assert!(dir.path().join("config.json").exists());
         assert!(!dir.path().join("config.json.v1.bak").exists());
         assert_eq!(
-            AppMetaRepo::new(&db).get(SETTINGS_VERSION_KEY).unwrap().as_deref(),
+            AppMetaRepo::new(&db)
+                .get(SETTINGS_VERSION_KEY)
+                .unwrap()
+                .as_deref(),
             Some("3")
         );
         assert!(out.events.is_empty());
@@ -278,10 +290,16 @@ mod tests {
         assert_eq!(out.settings.schema_version, 3);
         assert_eq!(out.settings.transcription.whisper_model, "turbo");
         assert_eq!(kr.peek().as_deref(), Some("sk-x"));
-        assert!(!dir.path().join("config.json.v1.bak").exists(), ".bak deleted on success");
+        assert!(
+            !dir.path().join("config.json.v1.bak").exists(),
+            ".bak deleted on success"
+        );
         // Sentinel set to current schema version.
         assert_eq!(
-            AppMetaRepo::new(&db).get(SETTINGS_VERSION_KEY).unwrap().as_deref(),
+            AppMetaRepo::new(&db)
+                .get(SETTINGS_VERSION_KEY)
+                .unwrap()
+                .as_deref(),
             Some("3")
         );
         // Events: Migrated + ModelRemapped(small→turbo) + NeedsGroqKey.
@@ -297,7 +315,11 @@ mod tests {
     fn v3_file_loads_without_events() {
         let dir = TempDir::new().unwrap();
         let s = SettingsV2::default();
-        std::fs::write(dir.path().join("config.json"), serde_json::to_string(&s).unwrap()).unwrap();
+        std::fs::write(
+            dir.path().join("config.json"),
+            serde_json::to_string(&s).unwrap(),
+        )
+        .unwrap();
         let db = test_db();
         let kr = MockBackend::new();
         let out = load(dir.path(), &db, &kr).unwrap();
@@ -339,7 +361,10 @@ mod tests {
             MigrationEvent::ModelRemapped { from, to } if from == "medium" && to == "turbo"
         )));
         assert_eq!(
-            AppMetaRepo::new(&db).get(SETTINGS_VERSION_KEY).unwrap().as_deref(),
+            AppMetaRepo::new(&db)
+                .get(SETTINGS_VERSION_KEY)
+                .unwrap()
+                .as_deref(),
             Some("3")
         );
         // Idempotent on reload.
@@ -353,7 +378,8 @@ mod tests {
         std::fs::write(
             dir.path().join("config.json"),
             r#"{"whisperModel":"turbo","hotkey":"F24"}"#,
-        ).unwrap();
+        )
+        .unwrap();
         let db = test_db();
         let kr = MockBackend::new();
         let out = load(dir.path(), &db, &kr).unwrap();
@@ -374,10 +400,7 @@ mod tests {
     #[test]
     fn unknown_version_keeps_file_and_emits_event() {
         let dir = TempDir::new().unwrap();
-        std::fs::write(
-            dir.path().join("config.json"),
-            r#"{"schemaVersion":99}"#,
-        ).unwrap();
+        std::fs::write(dir.path().join("config.json"), r#"{"schemaVersion":99}"#).unwrap();
         let db = test_db();
         let kr = MockBackend::new();
         let out = load(dir.path(), &db, &kr).unwrap();

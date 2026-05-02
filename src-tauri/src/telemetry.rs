@@ -28,7 +28,12 @@ pub fn init_tracing(log_dir: &Path) -> Result<(), Box<dyn std::error::Error + Se
     tracing_subscriber::registry()
         .with(filter)
         .with(fmt::layer().with_target(false).with_writer(std::io::stdout))
-        .with(fmt::layer().with_target(false).with_ansi(false).with_writer(non_blocking))
+        .with(
+            fmt::layer()
+                .with_target(false)
+                .with_ansi(false)
+                .with_writer(non_blocking),
+        )
         .try_init()
         .ok(); // ignore double-init in tests
     Ok(())
