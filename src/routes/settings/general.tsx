@@ -25,7 +25,7 @@ export function SettingsGeneralRoute() {
           value={settings.microphone}
           onChange={(e) => void update({ microphone: e.target.value })}
         >
-          <option value="">System default</option>
+          <option value="default">System default</option>
           {mics.map((mic) => (
             <option key={mic.name} value={mic.name}>
               {mic.name}{mic.is_default ? " (default)" : ""}

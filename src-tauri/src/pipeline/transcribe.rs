@@ -44,10 +44,16 @@ impl std::fmt::Display for TranscribeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             TranscribeError::ModelRetired(m) => {
-                write!(f, "whisper model `{m}` is retired; please pick turbo, large-v3, or base")
+                write!(
+                    f,
+                    "whisper model `{m}` is retired; please pick turbo, large-v3, or base"
+                )
             }
             TranscribeError::ModelFileMissing(p) => {
-                write!(f, "whisper model file missing at {p}; download it from settings")
+                write!(
+                    f,
+                    "whisper model file missing at {p}; download it from settings"
+                )
             }
             TranscribeError::Engine(m) => write!(f, "transcription engine error: {m}"),
         }
@@ -74,7 +80,9 @@ pub async fn dispatch(
             if !ALLOWED_LOCAL_MODELS.contains(&model) {
                 return Err(TranscribeError::ModelRetired(model.to_string()));
             }
-            let model_path = app_dir.join(transcribe_local::model_filename(model));
+            let model_file = transcribe_local::model_filename(model)
+                .map_err(|_| TranscribeError::ModelRetired(model.to_string()))?;
+            let model_path = app_dir.join(model_file);
             if !model_path.exists() {
                 return Err(TranscribeError::ModelFileMissing(
                     model_path.to_string_lossy().to_string(),

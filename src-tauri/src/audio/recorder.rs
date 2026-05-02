@@ -1,7 +1,7 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use hound::{WavSpec, WavWriter};
-use std::sync::{Arc, Mutex};
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 
 /// Target sample rate after resampling — matches whisper.cpp expected input.
 const TARGET_SAMPLE_RATE: usize = 16_000;
@@ -31,7 +31,9 @@ fn normalize_level(data: &[f32]) -> f32 {
     let peak = data
         .iter()
         .fold(0.0_f32, |max, sample| max.max(sample.abs()));
-    ((rms * LEVEL_GAIN).powf(0.75)).max(peak * 1.6).clamp(0.0, 1.0)
+    ((rms * LEVEL_GAIN).powf(0.75))
+        .max(peak * 1.6)
+        .clamp(0.0, 1.0)
 }
 
 fn smooth_level(current: f32, next: f32) -> f32 {
@@ -102,7 +104,7 @@ impl AudioRecorder {
 
         let host = cpal::default_host();
 
-        let device = if mic_name == "default" {
+        let device = if mic_name.is_empty() || mic_name == "default" {
             host.default_input_device()
                 .ok_or("No default input device found")?
         } else {
@@ -120,7 +122,10 @@ impl AudioRecorder {
         let sample_rate = default_config.sample_rate().0;
         let channels = default_config.channels();
 
-        println!("[Typr] Mic config: {}Hz, {} channels", sample_rate, channels);
+        println!(
+            "[Typr] Mic config: {}Hz, {} channels",
+            sample_rate, channels
+        );
 
         self.source_sample_rate = sample_rate;
         self.source_channels = channels;
@@ -222,8 +227,7 @@ impl AudioRecorder {
     /// 0 if the source config has not been initialised yet (defensive).
     pub fn current_duration_ms(&self) -> u64 {
         let buf = self.samples.lock().unwrap();
-        let samples_per_second =
-            (self.source_sample_rate as u64) * (self.source_channels as u64);
+        let samples_per_second = (self.source_sample_rate as u64) * (self.source_channels as u64);
         if samples_per_second == 0 {
             return 0;
         }
@@ -264,8 +268,16 @@ mod tests {
         let total_samples = 16_000 * 130; // 130s
         rec.push_test_samples(vec![0.5f32; total_samples]);
         let captured = rec.snapshot_test_samples();
-        assert!(captured.len() <= 16_000 * 120, "expected <= 120s, got {} samples", captured.len());
-        assert_eq!(captured.len(), 16_000 * 120, "expected exactly 120s after rolling-window cap");
+        assert!(
+            captured.len() <= 16_000 * 120,
+            "expected <= 120s, got {} samples",
+            captured.len()
+        );
+        assert_eq!(
+            captured.len(),
+            16_000 * 120,
+            "expected exactly 120s after rolling-window cap"
+        );
     }
 
     #[test]

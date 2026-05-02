@@ -4,9 +4,10 @@
 //! to stdout-scrape only if the sidecar is missing.
 
 use std::path::Path;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use tauri::AppHandle;
 use tauri_plugin_shell::ShellExt;
+use tokio::time::timeout;
 
 use crate::pipeline::transcribe::TranscriptionResult;
 
@@ -41,8 +42,8 @@ pub async fn transcribe_local(
     let elapsed_ms = started.elapsed().as_millis() as u64;
 
     let raw = if txt_path.exists() {
-        let content = std::fs::read_to_string(&txt_path)
-            .map_err(|e| format!("read sidecar: {e}"))?;
+        let content =
+            std::fs::read_to_string(&txt_path).map_err(|e| format!("read sidecar: {e}"))?;
         let _ = std::fs::remove_file(&txt_path);
         content
     } else {
@@ -66,27 +67,30 @@ async fn run_whisper_cli(
     wav_path: &Path,
     output_stem: &Path,
 ) -> Result<String, String> {
-    let output = app
-        .shell()
-        .sidecar("whisper-cpp")
-        .map_err(|e| format!("Failed to create sidecar command: {}", e))?
-        .args([
-            "-m",
-            model_path.to_str().ok_or("model path not utf-8")?,
-            "-f",
-            wav_path.to_str().ok_or("wav path not utf-8")?,
-            "--no-timestamps",
-            "-l",
-            "pt",
-            "--prompt",
-            "Transcricao em portugues europeu de Portugal.",
-            "--output-txt",
-            "--output-file",
-            output_stem.to_str().ok_or("output stem not utf-8")?,
-        ])
-        .output()
-        .await
-        .map_err(|e| format!("Failed to run whisper.cpp: {}", e))?;
+    let output = timeout(
+        Duration::from_secs(180),
+        app.shell()
+            .sidecar("whisper-cpp")
+            .map_err(|e| format!("Failed to create sidecar command: {}", e))?
+            .args([
+                "-m",
+                model_path.to_str().ok_or("model path not utf-8")?,
+                "-f",
+                wav_path.to_str().ok_or("wav path not utf-8")?,
+                "--no-timestamps",
+                "-l",
+                "pt",
+                "--prompt",
+                "Transcricao em portugues europeu de Portugal.",
+                "--output-txt",
+                "--output-file",
+                output_stem.to_str().ok_or("output stem not utf-8")?,
+            ])
+            .output(),
+    )
+    .await
+    .map_err(|_| "whisper.cpp timed out after 180 seconds".to_string())?
+    .map_err(|e| format!("Failed to run whisper.cpp: {}", e))?;
 
     if output.status.code() != Some(0) {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -127,27 +131,29 @@ fn model_filename_to_label(model_path: &Path) -> String {
 /// `ggml-large-v3-turbo.bin` artifact is no longer present on the repository's
 /// `main` branch, but the quantized `q5_0` artifact is available and supported
 /// by whisper.cpp.
-fn model_stem(model_size: &str) -> &str {
+fn model_stem(model_size: &str) -> Result<&'static str, String> {
     match model_size {
         "turbo" | "large-v3-turbo" | "ggml-large-v3-turbo" | "ggml-large-v3-turbo.bin" => {
-            "large-v3-turbo-q5_0"
+            Ok("large-v3-turbo-q5_0")
         }
         "large-v3-turbo-q5_0" | "ggml-large-v3-turbo-q5_0" | "ggml-large-v3-turbo-q5_0.bin" => {
-            "large-v3-turbo-q5_0"
+            Ok("large-v3-turbo-q5_0")
         }
-        other => other,
+        "base" | "ggml-base" | "ggml-base.bin" => Ok("base"),
+        "large-v3" | "ggml-large-v3" | "ggml-large-v3.bin" => Ok("large-v3"),
+        other => Err(format!("unsupported whisper model: {other}")),
     }
 }
 
-pub fn model_filename(model_size: &str) -> String {
-    format!("ggml-{}.bin", model_stem(model_size))
+pub fn model_filename(model_size: &str) -> Result<String, String> {
+    Ok(format!("ggml-{}.bin", model_stem(model_size)?))
 }
 
-pub fn model_download_url(model_size: &str) -> String {
-    format!(
+pub fn model_download_url(model_size: &str) -> Result<String, String> {
+    Ok(format!(
         "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-{}.bin",
-        model_stem(model_size)
-    )
+        model_stem(model_size)?
+    ))
 }
 
 #[cfg(test)]
@@ -156,26 +162,37 @@ mod tests {
 
     #[test]
     fn test_model_filename() {
-        assert_eq!(model_filename("base"), "ggml-base.bin");
-        assert_eq!(model_filename("large-v3"), "ggml-large-v3.bin");
+        assert_eq!(model_filename("base").unwrap(), "ggml-base.bin");
+        assert_eq!(model_filename("large-v3").unwrap(), "ggml-large-v3.bin");
         // Turbo is a UX label; on-disk file is the available q5_0 variant.
-        assert_eq!(model_filename("turbo"), "ggml-large-v3-turbo-q5_0.bin");
-        assert_eq!(model_filename("large-v3-turbo"), "ggml-large-v3-turbo-q5_0.bin");
-        assert_eq!(model_filename("ggml-large-v3-turbo.bin"), "ggml-large-v3-turbo-q5_0.bin");
+        assert_eq!(
+            model_filename("turbo").unwrap(),
+            "ggml-large-v3-turbo-q5_0.bin"
+        );
+        assert_eq!(
+            model_filename("large-v3-turbo").unwrap(),
+            "ggml-large-v3-turbo-q5_0.bin"
+        );
+        assert_eq!(
+            model_filename("ggml-large-v3-turbo.bin").unwrap(),
+            "ggml-large-v3-turbo-q5_0.bin"
+        );
+        assert!(model_filename("../config").is_err());
+        assert!(model_filename("base/../../x").is_err());
     }
 
     #[test]
     fn test_model_download_url() {
         assert_eq!(
-            model_download_url("base"),
+            model_download_url("base").unwrap(),
             "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin"
         );
         assert_eq!(
-            model_download_url("turbo"),
+            model_download_url("turbo").unwrap(),
             "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin"
         );
         assert_eq!(
-            model_download_url("large-v3-turbo"),
+            model_download_url("large-v3-turbo").unwrap(),
             "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin"
         );
     }
