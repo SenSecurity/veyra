@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { marked } from "marked";
+import DOMPurify from "dompurify";
 import { Pin, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,7 +52,12 @@ export function ScratchpadRoute() {
                 </button>
               </div>
             </div>
-            <div className="prose prose-sm mt-3 max-w-none text-sm" dangerouslySetInnerHTML={{ __html: marked.parse(note.body, { async: false }) }} />
+            <div
+              className="prose prose-sm mt-3 max-w-none text-sm"
+              dangerouslySetInnerHTML={{
+                __html: DOMPurify.sanitize(marked.parse(note.body, { async: false })),
+              }}
+            />
           </article>
         ))}
       </div>

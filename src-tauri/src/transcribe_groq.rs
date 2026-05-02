@@ -1,6 +1,6 @@
 use reqwest::multipart;
 use std::path::PathBuf;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use crate::pipeline::transcribe::TranscriptionResult;
 
@@ -21,8 +21,8 @@ pub async fn transcribe_groq(
 
     let started = Instant::now();
 
-    let audio_bytes = std::fs::read(audio_path)
-        .map_err(|e| format!("Failed to read audio file: {}", e))?;
+    let audio_bytes =
+        std::fs::read(audio_path).map_err(|e| format!("Failed to read audio file: {}", e))?;
 
     let file_part = multipart::Part::bytes(audio_bytes)
         .file_name("audio.wav")
@@ -35,7 +35,11 @@ pub async fn transcribe_groq(
         .text("response_format", "json")
         .part("file", file_part);
 
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .connect_timeout(Duration::from_secs(15))
+        .timeout(Duration::from_secs(120))
+        .build()
+        .map_err(|e| format!("Groq API client failed: {}", e))?;
     let response = client
         .post("https://api.groq.com/openai/v1/audio/transcriptions")
         .header("Authorization", format!("Bearer {}", api_key))

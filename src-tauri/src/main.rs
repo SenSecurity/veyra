@@ -1,10 +1,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
-use serde::{Deserialize, Serialize};
 use tauri::{Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
@@ -119,15 +119,14 @@ fn active_monitor_bottom_position() -> Option<tauri::PhysicalPosition<i32>> {
     }
 
     unsafe {
-        let point = active_caret_point()
-            .or_else(|| {
-                let mut point = POINT { x: 0, y: 0 };
-                if GetCursorPos(&mut point) != 0 {
-                    Some(point)
-                } else {
-                    None
-                }
-            })?;
+        let point = active_caret_point().or_else(|| {
+            let mut point = POINT { x: 0, y: 0 };
+            if GetCursorPos(&mut point) != 0 {
+                Some(point)
+            } else {
+                None
+            }
+        })?;
         bottom_center_for_screen_point(point)
     }
 }
@@ -166,7 +165,14 @@ fn play_output_chime(kind: ChimeKind) -> Result<(), String> {
             .build_output_stream(
                 &config,
                 move |data: &mut [f32], _| {
-                    write_chime(data, channels, sample_rate, total_frames, kind, &mut frame_index)
+                    write_chime(
+                        data,
+                        channels,
+                        sample_rate,
+                        total_frames,
+                        kind,
+                        &mut frame_index,
+                    )
                 },
                 err_fn,
                 None,
@@ -176,7 +182,14 @@ fn play_output_chime(kind: ChimeKind) -> Result<(), String> {
             .build_output_stream(
                 &config,
                 move |data: &mut [i16], _| {
-                    write_chime(data, channels, sample_rate, total_frames, kind, &mut frame_index)
+                    write_chime(
+                        data,
+                        channels,
+                        sample_rate,
+                        total_frames,
+                        kind,
+                        &mut frame_index,
+                    )
                 },
                 err_fn,
                 None,
@@ -186,7 +199,14 @@ fn play_output_chime(kind: ChimeKind) -> Result<(), String> {
             .build_output_stream(
                 &config,
                 move |data: &mut [u16], _| {
-                    write_chime(data, channels, sample_rate, total_frames, kind, &mut frame_index)
+                    write_chime(
+                        data,
+                        channels,
+                        sample_rate,
+                        total_frames,
+                        kind,
+                        &mut frame_index,
+                    )
                 },
                 err_fn,
                 None,
@@ -262,7 +282,10 @@ fn chime_sample(t: f32, kind: ChimeKind) -> (f32, f32) {
     };
     let shimmer = (t * 9.0).sin() * 0.003;
     let side = mono * 0.08 + shimmer;
-    ((mono - side).clamp(-0.25, 0.25), (mono + side).clamp(-0.25, 0.25))
+    (
+        (mono - side).clamp(-0.25, 0.25),
+        (mono + side).clamp(-0.25, 0.25),
+    )
 }
 
 fn bell_note(t: f32, start: f32, duration: f32, frequency: f32, gain: f32) -> f32 {
@@ -450,9 +473,9 @@ fn get_recording_level(state: State<AppState>) -> f32 {
 }
 
 #[tauri::command]
-fn check_model_downloaded(state: State<AppState>, model_size: String) -> bool {
-    let model_file = transcribe_local::model_filename(&model_size);
-    state.app_dir.join(&model_file).exists()
+fn check_model_downloaded(state: State<AppState>, model_size: String) -> Result<bool, String> {
+    let model_file = transcribe_local::model_filename(&model_size)?;
+    Ok(state.app_dir.join(&model_file).exists())
 }
 
 #[tauri::command]
@@ -462,17 +485,10 @@ async fn download_model(
     model_size: String,
 ) -> Result<(), String> {
     state.model_download_cancel.store(false, Ordering::SeqCst);
-    let url = transcribe_local::model_download_url(&model_size);
-    let model_file = transcribe_local::model_filename(&model_size);
+    let url = transcribe_local::model_download_url(&model_size)?;
+    let model_file = transcribe_local::model_filename(&model_size)?;
     let dest = state.app_dir.join(&model_file);
-    downloader::download_model(
-        app,
-        &model_size,
-        &url,
-        &dest,
-        &state.model_download_cancel,
-    )
-    .await
+    downloader::download_model(app, &model_size, &url, &dest, &state.model_download_cancel).await
 }
 
 #[tauri::command]
@@ -546,10 +562,7 @@ async fn run_pipeline_and_reset_state(app: &tauri::AppHandle, state: &AppState) 
 
     match outcome {
         Ok(row_id) => {
-            let _ = app.emit(
-                "transcription:new",
-                serde_json::json!({ "rowId": row_id }),
-            );
+            let _ = app.emit("transcription:new", serde_json::json!({ "rowId": row_id }));
             tracing::info!(row_id, "[Typr] Transcription persisted");
         }
         Err(e) => tracing::error!(error = %e, "[Typr] Pipeline error"),
@@ -559,10 +572,7 @@ async fn run_pipeline_and_reset_state(app: &tauri::AppHandle, state: &AppState) 
 /// Shared logic for toggle recording, used by both the Tauri command and the
 /// hotkey handler in toggle mode. PTT mode bypasses this and drives state
 /// directly from the `Pressed`/`Released` branches in `setup`.
-async fn do_toggle_recording(
-    app: &tauri::AppHandle,
-    state: &AppState,
-) -> Result<String, String> {
+async fn do_toggle_recording(app: &tauri::AppHandle, state: &AppState) -> Result<String, String> {
     let current = {
         let rs = state.recording_state.lock().map_err(|e| e.to_string())?;
         rs.clone()
@@ -573,11 +583,7 @@ async fn do_toggle_recording(
             // sections short. `audio.start` does the cpal handshake — we
             // hold only `state.audio`'s Mutex for that, never `settings`.
             let mic = state.settings.lock().unwrap().microphone.clone();
-            state
-                .audio
-                .lock()
-                .map_err(|e| e.to_string())?
-                .start(&mic)?;
+            state.audio.lock().map_err(|e| e.to_string())?.start(&mic)?;
 
             {
                 let mut rs = state.recording_state.lock().map_err(|e| e.to_string())?;
@@ -665,7 +671,9 @@ struct NewDictionaryTermPayload {
 
 #[tauri::command]
 fn list_dictionary_terms(state: State<AppState>) -> Result<Vec<DictionaryTerm>, String> {
-    DictionaryRepo::new(&state.db).list().map_err(|e| e.to_string())
+    DictionaryRepo::new(&state.db)
+        .list()
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -708,7 +716,9 @@ struct NewSnippetPayload {
 
 #[tauri::command]
 fn list_snippets(state: State<AppState>) -> Result<Vec<Snippet>, String> {
-    SnippetRepo::new(&state.db).list().map_err(|e| e.to_string())
+    SnippetRepo::new(&state.db)
+        .list()
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -787,7 +797,9 @@ fn pin_scratchpad_note(state: State<AppState>, id: i64, pinned: bool) -> Result<
 
 #[tauri::command]
 fn get_stats_totals(state: State<AppState>) -> Result<Totals, String> {
-    StatsRepo::new(&state.db).totals().map_err(|e| e.to_string())
+    StatsRepo::new(&state.db)
+        .totals()
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -888,8 +900,7 @@ fn main() {
     // older than 10 minutes is junk from a crashed prior run. Best-effort —
     // failure modes are logged inside `sweep_stale_wavs` and a zero count
     // here is the common case.
-    let purged =
-        typr_lib::pipeline::tmp::sweep_stale_wavs(std::time::Duration::from_secs(600));
+    let purged = typr_lib::pipeline::tmp::sweep_stale_wavs(std::time::Duration::from_secs(600));
     if purged > 0 {
         tracing::info!(purged, "swept stale tmp wav files at boot");
     }
