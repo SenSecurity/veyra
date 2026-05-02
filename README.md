@@ -56,6 +56,8 @@ src-tauri/target/release/bundle/
 
 Use the generated Windows installer from that folder for a product-style installation.
 
+On Windows, the NSIS installer checks for Ollama and installs it automatically when it is missing. The direct `typr.exe` build does not run installer hooks, so Ollama is only bootstrapped automatically when using the generated setup executable.
+
 ## First Run
 
 1. Open Veyra.
@@ -63,8 +65,9 @@ Use the generated Windows installer from that folder for a product-style install
 3. Choose `Local whisper.cpp`.
 4. Select the `turbo` model.
 5. Click **Download model**.
-6. Set your hotkey/recording mode in **Settings -> General**.
-7. Use the tray icon to show, hide, or exit Veyra.
+6. For email drafts, keep **Email draft engine** on `Local Ollama` and click **Download email model**. Installer builds install Ollama automatically; direct executable builds may ask you to install it from Settings.
+7. Set your hotkey/recording mode in **Settings -> General**.
+8. Use the tray icon to show, hide, or exit Veyra.
 
 Local app data currently stays under the existing compatibility identifier:
 
