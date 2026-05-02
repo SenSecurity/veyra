@@ -1,7 +1,9 @@
-# Tauri + Vanilla TS
+# Veyra
 
-This template should help get you started developing with Tauri in vanilla HTML, CSS and Typescript.
+Local-first dictation app built with Tauri, React, whisper.cpp, and Groq fallback.
 
-## Recommended IDE Setup
+## Development
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+- `npm run dev` starts the frontend.
+- `npm run tauri dev` starts the desktop app.
+- `npm run build` checks and builds the frontend.

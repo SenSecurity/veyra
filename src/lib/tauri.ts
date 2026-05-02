@@ -17,7 +17,7 @@ import type {
 } from "@/types/ipc";
 
 // Typed wrapper over the Phase 1+2+3 Tauri command surface. UI code consumes
-// `ipc` from this adapter — no raw `invoke` calls in components.
+// `ipc` from this adapter; no raw `invoke` calls in components.
 //
 // Tauri 2 auto-converts snake_case command argument names to camelCase on the
 // JS side, so `model_size: String` on the Rust handler becomes `modelSize`
@@ -29,10 +29,13 @@ export const ipc = {
     invoke<void>("save_settings", { settings }),
   listMicrophones: () => invoke<MicDevice[]>("list_microphones"),
   getRecordingState: () => invoke<RecordingState>("get_recording_state"),
+  getRecordingLevel: () => invoke<number>("get_recording_level"),
   checkModelDownloaded: (modelSize: string) =>
     invoke<boolean>("check_model_downloaded", { modelSize }),
   downloadModel: (modelSize: string) =>
     invoke<void>("download_model", { modelSize }),
+  cancelModelDownload: () => invoke<void>("cancel_model_download"),
+  cancelRecording: () => invoke<void>("cancel_recording"),
   toggleRecording: () => invoke<string>("toggle_recording"),
 
   // transcriptions

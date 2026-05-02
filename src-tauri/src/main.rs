@@ -1,6 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use serde::{Deserialize, Serialize};
 use tauri::{Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
@@ -24,6 +26,308 @@ use typr_lib::storage::Db;
 use typr_lib::telemetry;
 use typr_lib::transcribe_local;
 
+const OVERLAY_WIDTH: i32 = 168;
+const OVERLAY_HEIGHT: i32 = 36;
+const OVERLAY_BOTTOM_MARGIN: i32 = 8;
+
+#[cfg(target_os = "windows")]
+fn play_transition_sound(state: &RecordingState) {
+    let (kind, message_beep) = match state {
+        RecordingState::Recording => (ChimeKind::Start, 0x00000040),
+        RecordingState::Transcribing => (ChimeKind::Transcribing, 0x00000030),
+        RecordingState::Ready => return,
+    };
+    tauri::async_runtime::spawn_blocking(move || unsafe {
+        if play_output_chime(kind).is_err() {
+            let _ = windows_sys::Win32::System::Diagnostics::Debug::Beep(
+                if kind == ChimeKind::Start { 740 } else { 520 },
+                90,
+            );
+            let _ = windows_sys::Win32::System::Diagnostics::Debug::MessageBeep(message_beep);
+        }
+    });
+}
+
+#[cfg(not(target_os = "windows"))]
+fn play_transition_sound(_state: &RecordingState) {}
+
+#[cfg(target_os = "windows")]
+fn active_monitor_bottom_position() -> Option<tauri::PhysicalPosition<i32>> {
+    use windows_sys::Win32::Foundation::POINT;
+    use windows_sys::Win32::Graphics::Gdi::{
+        ClientToScreen, GetMonitorInfoW, MonitorFromPoint, MONITORINFO, MONITOR_DEFAULTTONEAREST,
+    };
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        GetCursorPos, GetForegroundWindow, GetGUIThreadInfo, GetWindowThreadProcessId,
+        GUITHREADINFO,
+    };
+
+    unsafe fn active_caret_point() -> Option<POINT> {
+        let foreground = GetForegroundWindow();
+        if foreground.is_null() {
+            return None;
+        }
+        let thread_id = GetWindowThreadProcessId(foreground, std::ptr::null_mut());
+        if thread_id == 0 {
+            return None;
+        }
+        let mut info = GUITHREADINFO {
+            cbSize: std::mem::size_of::<GUITHREADINFO>() as u32,
+            flags: 0,
+            hwndActive: std::ptr::null_mut(),
+            hwndFocus: std::ptr::null_mut(),
+            hwndCapture: std::ptr::null_mut(),
+            hwndMenuOwner: std::ptr::null_mut(),
+            hwndMoveSize: std::ptr::null_mut(),
+            hwndCaret: std::ptr::null_mut(),
+            rcCaret: std::mem::zeroed(),
+        };
+        if GetGUIThreadInfo(thread_id, &mut info) == 0 || info.hwndCaret.is_null() {
+            return None;
+        }
+
+        let mut point = POINT {
+            x: info.rcCaret.left,
+            y: info.rcCaret.bottom,
+        };
+        if ClientToScreen(info.hwndCaret, &mut point) == 0 {
+            return None;
+        }
+        Some(point)
+    }
+
+    unsafe fn bottom_center_for_screen_point(point: POINT) -> Option<tauri::PhysicalPosition<i32>> {
+        let monitor = MonitorFromPoint(point, MONITOR_DEFAULTTONEAREST);
+        if monitor.is_null() {
+            return None;
+        }
+
+        let mut info = MONITORINFO {
+            cbSize: std::mem::size_of::<MONITORINFO>() as u32,
+            rcMonitor: std::mem::zeroed(),
+            rcWork: std::mem::zeroed(),
+            dwFlags: 0,
+        };
+        if GetMonitorInfoW(monitor, &mut info) == 0 {
+            return None;
+        }
+
+        let work = info.rcWork;
+        let x = work.left + ((work.right - work.left - OVERLAY_WIDTH) / 2);
+        let y = work.bottom - OVERLAY_BOTTOM_MARGIN - OVERLAY_HEIGHT;
+        Some(tauri::PhysicalPosition::new(x, y))
+    }
+
+    unsafe {
+        let point = active_caret_point()
+            .or_else(|| {
+                let mut point = POINT { x: 0, y: 0 };
+                if GetCursorPos(&mut point) != 0 {
+                    Some(point)
+                } else {
+                    None
+                }
+            })?;
+        bottom_center_for_screen_point(point)
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn active_monitor_bottom_position() -> Option<tauri::PhysicalPosition<i32>> {
+    None
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ChimeKind {
+    Start,
+    Transcribing,
+}
+
+fn play_output_chime(kind: ChimeKind) -> Result<(), String> {
+    let host = cpal::default_host();
+    let device = host
+        .default_output_device()
+        .ok_or_else(|| "No default output device found".to_string())?;
+    let supported_config = device.default_output_config().map_err(|e| e.to_string())?;
+    let sample_format = supported_config.sample_format();
+    let config: cpal::StreamConfig = supported_config.into();
+    let sample_rate = config.sample_rate.0 as f32;
+    let channels = config.channels as usize;
+    let duration_ms = match kind {
+        ChimeKind::Start => 420,
+        ChimeKind::Transcribing => 360,
+    };
+    let total_frames = ((sample_rate * duration_ms as f32) / 1000.0).max(1.0) as u32;
+    let mut frame_index = 0_u32;
+    let err_fn = |err| tracing::warn!(error = %err, "transition tone stream error");
+
+    let stream = match sample_format {
+        cpal::SampleFormat::F32 => device
+            .build_output_stream(
+                &config,
+                move |data: &mut [f32], _| {
+                    write_chime(data, channels, sample_rate, total_frames, kind, &mut frame_index)
+                },
+                err_fn,
+                None,
+            )
+            .map_err(|e| e.to_string())?,
+        cpal::SampleFormat::I16 => device
+            .build_output_stream(
+                &config,
+                move |data: &mut [i16], _| {
+                    write_chime(data, channels, sample_rate, total_frames, kind, &mut frame_index)
+                },
+                err_fn,
+                None,
+            )
+            .map_err(|e| e.to_string())?,
+        cpal::SampleFormat::U16 => device
+            .build_output_stream(
+                &config,
+                move |data: &mut [u16], _| {
+                    write_chime(data, channels, sample_rate, total_frames, kind, &mut frame_index)
+                },
+                err_fn,
+                None,
+            )
+            .map_err(|e| e.to_string())?,
+        _ => return Err("Unsupported output sample format".to_string()),
+    };
+
+    stream.play().map_err(|e| e.to_string())?;
+    std::thread::sleep(std::time::Duration::from_millis(duration_ms + 40));
+    Ok(())
+}
+
+trait ToneSample {
+    fn from_unit(sample: f32) -> Self;
+}
+
+impl ToneSample for f32 {
+    fn from_unit(sample: f32) -> Self {
+        sample
+    }
+}
+
+impl ToneSample for i16 {
+    fn from_unit(sample: f32) -> Self {
+        (sample.clamp(-1.0, 1.0) * i16::MAX as f32) as i16
+    }
+}
+
+impl ToneSample for u16 {
+    fn from_unit(sample: f32) -> Self {
+        ((sample.clamp(-1.0, 1.0) * 0.5 + 0.5) * u16::MAX as f32) as u16
+    }
+}
+
+fn write_chime<T: ToneSample>(
+    output: &mut [T],
+    channels: usize,
+    sample_rate: f32,
+    total_frames: u32,
+    kind: ChimeKind,
+    frame_index: &mut u32,
+) {
+    for frame in output.chunks_mut(channels) {
+        let (left, right) = if *frame_index < total_frames {
+            let t = *frame_index as f32 / sample_rate;
+            chime_sample(t, kind)
+        } else {
+            (0.0, 0.0)
+        };
+        *frame_index = frame_index.saturating_add(1);
+        for (index, channel) in frame.iter_mut().enumerate() {
+            let sample = if index % 2 == 0 { left } else { right };
+            *channel = T::from_unit(sample);
+        }
+    }
+}
+
+fn chime_sample(t: f32, kind: ChimeKind) -> (f32, f32) {
+    let mono = match kind {
+        ChimeKind::Start => {
+            bell_note(t, 0.000, 0.34, 392.00, 0.030)
+                + bell_note(t, 0.018, 0.32, 587.33, 0.038)
+                + bell_note(t, 0.064, 0.30, 739.99, 0.032)
+                + bell_note(t, 0.112, 0.24, 987.77, 0.010)
+        }
+        ChimeKind::Transcribing => {
+            bell_note(t, 0.000, 0.26, 880.00, 0.026)
+                + bell_note(t, 0.030, 0.30, 659.25, 0.038)
+                + bell_note(t, 0.082, 0.28, 493.88, 0.034)
+                + bell_note(t, 0.130, 0.18, 329.63, 0.012)
+        }
+    };
+    let shimmer = (t * 9.0).sin() * 0.003;
+    let side = mono * 0.08 + shimmer;
+    ((mono - side).clamp(-0.25, 0.25), (mono + side).clamp(-0.25, 0.25))
+}
+
+fn bell_note(t: f32, start: f32, duration: f32, frequency: f32, gain: f32) -> f32 {
+    let local = t - start;
+    if local < 0.0 || local > duration {
+        return 0.0;
+    }
+    let attack = smoothstep((local / 0.026).clamp(0.0, 1.0));
+    let decay = (-local * 9.0).exp();
+    let release = smoothstep(((duration - local) / 0.08).clamp(0.0, 1.0));
+    let envelope = attack * decay * release;
+    let phase = local * frequency * std::f32::consts::TAU;
+    let fundamental = phase.sin();
+    let overtone = (phase * 2.01).sin() * 0.13;
+    let airy = (phase * 3.02).sin() * 0.045;
+    (fundamental + overtone + airy) * envelope * gain
+}
+
+fn smoothstep(x: f32) -> f32 {
+    let x = x.clamp(0.0, 1.0);
+    x * x * (3.0 - 2.0 * x)
+}
+
+#[cfg(target_os = "windows")]
+struct SingleInstanceGuard(windows_sys::Win32::Foundation::HANDLE);
+
+#[cfg(target_os = "windows")]
+impl Drop for SingleInstanceGuard {
+    fn drop(&mut self) {
+        unsafe {
+            let _ = windows_sys::Win32::Foundation::CloseHandle(self.0);
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn acquire_single_instance() -> Option<SingleInstanceGuard> {
+    let name: Vec<u16> = "Local\\TyprSingleInstance\0".encode_utf16().collect();
+    unsafe {
+        let handle = windows_sys::Win32::System::Threading::CreateMutexW(
+            std::ptr::null_mut(),
+            1,
+            name.as_ptr(),
+        );
+        if handle.is_null() {
+            return None;
+        }
+        if windows_sys::Win32::Foundation::GetLastError()
+            == windows_sys::Win32::Foundation::ERROR_ALREADY_EXISTS
+        {
+            let _ = windows_sys::Win32::Foundation::CloseHandle(handle);
+            return None;
+        }
+        Some(SingleInstanceGuard(handle))
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+struct SingleInstanceGuard;
+
+#[cfg(not(target_os = "windows"))]
+fn acquire_single_instance() -> Option<SingleInstanceGuard> {
+    Some(SingleInstanceGuard)
+}
+
 struct AppState {
     settings: Mutex<V2Settings>,
     keyring: Box<dyn KeyringBackend>,
@@ -31,6 +335,7 @@ struct AppState {
     db: Db,
     audio: Mutex<AudioRecorder>,
     recording_state: Mutex<RecordingState>,
+    model_download_cancel: AtomicBool,
 }
 
 fn get_app_dir() -> PathBuf {
@@ -43,15 +348,55 @@ fn get_app_dir() -> PathBuf {
 /// because the pipeline must remain headless and reusable from Phase 4
 /// command mode without dragging the overlay window dependency along.
 fn update_overlay(app: &tauri::AppHandle, state: &RecordingState) {
+    play_transition_sound(state);
     if let Some(overlay) = app.get_webview_window("overlay") {
-        let class = match state {
-            RecordingState::Ready => "mic",
-            RecordingState::Recording => "mic recording",
-            RecordingState::Transcribing => "mic transcribing",
-        };
-        let js = format!("document.getElementById('mic').className = '{}';", class);
-        let _ = overlay.eval(&js);
+        match state {
+            RecordingState::Ready => {
+                let _ = app.emit_to("overlay", "overlay:state", state.clone());
+                let _ = overlay.hide();
+            }
+            RecordingState::Recording | RecordingState::Transcribing => {
+                if *state == RecordingState::Recording {
+                    if let Some(position) = active_monitor_bottom_position() {
+                        let _ = overlay.set_position(position);
+                    }
+                }
+                let _ = overlay.show();
+                let _ = app.emit_to("overlay", "overlay:state", state.clone());
+                let app = app.clone();
+                let state = state.clone();
+                tauri::async_runtime::spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_millis(120)).await;
+                    let _ = app.emit_to("overlay", "overlay:state", state);
+                });
+            }
+        }
     }
+}
+
+fn spawn_level_emitter(app: tauri::AppHandle) {
+    tauri::async_runtime::spawn(async move {
+        loop {
+            let state = app.state::<AppState>();
+            let recording = {
+                let rs = state.recording_state.lock().unwrap();
+                *rs == RecordingState::Recording
+            };
+            if !recording {
+                break;
+            }
+            let level = {
+                let audio = state.audio.lock().unwrap();
+                audio.current_level()
+            };
+            let _ = app.emit_to(
+                "overlay",
+                "overlay:level",
+                serde_json::json!({ "level": level }),
+            );
+            tokio::time::sleep(std::time::Duration::from_millis(45)).await;
+        }
+    });
 }
 
 #[tauri::command]
@@ -100,6 +445,11 @@ fn get_recording_state(state: State<AppState>) -> RecordingState {
 }
 
 #[tauri::command]
+fn get_recording_level(state: State<AppState>) -> f32 {
+    state.audio.lock().unwrap().current_level()
+}
+
+#[tauri::command]
 fn check_model_downloaded(state: State<AppState>, model_size: String) -> bool {
     let model_file = transcribe_local::model_filename(&model_size);
     state.app_dir.join(&model_file).exists()
@@ -111,10 +461,41 @@ async fn download_model(
     state: State<'_, AppState>,
     model_size: String,
 ) -> Result<(), String> {
+    state.model_download_cancel.store(false, Ordering::SeqCst);
     let url = transcribe_local::model_download_url(&model_size);
     let model_file = transcribe_local::model_filename(&model_size);
     let dest = state.app_dir.join(&model_file);
-    downloader::download_model(app, &url, &dest).await
+    downloader::download_model(
+        app,
+        &model_size,
+        &url,
+        &dest,
+        &state.model_download_cancel,
+    )
+    .await
+}
+
+#[tauri::command]
+fn cancel_model_download(state: State<AppState>) {
+    state.model_download_cancel.store(true, Ordering::SeqCst);
+}
+
+#[tauri::command]
+fn cancel_recording(app: tauri::AppHandle, state: State<AppState>) -> Result<(), String> {
+    {
+        let current = state.recording_state.lock().map_err(|e| e.to_string())?;
+        if *current != RecordingState::Recording {
+            return Ok(());
+        }
+    }
+    state.audio.lock().map_err(|e| e.to_string())?.cancel();
+    {
+        let mut rs = state.recording_state.lock().map_err(|e| e.to_string())?;
+        *rs = RecordingState::Ready;
+    }
+    let _ = app.emit("recording-state", RecordingState::Ready);
+    update_overlay(&app, &RecordingState::Ready);
+    Ok(())
 }
 
 #[tauri::command]
@@ -204,6 +585,7 @@ async fn do_toggle_recording(
             }
             let _ = app.emit("recording-state", RecordingState::Recording);
             update_overlay(app, &RecordingState::Recording);
+            spawn_level_emitter(app.clone());
             Ok("recording".into())
         }
         RecordingState::Recording => {
@@ -471,6 +853,10 @@ async fn test_groq_key(key: String) -> Result<(), String> {
 }
 
 fn main() {
+    let Some(_single_instance) = acquire_single_instance() else {
+        return;
+    };
+
     let app_dir = get_app_dir();
     let log_dir = app_dir.join("logs");
     let _ = telemetry::init_tracing(&log_dir);
@@ -518,6 +904,7 @@ fn main() {
             db,
             audio: Mutex::new(AudioRecorder::new()),
             recording_state: Mutex::new(RecordingState::Ready),
+            model_download_cancel: AtomicBool::new(false),
         })
         .invoke_handler(tauri::generate_handler![
             // Phase 1+2 (existing)
@@ -525,8 +912,11 @@ fn main() {
             save_settings,
             list_microphones,
             get_recording_state,
+            get_recording_level,
             check_model_downloaded,
             download_model,
+            cancel_model_download,
+            cancel_recording,
             toggle_recording,
             // Phase 3: transcriptions
             list_transcriptions,
@@ -596,15 +986,20 @@ fn main() {
                 }
             }
 
-            // Create the overlay window (small mic icon, top-right, always on top)
+            // Create the overlay window hidden by default. It appears only while
+            // recording/transcribing, Wispr Flow style.
             let monitor = app.primary_monitor().ok().flatten();
             let (x, y) = if let Some(m) = monitor {
                 let size = m.size();
                 let scale = m.scale_factor();
                 let logical_w = size.width as f64 / scale;
-                ((logical_w - 60.0) as i32, 10_i32)
+                let logical_h = size.height as f64 / scale;
+                (
+                    (logical_w / 2.0 - (OVERLAY_WIDTH as f64 / 2.0)) as i32,
+                    (logical_h - 110.0) as i32,
+                )
             } else {
-                (1380, 10)
+                (640, 720)
             };
 
             let overlay = WebviewWindowBuilder::new(
@@ -613,7 +1008,7 @@ fn main() {
                 WebviewUrl::App("src/overlay.html".into()),
             )
             .title("")
-            .inner_size(50.0, 50.0)
+            .inner_size(OVERLAY_WIDTH as f64, OVERLAY_HEIGHT as f64)
             .position(x as f64, y as f64)
             .resizable(false)
             .decorations(false)
@@ -622,6 +1017,7 @@ fn main() {
             .skip_taskbar(true)
             .focused(false)
             .shadow(false)
+            .visible(false)
             .build();
 
             match overlay {
@@ -671,6 +1067,7 @@ fn main() {
                                                     }
                                                     let _ = handle.emit("recording-state", RecordingState::Recording);
                                                     update_overlay(&handle, &RecordingState::Recording);
+                                                    spawn_level_emitter(handle.clone());
                                                     tracing::info!("[Typr] Recording started");
                                                 }
                                                 Err(e) => tracing::error!(error = %e, "[Typr] Start recording error"),

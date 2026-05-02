@@ -123,11 +123,18 @@ fn model_filename_to_label(model_path: &Path) -> String {
 }
 
 /// Map a settings-level model key (e.g. "turbo") to the on-disk filename used
-/// by whisper.cpp / huggingface. "turbo" is a UX nickname; the actual model on
-/// HF is `ggml-large-v3-turbo.bin`. Other keys map 1:1.
+/// by whisper.cpp / Hugging Face. "turbo" is a UX nickname; the full
+/// `ggml-large-v3-turbo.bin` artifact is no longer present on the repository's
+/// `main` branch, but the quantized `q5_0` artifact is available and supported
+/// by whisper.cpp.
 fn model_stem(model_size: &str) -> &str {
     match model_size {
-        "turbo" => "large-v3-turbo",
+        "turbo" | "large-v3-turbo" | "ggml-large-v3-turbo" | "ggml-large-v3-turbo.bin" => {
+            "large-v3-turbo-q5_0"
+        }
+        "large-v3-turbo-q5_0" | "ggml-large-v3-turbo-q5_0" | "ggml-large-v3-turbo-q5_0.bin" => {
+            "large-v3-turbo-q5_0"
+        }
         other => other,
     }
 }
@@ -151,8 +158,10 @@ mod tests {
     fn test_model_filename() {
         assert_eq!(model_filename("base"), "ggml-base.bin");
         assert_eq!(model_filename("large-v3"), "ggml-large-v3.bin");
-        // Turbo is a UX label; on-disk file is the large-v3-turbo variant.
-        assert_eq!(model_filename("turbo"), "ggml-large-v3-turbo.bin");
+        // Turbo is a UX label; on-disk file is the available q5_0 variant.
+        assert_eq!(model_filename("turbo"), "ggml-large-v3-turbo-q5_0.bin");
+        assert_eq!(model_filename("large-v3-turbo"), "ggml-large-v3-turbo-q5_0.bin");
+        assert_eq!(model_filename("ggml-large-v3-turbo.bin"), "ggml-large-v3-turbo-q5_0.bin");
     }
 
     #[test]
@@ -163,7 +172,11 @@ mod tests {
         );
         assert_eq!(
             model_download_url("turbo"),
-            "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin"
+            "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin"
+        );
+        assert_eq!(
+            model_download_url("large-v3-turbo"),
+            "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo-q5_0.bin"
         );
     }
 
