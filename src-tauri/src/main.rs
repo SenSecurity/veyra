@@ -12,6 +12,7 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 use typr_lib::audio::{self, AudioRecorder};
 use typr_lib::downloader;
+use typr_lib::pipeline::PipelineMode;
 use typr_lib::recording_state::RecordingState;
 use typr_lib::settings::adapter::{apply_v1_v2_fields, to_v1_view, write_v1_keyring};
 use typr_lib::settings::keyring::{KeyringBackend, SystemBackend};
@@ -616,7 +617,7 @@ async fn toggle_recording(
     app: tauri::AppHandle,
     state: State<'_, AppState>,
 ) -> Result<String, String> {
-    do_toggle_recording(&app, &state).await
+    do_toggle_recording(&app, &state, PipelineMode::Dictation).await
 }
 
 /// Drive the pipeline once we are committed to the `Recording → Transcribing
@@ -627,7 +628,11 @@ async fn toggle_recording(
 /// so every guard is acquired in a `{}` scope and dropped before any `.await`.
 /// `pipeline::run_session` re-locks `state.audio` internally inside
 /// `capture::stop_and_save`, so we must NOT hold any lock around that call.
-async fn run_pipeline_and_reset_state(app: &tauri::AppHandle, state: &AppState) {
+async fn run_pipeline_and_reset_state(
+    app: &tauri::AppHandle,
+    state: &AppState,
+    mode: PipelineMode,
+) {
     {
         let mut rs = state.recording_state.lock().unwrap();
         *rs = RecordingState::Transcribing;
@@ -647,7 +652,7 @@ async fn run_pipeline_and_reset_state(app: &tauri::AppHandle, state: &AppState) 
             app_dir: &state.app_dir,
             groq_key: groq_key.as_deref(),
         };
-        typr_lib::pipeline::run_session(deps, typr_lib::pipeline::PipelineMode::Dictation).await
+        typr_lib::pipeline::run_session(deps, mode).await
     };
 
     {
@@ -660,7 +665,7 @@ async fn run_pipeline_and_reset_state(app: &tauri::AppHandle, state: &AppState) 
     match outcome {
         Ok(row_id) => {
             let _ = app.emit("transcription:new", serde_json::json!({ "rowId": row_id }));
-            tracing::info!(row_id, "[Typr] Transcription persisted");
+            tracing::info!(row_id, mode = ?mode, "[Typr] Transcription persisted");
         }
         Err(e) => tracing::error!(error = %e, "[Typr] Pipeline error"),
     }
@@ -669,7 +674,11 @@ async fn run_pipeline_and_reset_state(app: &tauri::AppHandle, state: &AppState) 
 /// Shared logic for toggle recording, used by both the Tauri command and the
 /// hotkey handler in toggle mode. PTT mode bypasses this and drives state
 /// directly from the `Pressed`/`Released` branches in `setup`.
-async fn do_toggle_recording(app: &tauri::AppHandle, state: &AppState) -> Result<String, String> {
+async fn do_toggle_recording(
+    app: &tauri::AppHandle,
+    state: &AppState,
+    mode: PipelineMode,
+) -> Result<String, String> {
     let current = {
         let rs = state.recording_state.lock().map_err(|e| e.to_string())?;
         rs.clone()
@@ -692,10 +701,98 @@ async fn do_toggle_recording(app: &tauri::AppHandle, state: &AppState) -> Result
             Ok("recording".into())
         }
         RecordingState::Recording => {
-            run_pipeline_and_reset_state(app, state).await;
+            run_pipeline_and_reset_state(app, state, mode).await;
             Ok("ok".into())
         }
         RecordingState::Transcribing => Err("Currently transcribing, please wait".into()),
+    }
+}
+
+fn register_recording_shortcut(
+    app: &mut tauri::App,
+    hotkey: &str,
+    pipeline_mode: PipelineMode,
+    label: &'static str,
+) {
+    let hotkey = hotkey.trim();
+    if hotkey.is_empty() {
+        tracing::warn!(label, "[Typr] Skipping empty global shortcut");
+        return;
+    }
+
+    let handle = app.handle().clone();
+    tracing::info!(hotkey, label, "[Typr] Registering global shortcut");
+
+    match app.global_shortcut().on_shortcut(
+        hotkey,
+        move |_app, shortcut, event| {
+            tracing::debug!(
+                ?shortcut,
+                state = ?event.state,
+                mode = ?pipeline_mode,
+                "[Typr] Hotkey event"
+            );
+            let handle = handle.clone();
+            let state = handle.state::<AppState>();
+            let recording_mode = state.settings.lock().unwrap().hotkeys.recording_mode.clone();
+
+            match event.state {
+                ShortcutState::Pressed => {
+                    tauri::async_runtime::spawn(async move {
+                        let state = handle.state::<AppState>();
+                        match recording_mode.as_str() {
+                            "toggle" => {
+                                match do_toggle_recording(&handle, state.inner(), pipeline_mode).await {
+                                    Ok(result) => tracing::info!(result = %result, mode = ?pipeline_mode, "[Typr] Toggle result"),
+                                    Err(e) => tracing::error!(error = %e, mode = ?pipeline_mode, "[Typr] Toggle error"),
+                                }
+                            }
+                            "push-to-talk" => {
+                                let current = {
+                                    let rs = state.recording_state.lock().unwrap();
+                                    rs.clone()
+                                };
+                                if current == RecordingState::Ready {
+                                    let mic = state.settings.lock().unwrap().microphone.clone();
+                                    let start_res = state.audio.lock().unwrap().start(&mic);
+                                    match start_res {
+                                        Ok(_) => {
+                                            {
+                                                let mut rs = state.recording_state.lock().unwrap();
+                                                *rs = RecordingState::Recording;
+                                            }
+                                            let _ = handle.emit("recording-state", RecordingState::Recording);
+                                            update_overlay(&handle, &RecordingState::Recording);
+                                            spawn_level_emitter(handle.clone());
+                                            tracing::info!(mode = ?pipeline_mode, "[Typr] Recording started");
+                                        }
+                                        Err(e) => tracing::error!(error = %e, mode = ?pipeline_mode, "[Typr] Start recording error"),
+                                    }
+                                }
+                            }
+                            _ => {}
+                        }
+                    });
+                }
+                ShortcutState::Released => {
+                    if recording_mode == "push-to-talk" {
+                        tauri::async_runtime::spawn(async move {
+                            let state = handle.state::<AppState>();
+                            let current = {
+                                let rs = state.recording_state.lock().unwrap();
+                                rs.clone()
+                            };
+                            if current == RecordingState::Recording {
+                                run_pipeline_and_reset_state(&handle, state.inner(), pipeline_mode).await;
+                            }
+                        });
+                    }
+                }
+            }
+        },
+    ) {
+        Ok(_) => tracing::info!(hotkey, label, "[Typr] Global shortcut registered"),
+        Err(e) => tracing::error!(error = %e, hotkey, label, "[Typr] Failed to register global shortcut"),
     }
 }
 
@@ -989,8 +1086,15 @@ fn main() {
         }
     });
 
-    let v2_settings = outcome.settings.clone();
-    let initial_hotkey = v2_settings.hotkeys.dictation.clone();
+    let mut v2_settings = outcome.settings.clone();
+    if v2_settings.hotkeys.command_mode == "Shift+F24" {
+        v2_settings.hotkeys.command_mode = "F12".to_string();
+        if let Err(e) = settings::save(&app_dir, &v2_settings) {
+            tracing::warn!(error = %e, "[Typr] Failed to save command hotkey default");
+        }
+    }
+    let dictation_hotkey = v2_settings.hotkeys.dictation.clone();
+    let command_hotkey = v2_settings.hotkeys.command_mode.clone();
     let migration_events = outcome.events;
 
     // Boot-time tmp sweep: any *.wav / *.txt left in the per-session tmp dir
@@ -1160,78 +1264,19 @@ fn main() {
                 Err(e) => tracing::error!(error = %e, "[Typr] Failed to create overlay"),
             }
 
-            let handle = app.handle().clone();
-
-            tracing::info!(hotkey = %initial_hotkey, "[Typr] Registering global shortcut");
-
-            match app.global_shortcut().on_shortcut(
-                initial_hotkey.as_str(),
-                move |_app, shortcut, event| {
-                    tracing::debug!(?shortcut, state = ?event.state, "[Typr] Hotkey event");
-                    let handle = handle.clone();
-                    let state = handle.state::<AppState>();
-                    let mode = state.settings.lock().unwrap().hotkeys.recording_mode.clone();
-                    tracing::debug!(mode = %mode, "[Typr] Recording mode");
-
-                    match event.state {
-                        ShortcutState::Pressed => {
-                            tauri::async_runtime::spawn(async move {
-                                let state = handle.state::<AppState>();
-                                match mode.as_str() {
-                                    "toggle" => {
-                                        tracing::debug!("[Typr] Toggle mode: calling do_toggle_recording");
-                                        match do_toggle_recording(&handle, state.inner()).await {
-                                            Ok(result) => tracing::info!(result = %result, "[Typr] Toggle result"),
-                                            Err(e) => tracing::error!(error = %e, "[Typr] Toggle error"),
-                                        }
-                                    }
-                                    "push-to-talk" => {
-                                        let current = {
-                                            let rs = state.recording_state.lock().unwrap();
-                                            rs.clone()
-                                        };
-                                        tracing::debug!(current = ?current, "[Typr] PTT mode");
-                                        if current == RecordingState::Ready {
-                                            let mic = state.settings.lock().unwrap().microphone.clone();
-                                            let start_res = state.audio.lock().unwrap().start(&mic);
-                                            match start_res {
-                                                Ok(_) => {
-                                                    {
-                                                        let mut rs = state.recording_state.lock().unwrap();
-                                                        *rs = RecordingState::Recording;
-                                                    }
-                                                    let _ = handle.emit("recording-state", RecordingState::Recording);
-                                                    update_overlay(&handle, &RecordingState::Recording);
-                                                    spawn_level_emitter(handle.clone());
-                                                    tracing::info!("[Typr] Recording started");
-                                                }
-                                                Err(e) => tracing::error!(error = %e, "[Typr] Start recording error"),
-                                            }
-                                        }
-                                    }
-                                    _ => {}
-                                }
-                            });
-                        }
-                        ShortcutState::Released => {
-                            if mode == "push-to-talk" {
-                                tauri::async_runtime::spawn(async move {
-                                    let state = handle.state::<AppState>();
-                                    let current = {
-                                        let rs = state.recording_state.lock().unwrap();
-                                        rs.clone()
-                                    };
-                                    if current == RecordingState::Recording {
-                                        run_pipeline_and_reset_state(&handle, state.inner()).await;
-                                    }
-                                });
-                            }
-                        }
-                    }
-                },
-            ) {
-                Ok(_) => tracing::info!("[Typr] Global shortcut registered successfully"),
-                Err(e) => tracing::error!(error = %e, "[Typr] Failed to register global shortcut"),
+            register_recording_shortcut(
+                app,
+                &dictation_hotkey,
+                PipelineMode::Dictation,
+                "dictation",
+            );
+            if command_hotkey.trim().eq_ignore_ascii_case(dictation_hotkey.trim()) {
+                tracing::warn!(
+                    hotkey = %command_hotkey,
+                    "[Typr] Command hotkey matches dictation hotkey; command mode not registered"
+                );
+            } else {
+                register_recording_shortcut(app, &command_hotkey, PipelineMode::Command, "command");
             }
 
             tracing::info!(stage = "boot", "storage + telemetry + settings initialised");

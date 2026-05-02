@@ -8,6 +8,7 @@ pub mod transcribe_local;
 pub mod transcribe_groq;
 pub mod recording_state;
 pub mod downloader;
+pub mod draft_email;
 
 use tauri::Emitter;
 use tauri::Manager;

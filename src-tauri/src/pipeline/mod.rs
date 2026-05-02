@@ -1,6 +1,6 @@
 //! Pipeline orchestrator and stage modules.
 //!
-//! Phase 2 wires only the Dictation arm. Command Mode is Phase 4.
+//! Pipeline arms for direct dictation and command-mode draft generation.
 
 pub mod capture;
 pub mod commit;
@@ -16,6 +16,7 @@ use tauri::AppHandle;
 use uuid::Uuid;
 
 use crate::audio::AudioRecorder;
+use crate::draft_email;
 use crate::settings::Settings;
 use crate::storage::Db;
 
@@ -31,9 +32,7 @@ pub struct PipelineDeps<'a> {
     pub groq_key: Option<&'a str>,
 }
 
-/// Which arm of the pipeline to run. Phase 2 only implements `Dictation`;
-/// `Command` is rejected with a `StageError::Capture` so the variant exists
-/// in the type system today and Phase 4 can flip the branch.
+/// Which arm of the pipeline to run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PipelineMode {
     Dictation,
@@ -49,6 +48,7 @@ pub enum PipelineMode {
 pub enum StageError {
     Capture(String),
     Transcribe(String),
+    Draft(String),
     Format(String),
     Inject(String),
     Persist(String),
@@ -66,6 +66,7 @@ impl std::fmt::Display for PipelineError {
         match &self.stage {
             StageError::Capture(m) => write!(f, "capture: {m}"),
             StageError::Transcribe(m) => write!(f, "transcribe: {m}"),
+            StageError::Draft(m) => write!(f, "draft: {m}"),
             StageError::Format(m) => write!(f, "format: {m}"),
             StageError::Inject(m) => write!(f, "inject: {m}"),
             StageError::Persist(m) => write!(f, "persist: {m}"),
@@ -95,16 +96,7 @@ impl std::error::Error for PipelineError {}
 ///   `Settings` derive `Clone` (cheap — `Db` is `Arc<Mutex<Connection>>`).
 /// - **Cleanup** removes the on-disk WAV; failure is logged but ignored.
 #[tracing::instrument(skip(deps), fields(mode = ?mode))]
-pub async fn run_session(
-    deps: PipelineDeps<'_>,
-    mode: PipelineMode,
-) -> Result<i64, PipelineError> {
-    if mode != PipelineMode::Dictation {
-        return Err(PipelineError {
-            stage: StageError::Capture("command mode is Phase 4".into()),
-        });
-    }
-
+pub async fn run_session(deps: PipelineDeps<'_>, mode: PipelineMode) -> Result<i64, PipelineError> {
     // Session id is logged manually (not recorded into the span) so we
     // don't have to thread `Empty` field declarations through the
     // `instrument` macro. Functionally equivalent for log correlation.
@@ -112,8 +104,9 @@ pub async fn run_session(
     tracing::info!(session_id = %session_id, "pipeline session start");
 
     // 1. Capture
-    let cap = capture::stop_and_save(deps.audio)
-        .map_err(|e| PipelineError { stage: StageError::Capture(e) })?;
+    let cap = capture::stop_and_save(deps.audio).map_err(|e| PipelineError {
+        stage: StageError::Capture(e),
+    })?;
     if cap.byte_size < 1024 {
         // ~1 KiB minimum for a non-empty 16kHz mono WAV header + a few
         // frames. Short-circuit before transcribing silence.
@@ -152,21 +145,42 @@ pub async fn run_session(
         "transcribe done",
     );
 
-    // 3. Format
-    let final_text = format::run_format(&tx_result.text, deps.settings, deps.db)
-        .map_err(|e| PipelineError {
-            stage: StageError::Format(format!("{e:?}")),
-        })?;
+    // 3. Transform text. Dictation uses the local formatter; command mode
+    // turns the instruction into a polished draft via Groq Chat.
+    let final_text = match mode {
+        PipelineMode::Dictation => format::run_format(&tx_result.text, deps.settings, deps.db)
+            .map_err(|e| PipelineError {
+                stage: StageError::Format(format!("{e:?}")),
+            })?,
+        PipelineMode::Command => {
+            let key = deps
+                .groq_key
+                .filter(|key| !key.trim().is_empty())
+                .ok_or_else(|| PipelineError {
+                    stage: StageError::Draft(
+                        "Groq API key required for command mode. Add it in Settings > Transcription."
+                            .into(),
+                    ),
+                })?;
+            draft_email::generate_email_draft(key, &tx_result.text)
+                .await
+                .map_err(|e| PipelineError {
+                    stage: StageError::Draft(e),
+                })?
+        }
+    };
     tracing::info!(
         words = final_text.split_whitespace().count(),
-        "format done",
+        mode = ?mode,
+        "text transform done",
     );
 
     // 4. Inject (best-effort; an empty final_text skips the keystroke but
     // still proceeds to persist so stats reflect the empty session).
     let inject_method = if !final_text.is_empty() {
-        inject::paste(&final_text)
-            .map_err(|e| PipelineError { stage: StageError::Inject(e) })?
+        inject::paste(&final_text).map_err(|e| PipelineError {
+            stage: StageError::Inject(e),
+        })?
     } else {
         inject::InjectMethod::Enigo
     };
@@ -176,6 +190,18 @@ pub async fn run_session(
     // `language` is `Option<String>` upstream; `TranscriptionRecord.language`
     // is `String NOT NULL` in storage. Map missing language to empty string,
     // matching the Phase 2 contract documented in `commit.rs`.
+    let mode_label = match mode {
+        PipelineMode::Dictation => "dictation",
+        PipelineMode::Command => "command",
+    };
+    let model = match mode {
+        PipelineMode::Dictation => tx_result.model.clone(),
+        PipelineMode::Command => format!(
+            "{}+draft:groq:{}",
+            tx_result.model,
+            draft_email::DRAFT_MODEL
+        ),
+    };
     let record = commit::TranscriptionRecord {
         raw_text: tx_result.text.clone(),
         final_text: final_text.clone(),
@@ -183,10 +209,10 @@ pub async fn run_session(
         duration_ms: cap.duration_ms as i64,
         language: tx_result.language.clone().unwrap_or_default(),
         engine: deps.settings.transcription.engine.clone(),
-        model: tx_result.model.clone(),
+        model,
         app_context: String::new(),
-        mode: "dictation".into(),
-        enhanced: false,
+        mode: mode_label.into(),
+        enhanced: mode == PipelineMode::Command,
     };
     let row_id = {
         let db = deps.db.clone();
@@ -236,19 +262,33 @@ mod tests {
         // match in `Display` and this test will guide them.
         let cases = [
             (
-                PipelineError { stage: StageError::Transcribe("x".into()) },
+                PipelineError {
+                    stage: StageError::Draft("x".into()),
+                },
+                "draft:",
+            ),
+            (
+                PipelineError {
+                    stage: StageError::Transcribe("x".into()),
+                },
                 "transcribe:",
             ),
             (
-                PipelineError { stage: StageError::Format("x".into()) },
+                PipelineError {
+                    stage: StageError::Format("x".into()),
+                },
                 "format:",
             ),
             (
-                PipelineError { stage: StageError::Inject("x".into()) },
+                PipelineError {
+                    stage: StageError::Inject("x".into()),
+                },
                 "inject:",
             ),
             (
-                PipelineError { stage: StageError::Persist("x".into()) },
+                PipelineError {
+                    stage: StageError::Persist("x".into()),
+                },
                 "persist:",
             ),
         ];

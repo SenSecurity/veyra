@@ -13,4 +13,5 @@ export interface Settings {
   groqApiKey: string;
   recordingMode: "toggle" | "push-to-talk";
   hotkey: string;
+  commandHotkey: string;
 }
