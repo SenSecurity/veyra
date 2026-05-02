@@ -33,6 +33,16 @@ struct ChatChoice {
     message: ChatMessage,
 }
 
+#[derive(Debug, Deserialize)]
+struct ModelsResponse {
+    data: Vec<ModelInfo>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ModelInfo {
+    id: String,
+}
+
 pub async fn generate_email_draft(
     api_key: &str,
     model: &str,
@@ -90,6 +100,45 @@ pub async fn generate_email_draft(
         .map_err(|e| format!("Failed to parse Groq draft response: {e}"))?;
 
     extract_draft(parsed)
+}
+
+pub async fn check_email_draft_model(api_key: &str, model: &str) -> Result<(), String> {
+    if api_key.trim().is_empty() {
+        return Err("Groq API key not set. Add it in Settings > Transcription.".to_string());
+    }
+    let model = normalize_draft_model(model)?;
+
+    let client = reqwest::Client::builder()
+        .connect_timeout(Duration::from_secs(10))
+        .timeout(Duration::from_secs(30))
+        .build()
+        .map_err(|e| format!("Groq model check client failed: {e}"))?;
+
+    let response = client
+        .get("https://api.groq.com/openai/v1/models")
+        .bearer_auth(api_key)
+        .send()
+        .await
+        .map_err(|e| format!("Groq model check failed: {e}"))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        return Err(format!("Groq model check error ({status}): {body}"));
+    }
+
+    let parsed: ModelsResponse = response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse Groq models response: {e}"))?;
+
+    if parsed.data.iter().any(|candidate| candidate.id == model) {
+        Ok(())
+    } else {
+        Err(format!(
+            "Groq model `{model}` is not available for this API key."
+        ))
+    }
 }
 
 pub fn normalize_draft_model(model: &str) -> Result<String, String> {

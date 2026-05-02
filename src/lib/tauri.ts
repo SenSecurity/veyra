@@ -84,4 +84,6 @@ export const ipc = {
 
   // groq key test
   testGroqKey: (key: string) => invoke<void>("test_groq_key", { key }),
+  checkEmailDraftModel: (key: string, model: string) =>
+    invoke<void>("check_email_draft_model", { key, model }),
 };

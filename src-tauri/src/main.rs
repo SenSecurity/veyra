@@ -1105,6 +1105,11 @@ async fn test_groq_key(key: String) -> Result<(), String> {
     }
 }
 
+#[tauri::command]
+async fn check_email_draft_model(key: String, model: String) -> Result<(), String> {
+    typr_lib::draft_email::check_email_draft_model(&key, &model).await
+}
+
 fn main() {
     let Some(_single_instance) = acquire_single_instance() else {
         return;
@@ -1207,6 +1212,7 @@ fn main() {
             mark_wizard_complete,
             // Phase 3: groq
             test_groq_key,
+            check_email_draft_model,
         ])
         .on_window_event(|window, event| {
             if window.label() != "main" {
