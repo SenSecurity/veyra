@@ -8,6 +8,8 @@ pub struct Settings {
     pub engine: String,
     #[serde(rename = "whisperModel")]
     pub whisper_model: String,
+    #[serde(rename = "emailDraftEngine", default = "default_email_draft_engine")]
+    pub email_draft_engine: String,
     #[serde(rename = "emailDraftModel", default = "default_email_draft_model")]
     pub email_draft_model: String,
     #[serde(rename = "groqApiKey")]
@@ -24,7 +26,11 @@ fn default_command_hotkey() -> String {
 }
 
 fn default_email_draft_model() -> String {
-    "llama-3.3-70b-versatile".to_string()
+    "llama3.2".to_string()
+}
+
+fn default_email_draft_engine() -> String {
+    "ollama".to_string()
 }
 
 impl Default for Settings {
@@ -33,6 +39,7 @@ impl Default for Settings {
             microphone: "default".to_string(),
             engine: "local".to_string(),
             whisper_model: "small".to_string(),
+            email_draft_engine: default_email_draft_engine(),
             email_draft_model: default_email_draft_model(),
             groq_api_key: String::new(),
             recording_mode: "toggle".to_string(),
@@ -74,7 +81,8 @@ mod tests {
         assert_eq!(settings.microphone, "default");
         assert_eq!(settings.engine, "local");
         assert_eq!(settings.whisper_model, "small");
-        assert_eq!(settings.email_draft_model, "llama-3.3-70b-versatile");
+        assert_eq!(settings.email_draft_engine, "ollama");
+        assert_eq!(settings.email_draft_model, "llama3.2");
         assert_eq!(settings.groq_api_key, "");
         assert_eq!(settings.recording_mode, "toggle");
         assert_eq!(settings.hotkey, "F24");

@@ -24,6 +24,8 @@ pub struct Settings {
 pub struct Transcription {
     pub engine: String,
     pub whisper_model: String,
+    #[serde(default = "default_email_draft_engine")]
+    pub email_draft_engine: String,
     #[serde(default = "default_email_draft_model")]
     pub email_draft_model: String,
     pub languages: Vec<String>,
@@ -33,8 +35,12 @@ pub struct Transcription {
     pub no_speech_threshold: f64,
 }
 
+pub fn default_email_draft_engine() -> String {
+    "ollama".to_string()
+}
+
 pub fn default_email_draft_model() -> String {
-    "llama-3.3-70b-versatile".to_string()
+    "llama3.2".to_string()
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -113,6 +119,7 @@ impl Default for Settings {
             transcription: Transcription {
                 engine: "local".to_string(),
                 whisper_model: "turbo".to_string(),
+                email_draft_engine: default_email_draft_engine(),
                 email_draft_model: default_email_draft_model(),
                 languages: vec!["pt".to_string(), "en".to_string()],
                 auto_detect: true,
@@ -176,7 +183,8 @@ mod tests {
         assert_eq!(s.microphone, "default");
         assert_eq!(s.transcription.engine, "local");
         assert_eq!(s.transcription.whisper_model, "turbo");
-        assert_eq!(s.transcription.email_draft_model, "llama-3.3-70b-versatile");
+        assert_eq!(s.transcription.email_draft_engine, "ollama");
+        assert_eq!(s.transcription.email_draft_model, "llama3.2");
         assert_eq!(s.transcription.languages, vec!["pt", "en"]);
         assert!(s.transcription.auto_detect);
         assert_eq!(s.transcription.gpu_acceleration, "auto");
@@ -197,10 +205,8 @@ mod tests {
         let json = serde_json::to_value(&s).unwrap();
         assert_eq!(json["schemaVersion"], 3);
         assert_eq!(json["transcription"]["whisperModel"], "turbo");
-        assert_eq!(
-            json["transcription"]["emailDraftModel"],
-            "llama-3.3-70b-versatile"
-        );
+        assert_eq!(json["transcription"]["emailDraftEngine"], "ollama");
+        assert_eq!(json["transcription"]["emailDraftModel"], "llama3.2");
         assert_eq!(json["hotkeys"]["recordingMode"], "push-to-talk");
         assert_eq!(json["data"]["wordCountCap"], 500_000);
         assert_eq!(json["system"]["muteMusicOnDictate"], false);
