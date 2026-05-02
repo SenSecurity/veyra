@@ -1,9 +1,12 @@
 use std::io::Write;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{AppHandle, Emitter};
 
 #[derive(Clone, serde::Serialize)]
 pub struct DownloadProgress {
+    #[serde(rename = "modelSize")]
+    pub model_size: String,
     pub downloaded: u64,
     pub total: u64,
     pub percent: f64,
@@ -11,8 +14,10 @@ pub struct DownloadProgress {
 
 pub async fn download_model(
     app: AppHandle,
+    model_size: &str,
     url: &str,
     dest: &PathBuf,
+    cancel: &AtomicBool,
 ) -> Result<(), String> {
     let client = reqwest::Client::new();
     let response = client
@@ -22,7 +27,10 @@ pub async fn download_model(
         .map_err(|e| format!("Download request failed: {}", e))?;
 
     if !response.status().is_success() {
-        return Err(format!("Download failed with status: {}", response.status()));
+        return Err(format!(
+            "Download failed for {model_size} with status: {} ({url})",
+            response.status()
+        ));
     }
 
     let total = response.content_length().unwrap_or(0);
@@ -39,6 +47,12 @@ pub async fn download_model(
     use futures_util::StreamExt;
 
     while let Some(chunk) = stream.next().await {
+        if cancel.load(Ordering::SeqCst) {
+            let _ = std::fs::remove_file(dest);
+            cancel.store(false, Ordering::SeqCst);
+            return Err("Download cancelled".into());
+        }
+
         let chunk = chunk.map_err(|e| format!("Download stream error: {}", e))?;
         file.write_all(&chunk).map_err(|e| e.to_string())?;
         downloaded += chunk.len() as u64;
@@ -49,11 +63,14 @@ pub async fn download_model(
             0.0
         };
 
-        let _ = app.emit("download-progress", DownloadProgress {
+        let payload = DownloadProgress {
+            model_size: model_size.to_string(),
             downloaded,
             total,
             percent,
-        });
+        };
+        let _ = app.emit("model:download:progress", payload.clone());
+        let _ = app.emit("download-progress", payload);
     }
 
     Ok(())

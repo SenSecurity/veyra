@@ -484,3 +484,17 @@ Tasks within Layer 3 are parallel-safe in principle, but the controller dispatch
 - **Settings v1 vs v3 nesting**: noted as a Phase 4 follow-up in T4.5; Phase 3 lives within v1 shape boundaries.
 - **Type safety**: every Tauri command goes through `src/lib/tauri.ts` typed wrapper. No raw `invoke` calls in components.
 - **Frontend test gate**: T14 runs Vitest; subsequent route tasks add their tests inline so the suite grows naturally.
+
+## Completion Status - 2026-05-01
+
+Implemented Phase 3 UI rewrite through the React shell, route matrix, v1 settings persistence UI, history search with virtualized rows, dictionary/snippet/scratchpad CRUD, first-run wizard gate, React overlay event listener, command palette, live event toasts, Vitest setup, and removal of the legacy vanilla entrypoint/CSS.
+
+Verification:
+- `npm run build` passed.
+- `npm test` passed.
+- `cargo test --manifest-path src-tauri/Cargo.toml` passed.
+- `npx tauri build --no-bundle` passed and produced `src-tauri/target/release/typr.exe`.
+
+Known Phase 4 carry-forward:
+- Settings tabs backed by fields not present in the v1 adapter remain informational until a nested v3 settings command is exposed.
+- Command palette ships page navigation; deeper quick-add actions can be expanded once route-level dialogs are centralized.

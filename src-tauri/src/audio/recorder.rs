@@ -7,6 +7,9 @@ use std::path::PathBuf;
 const TARGET_SAMPLE_RATE: usize = 16_000;
 /// Hard cap on captured audio (rolling window). Anything older than this is dropped.
 const MAX_SECONDS: usize = 120;
+/// Mic meter gain. Raw WASAPI f32 RMS values are commonly tiny, so the overlay
+/// needs perceptual gain before mapping speech to visible bars.
+const LEVEL_GAIN: f32 = 26.0;
 /// Rolling-window cap measured against the eventual 16kHz mono stream the test
 /// helpers and `current_duration_ms` assume. Production capture caps in raw
 /// samples computed from the live cpal config (see `apply_cap_with`).
@@ -17,6 +20,25 @@ fn apply_cap_with(buf: &mut Vec<f32>, max_samples: usize) {
     if buf.len() > max_samples {
         let overflow = buf.len() - max_samples;
         buf.drain(..overflow);
+    }
+}
+
+fn normalize_level(data: &[f32]) -> f32 {
+    if data.is_empty() {
+        return 0.0;
+    }
+    let rms = (data.iter().map(|s| s * s).sum::<f32>() / data.len() as f32).sqrt();
+    let peak = data
+        .iter()
+        .fold(0.0_f32, |max, sample| max.max(sample.abs()));
+    ((rms * LEVEL_GAIN).powf(0.75)).max(peak * 1.6).clamp(0.0, 1.0)
+}
+
+fn smooth_level(current: f32, next: f32) -> f32 {
+    if next > current {
+        current * 0.25 + next * 0.75
+    } else {
+        current * 0.82 + next * 0.18
     }
 }
 
@@ -56,6 +78,7 @@ unsafe impl Sync for SendStream {}
 
 pub struct AudioRecorder {
     samples: Arc<Mutex<Vec<f32>>>,
+    level: Arc<Mutex<f32>>,
     stream: Option<SendStream>,
     source_sample_rate: u32,
     source_channels: u16,
@@ -65,6 +88,7 @@ impl AudioRecorder {
     pub fn new() -> Self {
         Self {
             samples: Arc::new(Mutex::new(Vec::new())),
+            level: Arc::new(Mutex::new(0.0)),
             stream: None,
             source_sample_rate: 48000,
             source_channels: 1,
@@ -74,6 +98,7 @@ impl AudioRecorder {
     pub fn start(&mut self, mic_name: &str) -> Result<(), String> {
         // Clear any leftover samples from previous recording
         self.samples.lock().unwrap().clear();
+        *self.level.lock().unwrap() = 0.0;
 
         let host = cpal::default_host();
 
@@ -107,6 +132,7 @@ impl AudioRecorder {
         };
 
         let samples = self.samples.clone();
+        let level = self.level.clone();
         // Cap at MAX_SECONDS of raw audio. Buffer is interleaved frames at
         // `sample_rate * channels`, so cap scales with both.
         let raw_max_samples = (sample_rate as usize) * (channels as usize) * MAX_SECONDS;
@@ -117,6 +143,9 @@ impl AudioRecorder {
                     let mut buf = samples.lock().unwrap();
                     buf.extend_from_slice(data);
                     apply_cap_with(&mut buf, raw_max_samples);
+                    let normalized = normalize_level(data);
+                    let mut current_level = level.lock().unwrap();
+                    *current_level = smooth_level(*current_level, normalized);
                 },
                 |err| {
                     eprintln!("[Typr] Audio stream error: {}", err);
@@ -131,8 +160,16 @@ impl AudioRecorder {
         Ok(())
     }
 
+    pub fn cancel(&mut self) {
+        self.stream = None;
+        self.samples.lock().unwrap().clear();
+        *self.level.lock().unwrap() = 0.0;
+        println!("[Typr] Audio recording cancelled");
+    }
+
     pub fn stop_and_save(&mut self, output_path: &PathBuf) -> Result<PathBuf, String> {
         self.stream = None; // Drop stops the stream
+        *self.level.lock().unwrap() = 0.0;
         println!("[Typr] Audio recording stopped");
 
         let samples = self.samples.lock().unwrap();
@@ -193,6 +230,10 @@ impl AudioRecorder {
         ((buf.len() as u64) * 1000) / samples_per_second
     }
 
+    pub fn current_level(&self) -> f32 {
+        *self.level.lock().unwrap()
+    }
+
     #[cfg(test)]
     pub fn push_test_samples(&mut self, frames: Vec<f32>) {
         // Test shim assumes 16kHz mono; pin source config so
@@ -201,6 +242,9 @@ impl AudioRecorder {
         self.source_channels = 1;
         let mut buf = self.samples.lock().unwrap();
         buf.extend(frames);
+        let normalized = normalize_level(&buf);
+        let mut current_level = self.level.lock().unwrap();
+        *current_level = smooth_level(*current_level, normalized);
         apply_cap_with(&mut buf, MAX_SAMPLES_16K_MONO);
     }
 
@@ -251,6 +295,16 @@ mod tests {
         rec.source_sample_rate = 0;
         rec.source_channels = 0;
         assert_eq!(rec.current_duration_ms(), 0);
+    }
+
+    #[test]
+    fn current_level_reflects_recent_samples_and_cancel_resets() {
+        let mut rec = AudioRecorder::new();
+        rec.push_test_samples(vec![0.5f32; 1600]);
+        assert!(rec.current_level() > 0.0);
+        rec.cancel();
+        assert_eq!(rec.current_level(), 0.0);
+        assert!(rec.snapshot_test_samples().is_empty());
     }
 }
 
