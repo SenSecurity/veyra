@@ -121,9 +121,9 @@ export function SettingsTranscriptionRoute() {
           value={whisperModel}
           onChange={(e) => saveWhisperModel(e.target.value)}
         >
-          <option value="turbo">turbo</option>
-          <option value="base">base</option>
-          <option value="large-v3">large-v3</option>
+          <option value="turbo">turbo - recommended</option>
+          <option value="base">base - fastest/lightest</option>
+          <option value="large-v3">large-v3 - highest accuracy</option>
         </select>
       </label>
       <div className="flex gap-2">
@@ -187,7 +187,7 @@ export function SettingsTranscriptionRoute() {
           value={settings.emailDraftModel}
           onChange={(e) => void update({ emailDraftModel: e.target.value })}
         >
-          <option value="llama-3.3-70b-versatile">Llama 3.3 70B - balanced</option>
+          <option value="llama-3.3-70b-versatile">Llama 3.3 70B - recommended</option>
           <option value="llama-3.1-8b-instant">Llama 3.1 8B - fastest</option>
           <option value="openai/gpt-oss-120b">GPT-OSS 120B - stronger</option>
           <option value="openai/gpt-oss-20b">GPT-OSS 20B - fast</option>
