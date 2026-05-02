@@ -1111,8 +1111,12 @@ async fn check_email_draft_model(key: String, engine: String, model: String) -> 
 }
 
 #[tauri::command]
-async fn download_email_draft_model(engine: String, model: String) -> Result<(), String> {
-    typr_lib::draft_email::download_email_draft_model(&engine, &model).await
+async fn download_email_draft_model(
+    app: tauri::AppHandle,
+    engine: String,
+    model: String,
+) -> Result<(), String> {
+    typr_lib::draft_email::download_email_draft_model(Some(app), &engine, &model).await
 }
 
 fn main() {
