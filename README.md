@@ -2,118 +2,93 @@
 
 ![Veyra interface preview](docs/assets/veyra-hero.svg)
 
-**Veyra** is a local-first Windows dictation app built with Tauri, React, whisper.cpp, and Groq fallback. It is designed to feel fast, quiet, and close to the text field you are working in: press the hotkey, speak, stop, and Veyra transcribes into the active app.
+Veyra is a Windows speech-to-text app. Press a hotkey, speak, stop, and Veyra writes into the app you were using.
 
-## Highlights
+It runs dictation locally with whisper.cpp. Email/message drafts can run locally with Ollama.
 
-- Floating recording overlay with animated waveform and transcribing state.
-- Local whisper.cpp transcription with optional Groq fallback.
-- Setup wizard for first-run configuration.
-- History, dictionary, snippets, scratchpad, stats, and settings screens.
-- Global hotkey support with push-to-talk and toggle-style recording flows.
-- Model download controls with cancellation support.
-- Local SQLite storage for transcription history and productivity data.
+## Install
 
-## Current Status
+Download the latest Windows installer from:
 
-Veyra is in active development. The product branding is Veyra, while some internal paths and binary names still use `typr` for compatibility with existing local settings, models, and data.
+[github.com/SenSecurity/veyra/releases/latest](https://github.com/SenSecurity/veyra/releases/latest)
 
-## Install Veyra
-
-Veyra currently targets Windows.
-
-### Option 1: Run the release executable
-
-Build the production executable:
-
-```bash
-npm install
-npx tauri build --no-bundle
-```
-
-Then run:
+Run:
 
 ```text
-src-tauri/target/release/typr.exe
+Veyra_0.1.0_x64-setup.exe
 ```
 
-The app opens as **Veyra**. The executable is still named `typr.exe` for now because the internal Rust package has not yet been migrated.
+The installer also installs Ollama if it is missing. Ollama is used for local email/message drafts.
 
-### Option 2: Build an installer
-
-Generate the full Tauri bundle:
-
-```bash
-npm install
-npm run tauri build
-```
-
-The installer/bundle output is created under:
-
-```text
-src-tauri/target/release/bundle/
-```
-
-Use the generated Windows installer from that folder for a product-style installation.
-
-On Windows, the NSIS installer checks for Ollama and installs it automatically when it is missing. The direct `typr.exe` build does not run installer hooks, so Ollama is only bootstrapped automatically when using the generated setup executable.
-
-## First Run
+## First Setup
 
 1. Open Veyra.
 2. Go to **Settings -> Transcription**.
-3. Choose `Local whisper.cpp`.
-4. Select the `turbo` model.
-5. Click **Download model**.
-6. For email drafts, keep **Email draft engine** on `Local Ollama` and click **Download email model**. Installer builds install Ollama automatically; direct executable builds may ask you to install it from Settings.
-7. Set your hotkey/recording mode in **Settings -> General**.
-8. Use the tray icon to show, hide, or exit Veyra.
+3. Under **Whisper model**, keep `turbo - Recommended`.
+4. Click **Download model**.
+5. Under **Email draft model**, keep `Llama 3.2 3B - Recommended`.
+6. Click **Download email model**.
+7. Go to **Settings -> Hotkeys** and set the keys you want.
 
-Local app data currently stays under the existing compatibility identifier:
+## Use
 
-```text
-%APPDATA%/com.typr.app/
-```
+Default modes:
 
-This keeps existing settings, models, and transcription history working while the app is branded as Veyra.
+- Dictation: speak normal text and Veyra pastes the transcription.
+- Email draft: speak an instruction like "reply to this email in English saying I can meet tomorrow" and Veyra writes the draft.
 
-## Development
+The floating overlay appears while recording and transcribing. The tray icon lets you show, hide, or exit Veyra.
+
+## Build From Source
+
+Requirements:
+
+- Windows
+- Node.js
+- Rust
+
+Install dependencies:
 
 ```bash
 npm install
-npm run dev
 ```
 
-Run the desktop app in development:
+Run in development:
 
 ```bash
 npm run tauri dev
 ```
 
-Build and validate:
+Build the Windows installer:
 
 ```bash
-npm run build
-npm test
-cargo check --manifest-path src-tauri/Cargo.toml
+npm run tauri build
+```
+
+Output:
+
+```text
+src-tauri/target/release/bundle/nsis/
+```
+
+Build only the executable:
+
+```bash
 npx tauri build --no-bundle
 ```
 
-## Tech Stack
+Note: the direct executable is still named `typr.exe` internally. Use the installer for the normal product install flow.
 
-- Tauri 2
-- React 19
-- TypeScript
-- Tailwind CSS
-- SQLite
-- whisper.cpp
-- Groq Whisper API fallback
-- Rust audio and transcription pipeline
+## Validate
 
-## Roadmap
+```bash
+npm run build
+npm test -- --run
+cargo test --manifest-path src-tauri/Cargo.toml
+npx tauri build --bundles nsis
+```
 
-- Full Veyra packaging migration, including executable and app identifier.
-- Better onboarding around local model download and health status.
-- More polished sound design and overlay states.
-- Import/export for dictionary, snippets, and settings.
-- Installer and signed release builds.
+## Notes
+
+- App data is currently stored under `%APPDATA%/com.typr.app/` for compatibility with earlier builds.
+- Some internal filenames still use `typr`; the product name is Veyra.
