@@ -21,12 +21,17 @@ export function useLiveEvents() {
       listen<{ modelSize: string; downloaded: number; total: number }>(
         "model:download:progress",
         (e) => {
+          const id = `model-${e.payload.modelSize}`;
           const pct =
             e.payload.total > 0
               ? Math.round((e.payload.downloaded / e.payload.total) * 100)
               : 0;
+          if (e.payload.total > 0 && e.payload.downloaded >= e.payload.total) {
+            toast.dismiss(id);
+            return;
+          }
           toast.loading(`Downloading ${e.payload.modelSize}: ${pct}%`, {
-            id: `model-${e.payload.modelSize}`,
+            id,
           });
         },
       ),
