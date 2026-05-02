@@ -13,6 +13,12 @@ pub struct Settings {
     #[serde(rename = "recordingMode")]
     pub recording_mode: String,
     pub hotkey: String,
+    #[serde(rename = "commandHotkey", default = "default_command_hotkey")]
+    pub command_hotkey: String,
+}
+
+fn default_command_hotkey() -> String {
+    "F12".to_string()
 }
 
 impl Default for Settings {
@@ -24,6 +30,7 @@ impl Default for Settings {
             groq_api_key: String::new(),
             recording_mode: "toggle".to_string(),
             hotkey: "F24".to_string(),
+            command_hotkey: default_command_hotkey(),
         }
     }
 }
@@ -63,6 +70,7 @@ mod tests {
         assert_eq!(settings.groq_api_key, "");
         assert_eq!(settings.recording_mode, "toggle");
         assert_eq!(settings.hotkey, "F24");
+        assert_eq!(settings.command_hotkey, "F12");
     }
 
     #[test]

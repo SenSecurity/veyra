@@ -115,7 +115,7 @@ impl Default for Settings {
             },
             hotkeys: Hotkeys {
                 dictation: "F24".to_string(),
-                command_mode: "Shift+F24".to_string(),
+                command_mode: "F12".to_string(),
                 recording_mode: "push-to-talk".to_string(),
             },
             overlay: Overlay {
@@ -175,7 +175,7 @@ mod tests {
         assert!(s.transcription.vad_enabled);
         assert!((s.transcription.no_speech_threshold - 0.6).abs() < 1e-9);
         assert_eq!(s.hotkeys.dictation, "F24");
-        assert_eq!(s.hotkeys.command_mode, "Shift+F24");
+        assert_eq!(s.hotkeys.command_mode, "F12");
         assert_eq!(s.hotkeys.recording_mode, "push-to-talk");
         assert_eq!(s.overlay.style, "pill");
         assert_eq!(s.data.word_count_cap, 500_000);

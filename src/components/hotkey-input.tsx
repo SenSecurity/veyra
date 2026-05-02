@@ -12,7 +12,8 @@ export function HotkeyInput({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       onKeyDown={(e) => {
-        if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) return;
+        const isFunctionKey = /^F\d{1,2}$/.test(e.key);
+        if (!isFunctionKey && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) return;
         e.preventDefault();
         const parts = [
           e.ctrlKey ? "Ctrl" : "",
