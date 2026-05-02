@@ -13,6 +13,8 @@ export function SettingsTranscriptionRoute() {
   const [checking, setChecking] = useState(false);
   const [modelReady, setModelReady] = useState(false);
   const [checkingModel, setCheckingModel] = useState(false);
+  const [emailModelReady, setEmailModelReady] = useState(false);
+  const [checkingEmailModel, setCheckingEmailModel] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -35,6 +37,20 @@ export function SettingsTranscriptionRoute() {
       .catch(() => setModelReady(false))
       .finally(() => setCheckingModel(false));
   }, [settings, whisperModel]);
+
+  useEffect(() => {
+    if (!settings) return;
+    if (!settings.groqApiKey.trim()) {
+      setEmailModelReady(false);
+      return;
+    }
+    setCheckingEmailModel(true);
+    void ipc
+      .checkEmailDraftModel(settings.groqApiKey, settings.emailDraftModel)
+      .then(() => setEmailModelReady(true))
+      .catch(() => setEmailModelReady(false))
+      .finally(() => setCheckingEmailModel(false));
+  }, [settings?.emailDraftModel, settings?.groqApiKey]);
 
   useEffect(() => {
     const un = listen<{ modelSize: string; downloaded: number; total: number; percent: number }>(
@@ -153,7 +169,19 @@ export function SettingsTranscriptionRoute() {
         </div>
       )}
       <label className="grid gap-2 text-sm">
-        <span className="font-medium">Email draft model</span>
+        <div className="flex items-center justify-between gap-3">
+          <span className="font-medium">Email draft model</span>
+          <span
+            className={
+              emailModelReady
+                ? "inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200"
+                : "inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground ring-1 ring-border"
+            }
+          >
+            {emailModelReady ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
+            {checkingEmailModel ? "Checking" : emailModelReady ? "Operational" : "Not checked"}
+          </span>
+        </div>
         <select
           className="h-9 rounded-md border border-border bg-background px-3"
           value={settings.emailDraftModel}
@@ -165,6 +193,27 @@ export function SettingsTranscriptionRoute() {
           <option value="openai/gpt-oss-20b">GPT-OSS 20B - fast</option>
         </select>
       </label>
+      <Button
+        type="button"
+        variant="outline"
+        disabled={checkingEmailModel}
+        onClick={() => {
+          setCheckingEmailModel(true);
+          void ipc
+            .checkEmailDraftModel(settings.groqApiKey, settings.emailDraftModel)
+            .then(() => {
+              setEmailModelReady(true);
+              toast.success("Email model operational");
+            })
+            .catch((e) => {
+              setEmailModelReady(false);
+              toast.error(String(e));
+            })
+            .finally(() => setCheckingEmailModel(false));
+        }}
+      >
+        Check email model
+      </Button>
       <label className="grid gap-2 text-sm">
         <span className="font-medium">Groq API key</span>
         <Input
