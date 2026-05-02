@@ -23,6 +23,7 @@ export function SettingsTranscriptionRoute() {
     settings?.whisperModel === "ggml-large-v3-turbo.bin"
       ? "turbo"
       : settings?.whisperModel ?? "turbo";
+  const hasGroqKey = Boolean(settings?.groqApiKey.trim());
 
   const saveWhisperModel = (value: string) => {
     void update({ whisperModel: value });
@@ -40,7 +41,7 @@ export function SettingsTranscriptionRoute() {
 
   useEffect(() => {
     if (!settings) return;
-    if (!settings.groqApiKey.trim()) {
+    if (!hasGroqKey) {
       setEmailModelReady(false);
       return;
     }
@@ -50,7 +51,7 @@ export function SettingsTranscriptionRoute() {
       .then(() => setEmailModelReady(true))
       .catch(() => setEmailModelReady(false))
       .finally(() => setCheckingEmailModel(false));
-  }, [settings?.emailDraftModel, settings?.groqApiKey]);
+  }, [hasGroqKey, settings?.emailDraftModel, settings?.groqApiKey]);
 
   useEffect(() => {
     const un = listen<{ modelSize: string; downloaded: number; total: number; percent: number }>(
@@ -193,7 +194,7 @@ export function SettingsTranscriptionRoute() {
             }
           >
             {emailModelReady ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
-            {checkingEmailModel ? "Checking" : emailModelReady ? "Operational" : "Not checked"}
+            {!hasGroqKey ? "Needs API key" : checkingEmailModel ? "Checking" : emailModelReady ? "Operational" : "Not checked"}
           </span>
         </div>
         <select
@@ -214,13 +215,18 @@ export function SettingsTranscriptionRoute() {
           disabled
           title="Email draft models run in Groq Cloud and do not need a local download."
         >
-          No download required
+          Cloud model - no download
         </Button>
         <Button
           type="button"
           variant="outline"
-          disabled={checkingEmailModel}
+          disabled={checkingEmailModel || !hasGroqKey}
+          title={hasGroqKey ? "Check this Groq model" : "Enter a Groq API key first"}
           onClick={() => {
+            if (!hasGroqKey) {
+              toast.error("Enter a Groq API key first");
+              return;
+            }
             setCheckingEmailModel(true);
             void ipc
               .checkEmailDraftModel(settings.groqApiKey, settings.emailDraftModel)
