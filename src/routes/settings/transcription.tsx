@@ -104,7 +104,14 @@ export function SettingsTranscriptionRoute() {
       </label>
       <label className="grid gap-2 text-sm">
         <div className="flex items-center justify-between gap-3">
-          <span className="font-medium">Whisper model</span>
+          <div className="flex items-center gap-2">
+            <span className="font-medium">Whisper model</span>
+            {whisperModel === "turbo" ? (
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary ring-1 ring-primary/20">
+                Recommended
+              </span>
+            ) : null}
+          </div>
           <span
             className={
               modelReady
@@ -121,7 +128,7 @@ export function SettingsTranscriptionRoute() {
           value={whisperModel}
           onChange={(e) => saveWhisperModel(e.target.value)}
         >
-          <option value="turbo">turbo - recommended</option>
+          <option value="turbo">turbo - Recommended</option>
           <option value="base">base - fastest/lightest</option>
           <option value="large-v3">large-v3 - highest accuracy</option>
         </select>
@@ -170,7 +177,14 @@ export function SettingsTranscriptionRoute() {
       )}
       <label className="grid gap-2 text-sm">
         <div className="flex items-center justify-between gap-3">
-          <span className="font-medium">Email draft model</span>
+          <div className="flex items-center gap-2">
+            <span className="font-medium">Email draft model</span>
+            {settings.emailDraftModel === "llama-3.3-70b-versatile" ? (
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary ring-1 ring-primary/20">
+                Recommended
+              </span>
+            ) : null}
+          </div>
           <span
             className={
               emailModelReady
@@ -187,7 +201,7 @@ export function SettingsTranscriptionRoute() {
           value={settings.emailDraftModel}
           onChange={(e) => void update({ emailDraftModel: e.target.value })}
         >
-          <option value="llama-3.3-70b-versatile">Llama 3.3 70B - recommended</option>
+          <option value="llama-3.3-70b-versatile">Llama 3.3 70B - Recommended</option>
           <option value="llama-3.1-8b-instant">Llama 3.1 8B - fastest</option>
           <option value="openai/gpt-oss-120b">GPT-OSS 120B - stronger</option>
           <option value="openai/gpt-oss-20b">GPT-OSS 20B - fast</option>
