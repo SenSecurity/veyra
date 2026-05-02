@@ -1,10 +1,25 @@
 use reqwest::multipart;
 use std::path::PathBuf;
+use std::time::Instant;
 
-pub async fn transcribe_groq(api_key: &str, audio_path: &PathBuf) -> Result<String, String> {
+use crate::pipeline::transcribe::TranscriptionResult;
+
+/// Cloud transcription via Groq's whisper-large-v3-turbo endpoint.
+///
+/// Phase 2 keeps `response_format=json`, so the response only carries `text`
+/// and we can't recover language/duration from upstream. Switching to
+/// `verbose_json` is a Phase 3+ enhancement; for now `language` is `None`,
+/// `model` hard-codes the literal we send in the multipart form, and
+/// `duration_ms` is the wall-clock cost of the whole HTTP roundtrip.
+pub async fn transcribe_groq(
+    api_key: &str,
+    audio_path: &PathBuf,
+) -> Result<TranscriptionResult, String> {
     if api_key.is_empty() {
         return Err("Groq API key not set. Please enter your API key in settings.".to_string());
     }
+
+    let started = Instant::now();
 
     let audio_bytes = std::fs::read(audio_path)
         .map_err(|e| format!("Failed to read audio file: {}", e))?;
@@ -40,10 +55,19 @@ pub async fn transcribe_groq(api_key: &str, audio_path: &PathBuf) -> Result<Stri
         .await
         .map_err(|e| format!("Failed to parse Groq response: {}", e))?;
 
-    json["text"]
+    let text = json["text"]
         .as_str()
         .map(|s| s.to_string())
-        .ok_or("No 'text' field in Groq response".to_string())
+        .ok_or_else(|| "No 'text' field in Groq response".to_string())?;
+
+    let duration_ms = started.elapsed().as_millis() as u64;
+
+    Ok(TranscriptionResult {
+        text,
+        language: None,
+        duration_ms,
+        model: "groq:whisper-large-v3-turbo".to_string(),
+    })
 }
 
 #[cfg(test)]

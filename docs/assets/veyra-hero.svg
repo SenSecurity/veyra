@@ -1,0 +1,98 @@
+<svg width="1280" height="720" viewBox="0 0 1280 720" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Veyra desktop dictation preview</title>
+  <desc id="desc">Stylized Veyra app interface with a floating recording pill and waveform.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="720" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0B1020"/>
+      <stop offset="0.48" stop-color="#111827"/>
+      <stop offset="1" stop-color="#172033"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="150" y1="86" x2="1118" y2="646" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8FAFC"/>
+      <stop offset="1" stop-color="#E8EEF6"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="427" y1="502" x2="854" y2="575" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#111827"/>
+      <stop offset="1" stop-color="#06080D"/>
+    </linearGradient>
+    <filter id="softShadow" x="112" y="52" width="1056" height="648" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+      <feOffset dy="24"/>
+      <feGaussianBlur stdDeviation="32"/>
+      <feComposite in2="hardAlpha" operator="out"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.02 0 0 0 0 0.03 0 0 0 0 0.06 0 0 0 0.42 0"/>
+      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow" result="shape"/>
+    </filter>
+    <filter id="pillShadow" x="368" y="462" width="544" height="130" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+      <feOffset dy="14"/>
+      <feGaussianBlur stdDeviation="22"/>
+      <feComposite in2="hardAlpha" operator="out"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.38 0"/>
+      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow" result="shape"/>
+    </filter>
+  </defs>
+
+  <rect width="1280" height="720" fill="url(#bg)"/>
+
+  <g filter="url(#softShadow)">
+    <rect x="150" y="86" width="980" height="552" rx="28" fill="url(#panel)"/>
+    <rect x="150.5" y="86.5" width="979" height="551" rx="27.5" stroke="#FFFFFF" stroke-opacity="0.6"/>
+
+    <rect x="150" y="86" width="980" height="54" rx="28" fill="#0B0F19"/>
+    <rect x="150" y="117" width="980" height="23" fill="#0B0F19"/>
+    <circle cx="181" cy="113" r="6" fill="#EF4444"/>
+    <circle cx="203" cy="113" r="6" fill="#F59E0B"/>
+    <circle cx="225" cy="113" r="6" fill="#22C55E"/>
+    <text x="260" y="119" fill="#F8FAFC" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18" font-weight="700">Veyra</text>
+
+    <rect x="150" y="140" width="218" height="498" fill="#F8FAFC"/>
+    <rect x="368" y="140" width="1" height="498" fill="#D7DEE8"/>
+    <text x="190" y="200" fill="#111827" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18" font-weight="700">Veyra</text>
+    <rect x="190" y="230" width="132" height="34" rx="9" fill="#E8EEF6"/>
+    <rect x="190" y="284" width="110" height="13" rx="6.5" fill="#AAB6C7"/>
+    <rect x="190" y="326" width="138" height="13" rx="6.5" fill="#AAB6C7"/>
+    <rect x="190" y="368" width="116" height="13" rx="6.5" fill="#AAB6C7"/>
+    <rect x="190" y="410" width="128" height="13" rx="6.5" fill="#AAB6C7"/>
+
+    <text x="430" y="210" fill="#111827" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="34" font-weight="800">Dictation that stays out of the way.</text>
+    <text x="430" y="252" fill="#475569" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="18">Local-first transcription, a calm overlay, and fast text injection.</text>
+
+    <rect x="430" y="304" width="620" height="64" rx="14" fill="#FFFFFF" stroke="#D7DEE8"/>
+    <rect x="462" y="327" width="214" height="14" rx="7" fill="#111827"/>
+    <rect x="702" y="327" width="164" height="14" rx="7" fill="#CBD5E1"/>
+    <rect x="892" y="327" width="94" height="14" rx="7" fill="#CBD5E1"/>
+
+    <rect x="430" y="392" width="292" height="74" rx="16" fill="#FFFFFF" stroke="#D7DEE8"/>
+    <rect x="752" y="392" width="298" height="74" rx="16" fill="#FFFFFF" stroke="#D7DEE8"/>
+    <rect x="462" y="420" width="132" height="13" rx="6.5" fill="#111827"/>
+    <rect x="462" y="444" width="214" height="10" rx="5" fill="#CBD5E1"/>
+    <rect x="784" y="420" width="146" height="13" rx="6.5" fill="#111827"/>
+    <rect x="784" y="444" width="220" height="10" rx="5" fill="#CBD5E1"/>
+  </g>
+
+  <g filter="url(#pillShadow)">
+    <rect x="428" y="492" width="424" height="64" rx="32" fill="url(#accent)"/>
+    <circle cx="468" cy="524" r="18" fill="#252A35"/>
+    <path d="M462 518L474 530M474 518L462 530" stroke="#D9DEE8" stroke-width="2" stroke-linecap="round"/>
+    <rect x="518" y="509" width="5" height="30" rx="2.5" fill="#FFFFFF"/>
+    <rect x="532" y="514" width="5" height="20" rx="2.5" fill="#FFFFFF"/>
+    <rect x="546" y="504" width="5" height="40" rx="2.5" fill="#FFFFFF"/>
+    <rect x="560" y="511" width="5" height="26" rx="2.5" fill="#FFFFFF"/>
+    <rect x="574" y="499" width="5" height="50" rx="2.5" fill="#FFFFFF"/>
+    <rect x="588" y="515" width="5" height="18" rx="2.5" fill="#FFFFFF"/>
+    <rect x="602" y="506" width="5" height="36" rx="2.5" fill="#FFFFFF"/>
+    <rect x="616" y="512" width="5" height="24" rx="2.5" fill="#FFFFFF"/>
+    <rect x="630" y="502" width="5" height="44" rx="2.5" fill="#FFFFFF"/>
+    <rect x="644" y="515" width="5" height="18" rx="2.5" fill="#FFFFFF"/>
+    <text x="676" y="531" fill="#F8FAFC" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="16" font-weight="700">Transcribing</text>
+    <circle cx="812" cy="524" r="18" fill="#FF3B64"/>
+    <rect x="805" y="517" width="14" height="14" rx="4" fill="#FFFFFF"/>
+  </g>
+
+  <text x="150" y="688" fill="#94A3B8" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="15">Veyra preview - local dictation, subtle overlay, fast transcription.</text>
+</svg>

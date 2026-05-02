@@ -1,0 +1,336 @@
+use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+use hound::{WavSpec, WavWriter};
+use std::sync::{Arc, Mutex};
+use std::path::PathBuf;
+
+/// Target sample rate after resampling — matches whisper.cpp expected input.
+const TARGET_SAMPLE_RATE: usize = 16_000;
+/// Hard cap on captured audio (rolling window). Anything older than this is dropped.
+const MAX_SECONDS: usize = 120;
+/// Mic meter gain. Raw WASAPI f32 RMS values are commonly tiny, so the overlay
+/// needs perceptual gain before mapping speech to visible bars.
+const LEVEL_GAIN: f32 = 26.0;
+/// Rolling-window cap measured against the eventual 16kHz mono stream the test
+/// helpers and `current_duration_ms` assume. Production capture caps in raw
+/// samples computed from the live cpal config (see `apply_cap_with`).
+#[cfg(test)]
+const MAX_SAMPLES_16K_MONO: usize = TARGET_SAMPLE_RATE * MAX_SECONDS;
+
+fn apply_cap_with(buf: &mut Vec<f32>, max_samples: usize) {
+    if buf.len() > max_samples {
+        let overflow = buf.len() - max_samples;
+        buf.drain(..overflow);
+    }
+}
+
+fn normalize_level(data: &[f32]) -> f32 {
+    if data.is_empty() {
+        return 0.0;
+    }
+    let rms = (data.iter().map(|s| s * s).sum::<f32>() / data.len() as f32).sqrt();
+    let peak = data
+        .iter()
+        .fold(0.0_f32, |max, sample| max.max(sample.abs()));
+    ((rms * LEVEL_GAIN).powf(0.75)).max(peak * 1.6).clamp(0.0, 1.0)
+}
+
+fn smooth_level(current: f32, next: f32) -> f32 {
+    if next > current {
+        current * 0.25 + next * 0.75
+    } else {
+        current * 0.82 + next * 0.18
+    }
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct MicDevice {
+    pub name: String,
+    pub is_default: bool,
+}
+
+pub fn list_microphones() -> Vec<MicDevice> {
+    let host = cpal::default_host();
+    let default_name = host
+        .default_input_device()
+        .and_then(|d| d.name().ok())
+        .unwrap_or_default();
+
+    let mut devices = Vec::new();
+    if let Ok(input_devices) = host.input_devices() {
+        for device in input_devices {
+            if let Ok(name) = device.name() {
+                devices.push(MicDevice {
+                    is_default: name == default_name,
+                    name,
+                });
+            }
+        }
+    }
+    devices
+}
+
+/// Wrapper to make cpal::Stream usable across threads.
+/// SAFETY: Typr is Windows-only; cpal::Stream over WASAPI is thread-safe in
+/// practice. We only touch it behind a Mutex to start/stop recording.
+struct SendStream(#[allow(dead_code)] cpal::Stream);
+unsafe impl Send for SendStream {}
+unsafe impl Sync for SendStream {}
+
+pub struct AudioRecorder {
+    samples: Arc<Mutex<Vec<f32>>>,
+    level: Arc<Mutex<f32>>,
+    stream: Option<SendStream>,
+    source_sample_rate: u32,
+    source_channels: u16,
+}
+
+impl AudioRecorder {
+    pub fn new() -> Self {
+        Self {
+            samples: Arc::new(Mutex::new(Vec::new())),
+            level: Arc::new(Mutex::new(0.0)),
+            stream: None,
+            source_sample_rate: 48000,
+            source_channels: 1,
+        }
+    }
+
+    pub fn start(&mut self, mic_name: &str) -> Result<(), String> {
+        // Clear any leftover samples from previous recording
+        self.samples.lock().unwrap().clear();
+        *self.level.lock().unwrap() = 0.0;
+
+        let host = cpal::default_host();
+
+        let device = if mic_name == "default" {
+            host.default_input_device()
+                .ok_or("No default input device found")?
+        } else {
+            host.input_devices()
+                .map_err(|e| e.to_string())?
+                .find(|d| d.name().map(|n| n == mic_name).unwrap_or(false))
+                .ok_or(format!("Microphone '{}' not found", mic_name))?
+        };
+
+        // Use the device's default config instead of forcing 16kHz
+        let default_config = device
+            .default_input_config()
+            .map_err(|e| format!("Failed to get default input config: {}", e))?;
+
+        let sample_rate = default_config.sample_rate().0;
+        let channels = default_config.channels();
+
+        println!("[Typr] Mic config: {}Hz, {} channels", sample_rate, channels);
+
+        self.source_sample_rate = sample_rate;
+        self.source_channels = channels;
+
+        let config = cpal::StreamConfig {
+            channels,
+            sample_rate: cpal::SampleRate(sample_rate),
+            buffer_size: cpal::BufferSize::Default,
+        };
+
+        let samples = self.samples.clone();
+        let level = self.level.clone();
+        // Cap at MAX_SECONDS of raw audio. Buffer is interleaved frames at
+        // `sample_rate * channels`, so cap scales with both.
+        let raw_max_samples = (sample_rate as usize) * (channels as usize) * MAX_SECONDS;
+        let stream = device
+            .build_input_stream(
+                &config,
+                move |data: &[f32], _: &cpal::InputCallbackInfo| {
+                    let mut buf = samples.lock().unwrap();
+                    buf.extend_from_slice(data);
+                    apply_cap_with(&mut buf, raw_max_samples);
+                    let normalized = normalize_level(data);
+                    let mut current_level = level.lock().unwrap();
+                    *current_level = smooth_level(*current_level, normalized);
+                },
+                |err| {
+                    eprintln!("[Typr] Audio stream error: {}", err);
+                },
+                None,
+            )
+            .map_err(|e| e.to_string())?;
+
+        stream.play().map_err(|e| e.to_string())?;
+        self.stream = Some(SendStream(stream));
+        println!("[Typr] Audio recording started");
+        Ok(())
+    }
+
+    pub fn cancel(&mut self) {
+        self.stream = None;
+        self.samples.lock().unwrap().clear();
+        *self.level.lock().unwrap() = 0.0;
+        println!("[Typr] Audio recording cancelled");
+    }
+
+    pub fn stop_and_save(&mut self, output_path: &PathBuf) -> Result<PathBuf, String> {
+        self.stream = None; // Drop stops the stream
+        *self.level.lock().unwrap() = 0.0;
+        println!("[Typr] Audio recording stopped");
+
+        let samples = self.samples.lock().unwrap();
+        if samples.is_empty() {
+            return Err("No audio captured".to_string());
+        }
+
+        println!("[Typr] Captured {} raw samples", samples.len());
+
+        // Convert to mono if multi-channel
+        let mono: Vec<f32> = if self.source_channels > 1 {
+            samples
+                .chunks(self.source_channels as usize)
+                .map(|frame| frame.iter().sum::<f32>() / frame.len() as f32)
+                .collect()
+        } else {
+            samples.clone()
+        };
+
+        // Downsample to 16kHz for whisper.cpp
+        let resampled = resample(&mono, self.source_sample_rate, TARGET_SAMPLE_RATE as u32);
+        println!("[Typr] Resampled to {} samples at 16kHz", resampled.len());
+
+        let spec = WavSpec {
+            channels: 1,
+            sample_rate: TARGET_SAMPLE_RATE as u32,
+            bits_per_sample: 16,
+            sample_format: hound::SampleFormat::Int,
+        };
+
+        let mut writer = WavWriter::create(output_path, spec).map_err(|e| e.to_string())?;
+        for &sample in resampled.iter() {
+            let amplitude = (sample.clamp(-1.0, 1.0) * i16::MAX as f32) as i16;
+            writer.write_sample(amplitude).map_err(|e| e.to_string())?;
+        }
+        writer.finalize().map_err(|e| e.to_string())?;
+
+        drop(samples);
+        self.samples.lock().unwrap().clear();
+
+        println!("[Typr] WAV saved to {:?}", output_path);
+        Ok(output_path.clone())
+    }
+
+    /// Returns how much wall-clock audio is currently buffered, in milliseconds.
+    ///
+    /// The live buffer holds raw cpal interleaved frames at
+    /// `source_sample_rate * source_channels`, so we divide by that product to
+    /// get a true wall-clock duration regardless of the device config. Returns
+    /// 0 if the source config has not been initialised yet (defensive).
+    pub fn current_duration_ms(&self) -> u64 {
+        let buf = self.samples.lock().unwrap();
+        let samples_per_second =
+            (self.source_sample_rate as u64) * (self.source_channels as u64);
+        if samples_per_second == 0 {
+            return 0;
+        }
+        ((buf.len() as u64) * 1000) / samples_per_second
+    }
+
+    pub fn current_level(&self) -> f32 {
+        *self.level.lock().unwrap()
+    }
+
+    #[cfg(test)]
+    pub fn push_test_samples(&mut self, frames: Vec<f32>) {
+        // Test shim assumes 16kHz mono; pin source config so
+        // `current_duration_ms` reports against that shape.
+        self.source_sample_rate = TARGET_SAMPLE_RATE as u32;
+        self.source_channels = 1;
+        let mut buf = self.samples.lock().unwrap();
+        buf.extend(frames);
+        let normalized = normalize_level(&buf);
+        let mut current_level = self.level.lock().unwrap();
+        *current_level = smooth_level(*current_level, normalized);
+        apply_cap_with(&mut buf, MAX_SAMPLES_16K_MONO);
+    }
+
+    #[cfg(test)]
+    pub fn snapshot_test_samples(&self) -> Vec<f32> {
+        self.samples.lock().unwrap().clone()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ring_buffer_caps_at_120_seconds() {
+        let mut rec = AudioRecorder::new();
+        let total_samples = 16_000 * 130; // 130s
+        rec.push_test_samples(vec![0.5f32; total_samples]);
+        let captured = rec.snapshot_test_samples();
+        assert!(captured.len() <= 16_000 * 120, "expected <= 120s, got {} samples", captured.len());
+        assert_eq!(captured.len(), 16_000 * 120, "expected exactly 120s after rolling-window cap");
+    }
+
+    #[test]
+    fn current_duration_ms_reports_buffered_audio() {
+        let mut rec = AudioRecorder::new();
+        rec.push_test_samples(vec![0.0f32; 16_000 * 5]); // 5s
+        assert_eq!(rec.current_duration_ms(), 5_000);
+    }
+
+    #[test]
+    fn current_duration_ms_handles_native_rate_stereo() {
+        // Simulate the production cpal path: 48kHz stereo interleaved frames.
+        // 5s wall-clock = 5 * 48000 * 2 = 480_000 samples.
+        let mut rec = AudioRecorder::new();
+        rec.source_sample_rate = 48_000;
+        rec.source_channels = 2;
+        rec.samples
+            .lock()
+            .unwrap()
+            .extend(vec![0.0f32; 48_000 * 2 * 5]);
+        assert_eq!(rec.current_duration_ms(), 5_000);
+    }
+
+    #[test]
+    fn current_duration_ms_returns_zero_when_source_config_uninitialised() {
+        let mut rec = AudioRecorder::new();
+        rec.source_sample_rate = 0;
+        rec.source_channels = 0;
+        assert_eq!(rec.current_duration_ms(), 0);
+    }
+
+    #[test]
+    fn current_level_reflects_recent_samples_and_cancel_resets() {
+        let mut rec = AudioRecorder::new();
+        rec.push_test_samples(vec![0.5f32; 1600]);
+        assert!(rec.current_level() > 0.0);
+        rec.cancel();
+        assert_eq!(rec.current_level(), 0.0);
+        assert!(rec.snapshot_test_samples().is_empty());
+    }
+}
+
+/// Simple linear interpolation resampler
+fn resample(samples: &[f32], from_rate: u32, to_rate: u32) -> Vec<f32> {
+    if from_rate == to_rate {
+        return samples.to_vec();
+    }
+
+    let ratio = from_rate as f64 / to_rate as f64;
+    let output_len = (samples.len() as f64 / ratio) as usize;
+    let mut output = Vec::with_capacity(output_len);
+
+    for i in 0..output_len {
+        let src_idx = i as f64 * ratio;
+        let idx = src_idx as usize;
+        let frac = src_idx - idx as f64;
+
+        let sample = if idx + 1 < samples.len() {
+            samples[idx] as f64 * (1.0 - frac) + samples[idx + 1] as f64 * frac
+        } else {
+            samples[idx.min(samples.len() - 1)] as f64
+        };
+
+        output.push(sample as f32);
+    }
+
+    output
+}

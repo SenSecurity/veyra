@@ -26,3 +26,17 @@ tokio = { version = "1", features = ["full"] }
 dirs = "6"
 arboard = "3"
 futures-util = "0.3"
+regex = "1"
+rusqlite = { version = "0.31", features = ["bundled", "backup"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+tracing-appender = "0.2"
+time = { version = "0.3", features = ["formatting", "macros", "parsing"] }
+thiserror = "1"
+keyring = "3"
+uuid = { version = "1", features = ["v4"] }
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Graphics_Gdi", "Win32_Security", "Win32_System_Diagnostics_Debug", "Win32_System_Threading", "Win32_UI_WindowsAndMessaging"] }
+
+[dev-dependencies]
+tempfile = "3"
+filetime = "0.2"
