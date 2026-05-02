@@ -13,6 +13,11 @@ type EmailDraftEngine = "ollama" | "groq";
 const OLLAMA_RECOMMENDED_MODEL = "llama3.2";
 const GROQ_RECOMMENDED_MODEL = "llama-3.3-70b-versatile";
 
+function isOllamaMissingError(error: unknown) {
+  const message = String(error).toLowerCase();
+  return message.includes("ollama is required") || message.includes("not on path") || message.includes("program not found");
+}
+
 export function SettingsTranscriptionRoute() {
   const { settings, loading, update } = useSettings();
   const [checking, setChecking] = useState(false);
@@ -25,6 +30,7 @@ export function SettingsTranscriptionRoute() {
   const [progress, setProgress] = useState(0);
   const [emailProgress, setEmailProgress] = useState(0);
   const [emailDownloadStatus, setEmailDownloadStatus] = useState("");
+  const [ollamaMissing, setOllamaMissing] = useState(false);
 
   const whisperModel =
     settings?.whisperModel === "large-v3-turbo" ||
@@ -50,6 +56,7 @@ export function SettingsTranscriptionRoute() {
       emailDraftModel: engine === "ollama" ? OLLAMA_RECOMMENDED_MODEL : GROQ_RECOMMENDED_MODEL,
     });
     setEmailModelReady(false);
+    setOllamaMissing(false);
   };
 
   useEffect(() => {
@@ -71,8 +78,14 @@ export function SettingsTranscriptionRoute() {
     setCheckingEmailModel(true);
     void ipc
       .checkEmailDraftModel(settings.groqApiKey, emailDraftEngine, emailDraftModel)
-      .then(() => setEmailModelReady(true))
-      .catch(() => setEmailModelReady(false))
+      .then(() => {
+        setEmailModelReady(true);
+        setOllamaMissing(false);
+      })
+      .catch((error) => {
+        setEmailModelReady(false);
+        setOllamaMissing(emailDraftEngine === "ollama" && isOllamaMissingError(error));
+      })
       .finally(() => setCheckingEmailModel(false));
   }, [emailDraftEngine, emailDraftModel, hasGroqKey, settings?.groqApiKey]);
 
@@ -128,8 +141,13 @@ export function SettingsTranscriptionRoute() {
   }
 
   async function downloadCurrentEmailModel() {
+    if (ollamaMissing) {
+      await openOllamaDownload();
+      return;
+    }
     setDownloadingEmailModel(true);
     setCheckingEmailModel(false);
+    setOllamaMissing(false);
     setEmailProgress(0);
     setEmailDownloadStatus("Starting download");
     try {
@@ -140,6 +158,7 @@ export function SettingsTranscriptionRoute() {
       toast.success("Email model downloaded");
     } catch (error) {
       setEmailModelReady(false);
+      setOllamaMissing(emailDraftEngine === "ollama" && isOllamaMissingError(error));
       toast.error(String(error));
     } finally {
       setDownloadingEmailModel(false);
@@ -156,12 +175,22 @@ export function SettingsTranscriptionRoute() {
     try {
       await ipc.checkEmailDraftModel(settings.groqApiKey, emailDraftEngine, emailDraftModel);
       setEmailModelReady(true);
+      setOllamaMissing(false);
       toast.success("Email model operational");
     } catch (error) {
       setEmailModelReady(false);
+      setOllamaMissing(emailDraftEngine === "ollama" && isOllamaMissingError(error));
       toast.error(String(error));
     } finally {
       setCheckingEmailModel(false);
+    }
+  }
+
+  async function openOllamaDownload() {
+    try {
+      await ipc.openOllamaDownload();
+    } catch (error) {
+      toast.error(String(error));
     }
   }
 
@@ -281,6 +310,8 @@ export function SettingsTranscriptionRoute() {
             {emailModelReady ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
             {emailDraftEngine === "groq" && !hasGroqKey
               ? "Needs API key"
+              : ollamaMissing
+                ? "Needs Ollama"
               : downloadingEmailModel
                 ? "Downloading"
               : checkingEmailModel
@@ -297,6 +328,7 @@ export function SettingsTranscriptionRoute() {
           value={emailDraftModel}
           onChange={(e) => {
             setEmailModelReady(false);
+            setOllamaMissing(false);
             void update({ emailDraftModel: e.target.value });
           }}
         >
@@ -325,7 +357,9 @@ export function SettingsTranscriptionRoute() {
             disabled={downloadingEmailModel}
             onClick={() => void downloadCurrentEmailModel()}
           >
-            {downloadingEmailModel
+            {ollamaMissing
+              ? "Install Ollama"
+              : downloadingEmailModel
               ? "Downloading email model..."
               : emailModelReady
                 ? "Re-download email model"
