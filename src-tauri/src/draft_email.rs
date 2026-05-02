@@ -1,11 +1,17 @@
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-pub const DRAFT_MODEL: &str = "llama-3.3-70b-versatile";
+pub const DEFAULT_DRAFT_MODEL: &str = "llama-3.3-70b-versatile";
+pub const ALLOWED_DRAFT_MODELS: &[&str] = &[
+    "llama-3.3-70b-versatile",
+    "llama-3.1-8b-instant",
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
+];
 
 #[derive(Debug, Serialize)]
 struct ChatRequest {
-    model: &'static str,
+    model: String,
     messages: Vec<ChatMessage>,
     temperature: f32,
     max_tokens: u32,
@@ -27,7 +33,11 @@ struct ChatChoice {
     message: ChatMessage,
 }
 
-pub async fn generate_email_draft(api_key: &str, instruction: &str) -> Result<String, String> {
+pub async fn generate_email_draft(
+    api_key: &str,
+    model: &str,
+    instruction: &str,
+) -> Result<String, String> {
     if api_key.trim().is_empty() {
         return Err("Groq API key not set. Add it in Settings > Transcription.".to_string());
     }
@@ -36,9 +46,10 @@ pub async fn generate_email_draft(api_key: &str, instruction: &str) -> Result<St
     if instruction.is_empty() {
         return Err("No command instruction was transcribed.".to_string());
     }
+    let model = normalize_draft_model(model)?;
 
     let request = ChatRequest {
-        model: DRAFT_MODEL,
+        model,
         messages: vec![
             ChatMessage {
                 role: "system".to_string(),
@@ -81,6 +92,17 @@ pub async fn generate_email_draft(api_key: &str, instruction: &str) -> Result<St
     extract_draft(parsed)
 }
 
+pub fn normalize_draft_model(model: &str) -> Result<String, String> {
+    let trimmed = model.trim();
+    if ALLOWED_DRAFT_MODELS.contains(&trimmed) {
+        Ok(trimmed.to_string())
+    } else {
+        Err(format!(
+            "Unsupported email draft model `{trimmed}`. Pick one from Settings > Transcription."
+        ))
+    }
+}
+
 fn system_prompt() -> String {
     [
         "You write polished drafts for direct insertion into the user's active text field.",
@@ -110,14 +132,20 @@ mod tests {
 
     #[tokio::test]
     async fn rejects_empty_api_key() {
-        let result = generate_email_draft("", "reply in English").await;
+        let result = generate_email_draft("", DEFAULT_DRAFT_MODEL, "reply in English").await;
         assert!(result.unwrap_err().contains("API key"));
     }
 
     #[tokio::test]
     async fn rejects_empty_instruction() {
-        let result = generate_email_draft("gsk_test", "   ").await;
+        let result = generate_email_draft("gsk_test", DEFAULT_DRAFT_MODEL, "   ").await;
         assert!(result.unwrap_err().contains("No command instruction"));
+    }
+
+    #[test]
+    fn accepts_only_known_draft_models() {
+        assert!(normalize_draft_model("llama-3.3-70b-versatile").is_ok());
+        assert!(normalize_draft_model("../not-a-model").is_err());
     }
 
     #[test]

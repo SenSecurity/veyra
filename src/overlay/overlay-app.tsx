@@ -2,7 +2,7 @@ import { listen } from "@tauri-apps/api/event";
 import { useEffect } from "react";
 import { OverlayPill } from "./pill";
 import { ipc } from "@/lib/tauri";
-import { useOverlayStore, type OverlayState } from "@/stores/overlay-store";
+import { useOverlayStore, type OverlayMode, type OverlayState } from "@/stores/overlay-store";
 import type { RecordingState } from "@/types/ipc";
 
 function mapState(state: RecordingState): OverlayState {
@@ -13,7 +13,9 @@ function mapState(state: RecordingState): OverlayState {
 
 export function OverlayApp() {
   const state = useOverlayStore((s) => s.state);
+  const mode = useOverlayStore((s) => s.mode);
   const setState = useOverlayStore((s) => s.setState);
+  const setMode = useOverlayStore((s) => s.setMode);
   const setLevel = useOverlayStore((s) => s.setLevel);
 
   useEffect(() => {
@@ -26,6 +28,11 @@ export function OverlayApp() {
     const un = listen<RecordingState>("overlay:state", (e) => setState(mapState(e.payload)));
     return () => void un.then((fn) => fn()).catch(() => {});
   }, [setState]);
+
+  useEffect(() => {
+    const un = listen<{ mode: OverlayMode }>("overlay:mode", (e) => setMode(e.payload.mode));
+    return () => void un.then((fn) => fn()).catch(() => {});
+  }, [setMode]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -60,7 +67,7 @@ export function OverlayApp() {
 
   return (
     <main className="flex h-screen w-screen items-center justify-center overflow-hidden bg-transparent">
-      <OverlayPill state={state} />
+      <OverlayPill state={state} mode={mode} />
     </main>
   );
 }

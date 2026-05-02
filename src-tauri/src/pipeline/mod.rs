@@ -162,11 +162,15 @@ pub async fn run_session(deps: PipelineDeps<'_>, mode: PipelineMode) -> Result<i
                             .into(),
                     ),
                 })?;
-            draft_email::generate_email_draft(key, &tx_result.text)
-                .await
-                .map_err(|e| PipelineError {
-                    stage: StageError::Draft(e),
-                })?
+            draft_email::generate_email_draft(
+                key,
+                &deps.settings.transcription.email_draft_model,
+                &tx_result.text,
+            )
+            .await
+            .map_err(|e| PipelineError {
+                stage: StageError::Draft(e),
+            })?
         }
     };
     tracing::info!(
@@ -198,8 +202,7 @@ pub async fn run_session(deps: PipelineDeps<'_>, mode: PipelineMode) -> Result<i
         PipelineMode::Dictation => tx_result.model.clone(),
         PipelineMode::Command => format!(
             "{}+draft:groq:{}",
-            tx_result.model,
-            draft_email::DRAFT_MODEL
+            tx_result.model, deps.settings.transcription.email_draft_model
         ),
     };
     let record = commit::TranscriptionRecord {

@@ -153,6 +153,19 @@ export function SettingsTranscriptionRoute() {
         </div>
       )}
       <label className="grid gap-2 text-sm">
+        <span className="font-medium">Email draft model</span>
+        <select
+          className="h-9 rounded-md border border-border bg-background px-3"
+          value={settings.emailDraftModel}
+          onChange={(e) => void update({ emailDraftModel: e.target.value })}
+        >
+          <option value="llama-3.3-70b-versatile">Llama 3.3 70B - balanced</option>
+          <option value="llama-3.1-8b-instant">Llama 3.1 8B - fastest</option>
+          <option value="openai/gpt-oss-120b">GPT-OSS 120B - stronger</option>
+          <option value="openai/gpt-oss-20b">GPT-OSS 20B - fast</option>
+        </select>
+      </label>
+      <label className="grid gap-2 text-sm">
         <span className="font-medium">Groq API key</span>
         <Input
           type="password"
