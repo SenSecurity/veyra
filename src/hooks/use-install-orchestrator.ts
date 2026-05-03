@@ -174,7 +174,7 @@ export function useInstallOrchestrator(
     ollamaRef.current = {
       status: "running",
       progress: 0,
-      detail: "Opening Ollama installer",
+      detail: "Downloading Ollama installer",
     };
     setOllama(ollamaRef.current);
     try {
@@ -183,7 +183,12 @@ export function useInstallOrchestrator(
         setOllama({ status: "done", progress: 100, detail: "Installed" });
         return;
       }
-      await ipc.openOllamaDownload();
+      await ipc.installOllamaRuntime();
+      setOllama((s) =>
+        s.status === "running"
+          ? { ...s, progress: 25, detail: "Complete the Ollama installer" }
+          : s,
+      );
 
       const start = Date.now();
       while (Date.now() - start < OLLAMA_POLL_TIMEOUT_MS) {

@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
   isOllamaInstalled: vi.fn(),
   checkEmailDraftModel: vi.fn(),
   downloadModel: vi.fn(),
-  openOllamaDownload: vi.fn(),
+  installOllamaRuntime: vi.fn(),
   listen: vi.fn(),
   unlisten: vi.fn(),
 }));
@@ -18,7 +18,7 @@ vi.mock("@/lib/tauri", () => ({
     isOllamaInstalled: mocks.isOllamaInstalled,
     checkEmailDraftModel: mocks.checkEmailDraftModel,
     downloadModel: mocks.downloadModel,
-    openOllamaDownload: mocks.openOllamaDownload,
+    installOllamaRuntime: mocks.installOllamaRuntime,
   },
 }));
 
@@ -154,4 +154,37 @@ describe("useInstallOrchestrator", () => {
       await Promise.resolve();
     });
   });
+
+  it("runs the Ollama installer from first boot when Ollama is missing", async () => {
+    mocks.checkModelDownloaded.mockResolvedValue(true);
+    mocks.isOllamaInstalled
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
+    mocks.checkEmailDraftModel.mockResolvedValue(undefined);
+    mocks.installOllamaRuntime.mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useInstallOrchestrator(INPUT));
+    await waitFor(() => expect(result.current.ollama.status).toBe("idle"));
+
+    vi.useFakeTimers();
+    try {
+      let run: Promise<void> | undefined;
+      await act(async () => {
+        run = result.current.runAll();
+        await Promise.resolve();
+      });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(OLLAMA_POLL_STEP_MS);
+        await run;
+      });
+
+      expect(mocks.installOllamaRuntime).toHaveBeenCalledTimes(1);
+      expect(result.current.ollama.status).toBe("done");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
+
+const OLLAMA_POLL_STEP_MS = 2_000;

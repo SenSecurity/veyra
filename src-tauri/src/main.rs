@@ -1386,6 +1386,58 @@ fn open_ollama_download() -> Result<(), String> {
         })
 }
 
+#[tauri::command]
+async fn install_ollama_runtime() -> Result<(), String> {
+    if is_ollama_installed() {
+        return Ok(());
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        install_ollama_runtime_windows().await
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        open_ollama_download()
+    }
+}
+
+#[cfg(target_os = "windows")]
+async fn install_ollama_runtime_windows() -> Result<(), String> {
+    let installer_path = std::env::temp_dir().join("Veyra-OllamaSetup.exe");
+    let url = "https://ollama.com/download/OllamaSetup.exe";
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(120))
+        .build()
+        .map_err(|e| format!("Failed to prepare Ollama installer download: {e}"))?;
+    let response = client
+        .get(url)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to download Ollama installer: {e}"))?;
+    if !response.status().is_success() {
+        return Err(format!(
+            "Failed to download Ollama installer: HTTP {}",
+            response.status()
+        ));
+    }
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|e| format!("Failed to read Ollama installer download: {e}"))?;
+    if bytes.len() < 1_000_000 {
+        return Err("Downloaded Ollama installer is unexpectedly small".to_string());
+    }
+    std::fs::write(&installer_path, &bytes)
+        .map_err(|e| format!("Failed to save Ollama installer: {e}"))?;
+
+    std::process::Command::new(&installer_path)
+        .spawn()
+        .map_err(|e| format!("Failed to launch Ollama installer: {e}"))?;
+    Ok(())
+}
+
 fn main() {
     let Some(_single_instance) = acquire_single_instance() else {
         return;
@@ -1518,6 +1570,7 @@ fn main() {
             download_email_draft_model,
             open_ollama_download,
             is_ollama_installed,
+            install_ollama_runtime,
         ])
         .on_window_event(|window, event| {
             if window.label() != "main" {

@@ -40,6 +40,7 @@ export const ipc = {
   setOverlayLayout: (style: string, size: string) =>
     invoke<void>("set_overlay_layout", { style, size }),
   isOllamaInstalled: () => invoke<boolean>("is_ollama_installed"),
+  installOllamaRuntime: () => invoke<void>("install_ollama_runtime"),
 
   // transcriptions
   listTranscriptions: (limit: number, offset: number) =>
