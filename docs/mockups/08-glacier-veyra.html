@@ -1,0 +1,1452 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Veyra · Glacier (signature)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;450;500;600;700&family=Newsreader:ital,opsz,wght@1,6..72,300;1,6..72,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* core neutrals — light surface */
+    --ink:           #0c111c;
+    --slate-900:     #131a26;
+    --slate-800:     #1c2533;
+    --slate-700:     #2d384a;
+    --slate-600:     #475263;
+    --slate-500:     #677386;
+    --slate-400:     #8b95a6;
+    --slate-300:     #adb6c5;
+    --slate-200:     #cbd2dd;
+    --slate-100:     #dee4ed;
+
+    --frost:         #f1f5fa;
+    --paper:         #f6f9fc;
+    --white:         #ffffff;
+
+    /* signature ice / electric cyan from logo */
+    --ice-50:        #ecf3fb;
+    --ice-100:       #dceaf7;
+    --ice-200:       #b9d6ee;
+    --ice-300:       #7fb6e0;
+    --ice-400:       #4a93cc;
+
+    --cyan:          #2bc7ff;
+    --cyan-2:        #5dd6ff;
+    --cyan-soft:     #a4e6ff;
+    --cyan-deep:     #0a8bc4;
+    --cobalt:        #1f4e8a;
+    --cobalt-deep:   #143258;
+
+    /* warm spark accent (the candle in the logo) */
+    --spark:         #ffb454;
+    --spark-deep:    #ff8a1f;
+    --spark-glow:    rgba(255, 180, 84, 0.55);
+
+    --halo:          rgba(43, 199, 255, 0.40);
+
+    --hairline:      rgba(12, 17, 28, 0.06);
+    --hairline-2:    rgba(12, 17, 28, 0.12);
+    --hairline-3:    rgba(12, 17, 28, 0.20);
+
+    --titlebar-h:    40px;
+    --sidebar-w:     244px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body {
+    font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    color: var(--ink);
+    background:
+      radial-gradient(1200px 800px at 50% 0%, #cfdfee 0%, transparent 60%),
+      #aebed0;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    letter-spacing: -0.005em;
+    overflow: hidden;
+    font-feature-settings: "ss01","cv11","tnum";
+  }
+
+  .window {
+    position: relative;
+    width: min(1260px, 96vw);
+    height: min(840px, 92vh);
+    margin: 24px auto;
+    border-radius: 16px;
+    overflow: hidden;
+    background:
+      radial-gradient(900px 600px at 100% -10%, var(--ice-100) 0%, transparent 55%),
+      radial-gradient(700px 500px at 0% 110%, var(--ice-50) 0%, transparent 55%),
+      var(--white);
+    box-shadow:
+      0 0 0 1px rgba(12,17,28,0.06),
+      0 60px 120px -40px rgba(12,17,28,0.4),
+      0 30px 60px -20px rgba(12,17,28,0.22);
+  }
+
+  /* ---------- LOGO MARK (squircle + V waveform) ---------- */
+  .veyra-mark {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    border-radius: 22%;
+    background:
+      radial-gradient(120% 120% at 30% 18%, #3a4658 0%, #1a212e 40%, #07090d 90%);
+    box-shadow:
+      inset 0 1.5px 0 rgba(255,255,255,0.18),
+      inset 0 -2px 0 rgba(255,255,255,0.04),
+      inset 0 0 0 1px rgba(255,255,255,0.08),
+      0 6px 18px -6px rgba(0,0,0,0.55),
+      0 1px 0 rgba(255,255,255,0.05);
+    overflow: hidden;
+  }
+  .veyra-mark::before {
+    /* glossy highlight */
+    content: "";
+    position: absolute;
+    inset: 4% 4% 60% 4%;
+    border-radius: 22% 22% 50% 50% / 22% 22% 100% 100%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0.04) 70%, transparent 100%);
+    pointer-events: none;
+  }
+  .veyra-mark svg {
+    position: absolute;
+    inset: 0;
+    width: 100%; height: 100%;
+  }
+
+  /* ---------- TITLE BAR (light glass) ---------- */
+  .titlebar {
+    height: var(--titlebar-h);
+    display: grid;
+    grid-template-columns: var(--sidebar-w) 1fr auto;
+    align-items: center;
+    background: linear-gradient(180deg, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.65) 100%);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border-bottom: 1px solid var(--hairline);
+  }
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    padding-left: 14px;
+  }
+  .brand .veyra-mark { width: 22px; height: 22px; border-radius: 7px; }
+  .brand .veyra-mark::before { inset: 6% 6% 55% 6%; }
+  .brand-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .brand-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--slate-400);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .center {
+    justify-self: center;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .engines {
+    display: flex;
+    border-radius: 9px;
+    border: 1px solid var(--hairline-2);
+    background: var(--white);
+    overflow: hidden;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.9) inset,
+      0 1px 2px rgba(12,17,28,0.04);
+  }
+  .eng {
+    display: flex; align-items: center; gap: 7px;
+    padding: 5px 12px;
+    font-size: 11.5px;
+    color: var(--slate-700);
+    font-weight: 500;
+  }
+  .eng + .eng { border-left: 1px solid var(--hairline); }
+  .eng .led {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 8px var(--halo);
+    animation: ledPulse 2.4s ease-in-out infinite;
+  }
+  .eng.warm .led { background: var(--spark); box-shadow: 0 0 8px var(--spark-glow); }
+  .eng .k {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--slate-400);
+  }
+  @keyframes ledPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+  .palette {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 11px;
+    border-radius: 9px;
+    background: var(--white);
+    border: 1px solid var(--hairline-2);
+    font-size: 12px;
+    color: var(--slate-500);
+    font-weight: 450;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.9) inset;
+  }
+  .palette .magnifier {
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    border: 1.4px solid var(--slate-500);
+    position: relative;
+  }
+  .palette .magnifier::after {
+    content: ""; position: absolute;
+    width: 1.3px; height: 5px;
+    background: var(--slate-500);
+    right: -2px; bottom: -3px;
+    transform: rotate(-45deg);
+  }
+  .keycap-mini {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    padding: 1.5px 5px;
+    border-radius: 4px;
+    background: var(--frost);
+    border: 1px solid var(--hairline-2);
+    color: var(--slate-700);
+  }
+
+  .win-controls { display: flex; height: 100%; }
+  .win-controls button {
+    width: 44px; height: 100%;
+    border: none; background: transparent;
+    color: var(--slate-500);
+    cursor: pointer;
+    display: grid; place-items: center;
+  }
+  .win-controls button:hover { background: rgba(12,17,28,0.05); color: var(--ink); }
+  .win-controls .close:hover { background: #c8262d; color: #fff; }
+  .win-controls svg { width: 11px; height: 11px; stroke: currentColor; fill: none; stroke-width: 1.4; }
+
+  /* ---------- BODY ---------- */
+  .body {
+    height: calc(100% - var(--titlebar-h));
+    display: grid;
+    grid-template-columns: var(--sidebar-w) 1fr;
+  }
+
+  /* ---------- SIDEBAR ---------- */
+  .sidebar {
+    background:
+      linear-gradient(180deg, var(--ice-50) 0%, var(--white) 100%);
+    color: var(--slate-700);
+    padding: 16px 12px 14px;
+    overflow-y: auto;
+    border-right: 1px solid var(--hairline);
+    display: flex; flex-direction: column;
+  }
+
+  .side-label {
+    padding: 8px 10px 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--slate-400);
+  }
+
+  .nav { list-style: none; padding: 0; margin: 0; display: grid; gap: 1px; }
+  .nav li a {
+    position: relative;
+    display: grid;
+    grid-template-columns: 18px 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--slate-600);
+    font-size: 13.5px;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+    transition: background .15s ease, color .15s ease;
+  }
+  .nav li a:hover { background: var(--white); color: var(--ink); box-shadow: 0 1px 0 rgba(12,17,28,0.04); }
+  .nav li.on a {
+    background: var(--white);
+    color: var(--ink);
+    box-shadow:
+      0 1px 0 rgba(12,17,28,0.04),
+      inset 0 0 0 1px var(--hairline);
+  }
+  .nav li.on a::before {
+    content: "";
+    position: absolute;
+    left: -1px; top: 8px; bottom: 8px;
+    width: 2px;
+    background: linear-gradient(180deg, var(--cyan) 0%, var(--cyan-deep) 100%);
+    border-radius: 2px;
+    box-shadow: 0 0 8px var(--halo);
+  }
+  .nav li a .badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    padding: 1.5px 5px;
+    border-radius: 4px;
+    background: var(--frost);
+    color: var(--slate-500);
+    border: 1px solid var(--hairline);
+  }
+  .nav svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* engines panel — dual cards */
+  .engines-panel {
+    margin: 8px 4px 0;
+    border: 1px solid var(--hairline);
+    border-radius: 12px;
+    background: var(--white);
+    overflow: hidden;
+  }
+  .engine-card {
+    padding: 13px 14px 12px;
+    position: relative;
+  }
+  .engine-card + .engine-card { border-top: 1px solid var(--hairline); }
+  .engine-card::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 12px; bottom: 12px;
+    width: 2px;
+    border-radius: 2px;
+  }
+  .engine-card.stt::before    { background: linear-gradient(180deg, var(--cyan), var(--cyan-deep)); box-shadow: 0 0 8px var(--halo); }
+  .engine-card.draft::before  { background: linear-gradient(180deg, var(--spark), var(--spark-deep)); box-shadow: 0 0 8px var(--spark-glow); }
+
+  .engine-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 5px;
+  }
+  .engine-head .role {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--slate-400);
+  }
+  .engine-head .led {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 10.5px;
+    color: var(--slate-600);
+    font-weight: 500;
+  }
+  .engine-head .led::before {
+    content: ""; width: 5px; height: 5px; border-radius: 50%;
+    background: var(--cyan); box-shadow: 0 0 5px var(--halo);
+  }
+  .engine-card.draft .engine-head .led::before {
+    background: var(--spark); box-shadow: 0 0 5px var(--spark-glow);
+  }
+  .engine-name {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .engine-name em {
+    font-family: 'Newsreader', serif;
+    font-style: italic;
+    font-weight: 300;
+    color: var(--cyan-deep);
+    margin-left: 2px;
+    font-size: 13px;
+  }
+  .engine-card.draft .engine-name em { color: var(--spark-deep); }
+  .engine-meta {
+    margin-top: 4px;
+    display: flex; gap: 6px; flex-wrap: wrap;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--slate-400);
+  }
+  .engine-meta b { color: var(--slate-700); font-weight: 500; }
+
+  .foot-mini {
+    margin-top: auto;
+    padding: 14px 6px 0;
+    border-top: 1px solid var(--hairline);
+    margin: auto 4px 0;
+  }
+  .foot-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 6px 6px;
+    font-family: 'Inter Tight', system-ui, sans-serif;
+    font-size: 11.5px;
+    color: var(--slate-500);
+    font-weight: 500;
+    letter-spacing: -0.005em;
+  }
+  .foot-row span {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--slate-400);
+    font-weight: 400;
+  }
+  .foot-row b { color: var(--ink); font-weight: 600; }
+  .foot-row b.ok {
+    color: var(--cyan-deep);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .foot-row b.ok::before {
+    content: ""; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--cyan); box-shadow: 0 0 6px var(--halo);
+  }
+
+  /* ---------- MAIN ---------- */
+  .main {
+    overflow-y: auto;
+    background:
+      radial-gradient(900px 600px at 100% 0%, var(--ice-50) 0%, transparent 60%),
+      radial-gradient(700px 500px at 0% 100%, var(--ice-50) 0%, transparent 55%),
+      var(--white);
+  }
+  .main-inner {
+    padding: 32px 44px 44px;
+    max-width: 1120px;
+    margin: 0 auto;
+  }
+
+  /* HERO */
+  .hero {
+    display: grid;
+    grid-template-columns: 88px 1fr auto;
+    gap: 28px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--hairline);
+    margin-bottom: 26px;
+    align-items: center;
+  }
+  .hero .veyra-mark { width: 88px; height: 88px; border-radius: 22px; }
+
+  .hero .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    color: var(--cyan-deep);
+    margin-bottom: 10px;
+  }
+  .hero h1 {
+    margin: 0;
+    font-size: 32px;
+    font-weight: 500;
+    letter-spacing: -0.028em;
+    color: var(--ink);
+    line-height: 1.08;
+  }
+  .hero h1 em {
+    font-family: 'Newsreader', serif;
+    font-style: italic;
+    font-weight: 300;
+    color: var(--cyan-deep);
+    letter-spacing: -0.025em;
+  }
+  .hero .sub {
+    margin-top: 6px;
+    font-size: 14px;
+    color: var(--slate-500);
+    max-width: 580px;
+  }
+
+  .head-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--hairline-2);
+    background: var(--white);
+    color: var(--slate-700);
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+    cursor: pointer;
+    box-shadow: 0 1px 0 rgba(12,17,28,0.03);
+  }
+  .btn:hover { border-color: var(--slate-300); color: var(--ink); }
+  .btn.primary {
+    color: #fff;
+    background:
+      radial-gradient(120% 220% at 30% 0%, #3a4658 0%, #1a212e 40%, #0a0e15 95%);
+    border-color: #07090d;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.18),
+      inset 0 -8px 16px rgba(0,0,0,0.45),
+      0 8px 18px -10px rgba(0,0,0,0.55),
+      0 0 0 1px rgba(43,199,255,0.18);
+  }
+  .btn.primary .accent {
+    width: 6px; height: 14px;
+    border-radius: 2px;
+    background: linear-gradient(180deg, var(--cyan-soft), var(--cyan), var(--cyan-deep));
+    box-shadow: 0 0 8px var(--halo);
+  }
+  .btn .kbd {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    padding: 1.5px 6px;
+    border-radius: 4px;
+    background: var(--frost);
+    color: var(--slate-500);
+    border: 1px solid var(--hairline-2);
+  }
+  .btn.primary .kbd {
+    background: rgba(255,255,255,0.08);
+    color: var(--cyan-soft);
+    border-color: rgba(255,255,255,0.14);
+  }
+  .btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* KPI */
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    border: 1px solid var(--hairline);
+    border-radius: 14px;
+    background: var(--white);
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+  .kpi {
+    padding: 16px 20px;
+    border-right: 1px solid var(--hairline);
+    position: relative;
+  }
+  .kpi:last-child { border-right: none; }
+  .kpi .lab {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--slate-400);
+    margin-bottom: 6px;
+  }
+  .kpi .val {
+    font-size: 24px;
+    font-weight: 500;
+    letter-spacing: -0.025em;
+    color: var(--ink);
+    line-height: 1;
+    font-feature-settings: "tnum","lnum";
+  }
+  .kpi .val small {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--slate-400);
+    margin-left: 4px;
+    letter-spacing: 0;
+  }
+  .kpi .delta {
+    margin-top: 5px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--cyan-deep);
+  }
+  .kpi .delta.flat { color: var(--slate-400); }
+
+  /* ---------- ENGINE CARDS ---------- */
+  .row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 22px;
+  }
+
+  .card {
+    border: 1px solid var(--hairline);
+    border-radius: 14px;
+    background: var(--white);
+    padding: 22px 24px 20px;
+    position: relative;
+    overflow: hidden;
+    box-shadow:
+      0 1px 0 rgba(12,17,28,0.025),
+      0 0 0 1px rgba(12,17,28,0.015);
+  }
+  .card.stt::before {
+    content: "";
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyan) 50%, transparent);
+    box-shadow: 0 0 8px var(--halo);
+  }
+  .card.draft::before {
+    content: "";
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--spark) 50%, transparent);
+    box-shadow: 0 0 8px var(--spark-glow);
+  }
+  .card::after {
+    content: "";
+    position: absolute; inset: 0;
+    background: radial-gradient(380px 200px at 100% 0%, var(--ice-50) 0%, transparent 65%);
+    pointer-events: none;
+  }
+  .card > * { position: relative; }
+
+  .card-head {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: start;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .card-head .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--cyan-deep);
+    margin-bottom: 6px;
+  }
+  .card.draft .card-head .eyebrow { color: var(--spark-deep); }
+  .card-head h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.018em;
+  }
+  .card-head h2 em {
+    font-family: 'Newsreader', serif;
+    font-style: italic;
+    font-weight: 300;
+    color: var(--cyan-deep);
+    margin-left: 2px;
+  }
+  .card.draft .card-head h2 em { color: var(--spark-deep); }
+  .card-head .desc {
+    margin: 5px 0 0;
+    font-size: 13px;
+    color: var(--slate-500);
+    max-width: 360px;
+  }
+  .status {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--ice-50);
+    border: 1px solid rgba(43,199,255,0.28);
+    color: var(--cyan-deep);
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .status .led {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 5px var(--halo);
+  }
+  .card.draft .status {
+    background: #fff5e6;
+    border-color: rgba(255,138,31,0.3);
+    color: var(--spark-deep);
+  }
+  .card.draft .status .led { background: var(--spark); box-shadow: 0 0 5px var(--spark-glow); }
+
+  /* mic squircle (mini logo) */
+  .action {
+    display: grid;
+    grid-template-columns: 44px 1fr auto;
+    gap: 14px;
+    align-items: center;
+    padding: 14px 16px;
+    border: 1px solid var(--hairline);
+    border-radius: 12px;
+    background: var(--paper);
+    margin-bottom: 14px;
+  }
+  .action .ic-flat {
+    width: 40px; height: 40px;
+    border-radius: 11px;
+    display: grid; place-items: center;
+    border: 1px solid var(--hairline-2);
+    background: var(--white);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.9) inset,
+      0 1px 2px rgba(12,17,28,0.04);
+  }
+  .action .ic-flat svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+  .action .ic-flat.stt-flat   { color: var(--cyan-deep); background: var(--ice-50); border-color: rgba(43,199,255,0.28); }
+  .action .ic-flat.draft-flat { color: var(--spark-deep); background: #fff5e6; border-color: rgba(255,138,31,0.28); }
+
+  .action .ic-squircle {
+    width: 40px; height: 40px;
+    border-radius: 11px;
+    background:
+      radial-gradient(120% 120% at 30% 18%, #3a4658 0%, #1a212e 40%, #07090d 90%);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.2),
+      inset 0 -2px 0 rgba(255,255,255,0.04),
+      inset 0 0 0 1px rgba(255,255,255,0.08),
+      0 4px 10px -4px rgba(0,0,0,0.5);
+    position: relative;
+    overflow: hidden;
+  }
+  .action .ic-squircle::before {
+    content: "";
+    position: absolute;
+    inset: 6% 6% 50% 6%;
+    border-radius: 22% 22% 50% 50% / 22% 22% 100% 100%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0.04) 70%, transparent 100%);
+  }
+  .action .ic-squircle svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .action .label .t {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .action .label .d {
+    margin-top: 1px;
+    font-size: 12px;
+    color: var(--slate-500);
+  }
+  .action .keys { display: flex; gap: 4px; }
+  .kbd {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    padding: 4px 10px;
+    border-radius: 7px;
+    background: var(--white);
+    border: 1px solid var(--hairline-2);
+    color: var(--slate-700);
+    box-shadow:
+      0 1px 0 rgba(12,17,28,0.06),
+      inset 0 1px 0 rgba(255,255,255,0.9);
+  }
+
+  /* engine spec */
+  .spec {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+    margin-top: 12px;
+    border-top: 1px solid var(--hairline);
+    padding-top: 14px;
+  }
+  .spec .cell { border-right: 1px solid var(--hairline); padding-right: 12px; }
+  .spec .cell:last-child { border-right: none; padding-right: 0; padding-left: 12px; }
+  .spec .cell + .cell { padding-left: 12px; }
+  .spec .lab {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--slate-400);
+    margin-bottom: 4px;
+  }
+  .spec .val {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+    font-feature-settings: "tnum","lnum";
+  }
+  .spec .val small {
+    font-weight: 400;
+    color: var(--slate-400);
+    margin-left: 3px;
+    font-size: 11px;
+  }
+
+  /* WAVEFORM — V-shape signature like logo */
+  .wave-stage {
+    position: relative;
+    height: 110px;
+    border-radius: 12px;
+    background:
+      radial-gradient(120% 90% at 50% 100%, #1c2535 0%, #0a0e15 70%, #06080d 100%);
+    overflow: hidden;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.06),
+      inset 0 -1px 0 rgba(255,255,255,0.03),
+      inset 0 0 0 1px rgba(255,255,255,0.04);
+  }
+  .wave-stage::before {
+    /* horizon line where bars meet reflection */
+    content: "";
+    position: absolute;
+    left: 0; right: 0; top: 70%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(43,199,255,0.4), transparent);
+  }
+  .wave-stage .spark {
+    position: absolute;
+    left: 50%; top: 70%;
+    width: 8px; height: 38px;
+    transform: translate(-50%, -10%);
+    background: linear-gradient(180deg, transparent 0%, var(--spark) 40%, var(--spark-deep) 100%);
+    border-radius: 2px;
+    filter: blur(0.4px);
+    box-shadow:
+      0 0 14px var(--spark-glow),
+      0 0 30px rgba(255,138,31,0.4);
+    animation: sparkFlicker 2.2s ease-in-out infinite;
+  }
+  @keyframes sparkFlicker {
+    0%, 100% { opacity: 1; transform: translate(-50%, -10%) scaleY(1); }
+    50%      { opacity: 0.85; transform: translate(-50%, -10%) scaleY(1.08); }
+  }
+
+  .wave-bars {
+    position: absolute;
+    inset: 8% 6% 30% 6%;
+    display: flex; gap: 3px; align-items: end;
+    justify-content: center;
+  }
+  .wave-bars i {
+    flex: 1;
+    border-radius: 2px;
+    background: linear-gradient(180deg, var(--cyan-soft) 0%, var(--cyan) 50%, var(--cyan-deep) 100%);
+    box-shadow: 0 0 6px var(--halo);
+    animation: ampV 1.8s ease-in-out infinite;
+    transform-origin: bottom;
+    max-height: 100%;
+  }
+  /* V-shape: bars taller at edges, short in center */
+  .wave-bars i:nth-child(1)  { --h: 95%; animation-delay: 0.05s; }
+  .wave-bars i:nth-child(2)  { --h: 88%; animation-delay: 0.10s; }
+  .wave-bars i:nth-child(3)  { --h: 78%; animation-delay: 0.15s; }
+  .wave-bars i:nth-child(4)  { --h: 70%; animation-delay: 0.20s; }
+  .wave-bars i:nth-child(5)  { --h: 62%; animation-delay: 0.25s; }
+  .wave-bars i:nth-child(6)  { --h: 54%; animation-delay: 0.30s; }
+  .wave-bars i:nth-child(7)  { --h: 46%; animation-delay: 0.35s; }
+  .wave-bars i:nth-child(8)  { --h: 38%; animation-delay: 0.40s; }
+  .wave-bars i:nth-child(9)  { --h: 30%; animation-delay: 0.45s; }
+  .wave-bars i:nth-child(10) { --h: 22%; animation-delay: 0.50s; }
+  .wave-bars i:nth-child(11) { --h: 16%; animation-delay: 0.55s; }
+  .wave-bars i:nth-child(12) { --h: 12%; animation-delay: 0.60s; }
+  .wave-bars i:nth-child(13) { --h: 12%; animation-delay: 0.62s; }
+  .wave-bars i:nth-child(14) { --h: 16%; animation-delay: 0.55s; }
+  .wave-bars i:nth-child(15) { --h: 22%; animation-delay: 0.50s; }
+  .wave-bars i:nth-child(16) { --h: 30%; animation-delay: 0.45s; }
+  .wave-bars i:nth-child(17) { --h: 38%; animation-delay: 0.40s; }
+  .wave-bars i:nth-child(18) { --h: 46%; animation-delay: 0.35s; }
+  .wave-bars i:nth-child(19) { --h: 54%; animation-delay: 0.30s; }
+  .wave-bars i:nth-child(20) { --h: 62%; animation-delay: 0.25s; }
+  .wave-bars i:nth-child(21) { --h: 70%; animation-delay: 0.20s; }
+  .wave-bars i:nth-child(22) { --h: 78%; animation-delay: 0.15s; }
+  .wave-bars i:nth-child(23) { --h: 88%; animation-delay: 0.10s; }
+  .wave-bars i:nth-child(24) { --h: 95%; animation-delay: 0.05s; }
+  @keyframes ampV {
+    0%, 100% { height: calc(var(--h) * 0.85); opacity: 0.85; }
+    50%      { height: var(--h); opacity: 1; }
+  }
+
+  .wave-bars.refl {
+    inset: 70% 6% 6% 6%;
+    align-items: start;
+    transform: scaleY(-1);
+    opacity: 0.32;
+    filter: blur(1px);
+  }
+
+  .wave-meta {
+    position: absolute;
+    left: 14px; bottom: 8px; right: 14px;
+    display: flex; justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.22em;
+    color: rgba(255,255,255,0.55);
+    text-transform: uppercase;
+    z-index: 2;
+  }
+  .wave-meta b { color: var(--cyan-soft); font-weight: 500; }
+
+  /* DRAFT card has warm spark (no V wave) — uses subtle horizontal cyan→amber */
+  .card.draft .wave-stage {
+    background:
+      radial-gradient(120% 90% at 50% 100%, #1c2535 0%, #0a0e15 70%, #06080d 100%);
+  }
+  .card.draft .wave-bars i {
+    background: linear-gradient(180deg, #ffe2b3 0%, var(--spark) 50%, var(--spark-deep) 100%);
+    box-shadow: 0 0 6px var(--spark-glow);
+  }
+
+  /* ---------- RECENT ACTIVITY ---------- */
+  .panel {
+    border: 1px solid var(--hairline);
+    border-radius: 14px;
+    background: var(--white);
+    overflow: hidden;
+    box-shadow: 0 1px 0 rgba(12,17,28,0.025);
+  }
+  .panel-head {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    padding: 16px 22px;
+    border-bottom: 1px solid var(--hairline);
+    background: linear-gradient(180deg, var(--paper) 0%, var(--white) 100%);
+  }
+  .panel-head h2 {
+    margin: 0;
+    font-size: 14.5px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .panel-head h2 em {
+    font-family: 'Newsreader', serif;
+    font-style: italic;
+    font-weight: 300;
+    color: var(--cyan-deep);
+    margin-left: 2px;
+    font-size: 14px;
+  }
+  .panel-head h2 small {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 400;
+    color: var(--slate-400);
+    margin-left: 8px;
+    font-size: 10.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+  .panel-head .controls { display: flex; gap: 6px; }
+  .ghost {
+    border: 1px solid transparent;
+    background: transparent;
+    border-radius: 7px;
+    padding: 5px 10px;
+    font-size: 12px;
+    color: var(--slate-500);
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 500;
+  }
+  .ghost:hover { color: var(--ink); background: var(--frost); }
+  .ghost.on    { color: var(--cyan-deep); background: var(--ice-50); border-color: rgba(43,199,255,0.25); }
+
+  .activity { display: grid; }
+  .a-row {
+    display: grid;
+    grid-template-columns: 26px 1fr 92px 76px 60px 30px;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 22px;
+    border-bottom: 1px solid var(--hairline);
+    font-size: 13px;
+    color: var(--slate-700);
+  }
+  .a-row:last-child { border-bottom: none; }
+  .a-row:hover { background: var(--paper); }
+  .a-row .ic {
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    background: var(--ice-50);
+    color: var(--cyan-deep);
+    display: grid; place-items: center;
+    border: 1px solid var(--hairline);
+  }
+  .a-row .ic.warm {
+    background: #fff5e6;
+    color: var(--spark-deep);
+    border-color: rgba(255,138,31,0.2);
+  }
+  .a-row .ic svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .a-row .text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .a-row .text .pre { color: var(--slate-400); margin-right: 4px; }
+  .a-row .meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    color: var(--slate-400);
+    text-transform: uppercase;
+  }
+  .a-row .meta.right { text-align: right; }
+  .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 5px;
+    background: var(--frost);
+    color: var(--slate-600);
+    border: 1px solid var(--hairline);
+    justify-self: start;
+  }
+  .tag.dict { background: var(--ice-50); color: var(--cyan-deep); border-color: rgba(43,199,255,0.25); }
+  .tag.draft-tag { background: #fff5e6; color: var(--spark-deep); border-color: rgba(255,138,31,0.22); }
+  .a-row .copy {
+    width: 26px; height: 26px;
+    border: 1px solid var(--hairline);
+    border-radius: 7px;
+    background: var(--white);
+    color: var(--slate-500);
+    cursor: pointer;
+    display: grid; place-items: center;
+    justify-self: end;
+  }
+  .a-row .copy:hover { color: var(--ink); border-color: var(--hairline-2); }
+  .a-row .copy svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* scrollbars */
+  .main::-webkit-scrollbar, .sidebar::-webkit-scrollbar { width: 8px; }
+  .main::-webkit-scrollbar-thumb { background: var(--slate-200); border-radius: 4px; }
+  .main::-webkit-scrollbar-thumb:hover { background: var(--slate-300); }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--slate-200); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<!-- shared logo SVG, referenced by <use> -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="vbar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"  stop-color="#a4e6ff"/>
+      <stop offset="50%" stop-color="#2bc7ff"/>
+      <stop offset="100%" stop-color="#0a8bc4"/>
+    </linearGradient>
+    <radialGradient id="spark" cx="50%" cy="100%" r="60%">
+      <stop offset="0%"  stop-color="#fff1d0"/>
+      <stop offset="40%" stop-color="#ffb454"/>
+      <stop offset="100%" stop-color="#ff8a1f" stop-opacity="0"/>
+    </radialGradient>
+
+    <symbol id="veyra-v" viewBox="0 0 100 100">
+      <!-- left wing (descending V) -->
+      <g fill="url(#vbar)">
+        <rect x="14" y="20"  width="3" height="42" rx="1.5"/>
+        <rect x="20" y="24"  width="3" height="38" rx="1.5"/>
+        <rect x="26" y="30"  width="3" height="32" rx="1.5"/>
+        <rect x="32" y="36"  width="3" height="26" rx="1.5"/>
+        <rect x="38" y="42"  width="3" height="20" rx="1.5"/>
+        <rect x="44" y="48"  width="3" height="14" rx="1.5"/>
+      </g>
+      <!-- right wing (ascending) -->
+      <g fill="url(#vbar)">
+        <rect x="53" y="48"  width="3" height="14" rx="1.5"/>
+        <rect x="59" y="42"  width="3" height="20" rx="1.5"/>
+        <rect x="65" y="36"  width="3" height="26" rx="1.5"/>
+        <rect x="71" y="30"  width="3" height="32" rx="1.5"/>
+        <rect x="77" y="24"  width="3" height="38" rx="1.5"/>
+        <rect x="83" y="20"  width="3" height="42" rx="1.5"/>
+      </g>
+      <!-- horizon line -->
+      <rect x="14" y="64" width="72" height="0.6" fill="rgba(164,230,255,0.35)"/>
+      <!-- soft reflection -->
+      <g fill="url(#vbar)" opacity="0.25" transform="translate(0,128) scale(1,-1)">
+        <rect x="14" y="56"  width="3" height="10" rx="1.5"/>
+        <rect x="20" y="56"  width="3" height="10" rx="1.5"/>
+        <rect x="26" y="56"  width="3" height="10" rx="1.5"/>
+        <rect x="32" y="56"  width="3" height="10" rx="1.5"/>
+        <rect x="38" y="56"  width="3" height="10" rx="1.5"/>
+        <rect x="44" y="56"  width="3" height="10" rx="1.5"/>
+        <rect x="53" y="56"  width="3" height="10" rx="1.5"/>
+        <rect x="59" y="56"  width="3" height="10" rx="1.5"/>
+        <rect x="65" y="56"  width="3" height="10" rx="1.5"/>
+        <rect x="71" y="56"  width="3" height="10" rx="1.5"/>
+        <rect x="77" y="56"  width="3" height="10" rx="1.5"/>
+        <rect x="83" y="56"  width="3" height="10" rx="1.5"/>
+      </g>
+      <!-- spark (candle) -->
+      <ellipse cx="50" cy="78" rx="9" ry="14" fill="url(#spark)"/>
+      <rect x="49" y="64" width="2" height="14" rx="1" fill="#ffb454"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="window">
+
+  <!-- TITLE BAR -->
+  <header class="titlebar">
+    <div class="brand">
+      <div class="veyra-mark"><svg><use href="#veyra-v"/></svg></div>
+      <div class="brand-name">Veyra</div>
+      <span class="brand-tag">0.9.4</span>
+    </div>
+
+    <div class="center">
+      <div class="engines">
+        <div class="eng">
+          <span class="led"></span>
+          <span class="k">STT</span>
+          <span>Whisper · Turbo</span>
+        </div>
+        <div class="eng warm">
+          <span class="led"></span>
+          <span class="k">Drafter</span>
+          <span>Llama 3.2 · 1B</span>
+        </div>
+      </div>
+      <div class="palette">
+        <span class="magnifier"></span>
+        Command
+        <span class="keycap-mini">Ctrl</span>
+        <span class="keycap-mini">K</span>
+      </div>
+    </div>
+
+    <div class="win-controls">
+      <button aria-label="Minimize">
+        <svg viewBox="0 0 24 24"><path d="M6 12h12"/></svg>
+      </button>
+      <button aria-label="Maximize">
+        <svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"/></svg>
+      </button>
+      <button class="close" aria-label="Close">
+        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- BODY -->
+  <div class="body">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="side-label">Workspace</div>
+      <ul class="nav">
+        <li class="on">
+          <a href="#">
+            <svg viewBox="0 0 24 24"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg>
+            <span>Home</span>
+          </a>
+        </li>
+        <li>
+          <a href="#">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+            <span>History</span>
+          </a>
+        </li>
+        <li>
+          <a href="#">
+            <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.2"/><path d="M3.5 6.5l8.5 6 8.5-6"/></svg>
+            <span>Email Drafter</span>
+          </a>
+        </li>
+        <li>
+          <a href="#">
+            <svg viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3V4z"/><path d="M5 17h11"/><path d="M9 8h6"/></svg>
+            <span>Dictionary</span>
+          </a>
+        </li>
+        <li>
+          <a href="#">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .35 1.86l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.86-.35 1.7 1.7 0 0 0-1.05 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.05-1.55 1.7 1.7 0 0 0-1.86.35l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1.05H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 9 1.7 1.7 0 0 0 4.27 7.14l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.86.35h.02A1.7 1.7 0 0 0 10 3.09V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.05 1.55h.02a1.7 1.7 0 0 0 1.86-.35l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9v.02a1.7 1.7 0 0 0 1.55 1.05H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1.05z"/></svg>
+            <span>Settings</span>
+          </a>
+        </li>
+      </ul>
+
+      <div class="side-label" style="margin-top:18px;">Engines · 02</div>
+      <div class="engines-panel">
+
+        <div class="engine-card stt">
+          <div class="engine-head">
+            <span class="role">STT · 01</span>
+            <span class="led">Ready</span>
+          </div>
+          <div class="engine-name">Whisper <em>turbo</em></div>
+          <div class="engine-meta">
+            <span><b>1.5</b> GB</span>
+            <span>·</span>
+            <span><b>112</b> ms</span>
+            <span>·</span>
+            <span>16 kHz</span>
+          </div>
+        </div>
+
+        <div class="engine-card draft">
+          <div class="engine-head">
+            <span class="role">Drafter · 02</span>
+            <span class="led">Ready</span>
+          </div>
+          <div class="engine-name">Llama <em>3.2 · 1B</em></div>
+          <div class="engine-meta">
+            <span>Ollama</span>
+            <span>·</span>
+            <span><b>Q4</b>_K_M</span>
+            <span>·</span>
+            <span><b>0.8</b> GB</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="foot-mini">
+        <div class="foot-row"><span>Storage</span><b>2.3 GB</b></div>
+        <div class="foot-row"><span>Models</span><b>4 installed</b></div>
+        <div class="foot-row"><span>Status</span><b class="ok">All systems nominal</b></div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+      <div class="main-inner">
+
+        <!-- HERO -->
+        <header class="hero">
+          <div class="veyra-mark" aria-hidden="true"><svg><use href="#veyra-v"/></svg></div>
+          <div>
+            <div class="eyebrow">Workspace · Home · Saturday 03 May</div>
+            <h1>Boa tarde, Bruno. <em>— quiet desk, ready when you are.</em></h1>
+            <p class="sub">Two engines awake on this machine. Press F24 to dictate, Pause to draft an email — both run locally and never leave your disk.</p>
+          </div>
+          <div class="head-actions">
+            <button class="btn">
+              <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+              New session
+            </button>
+            <button class="btn primary">
+              <span class="accent"></span>
+              Start dictation
+              <span class="kbd">F24</span>
+            </button>
+          </div>
+        </header>
+
+        <!-- KPI -->
+        <section class="kpis">
+          <div class="kpi">
+            <div class="lab">Sessions today</div>
+            <div class="val">12</div>
+            <div class="delta">↑ 4 vs yesterday</div>
+          </div>
+          <div class="kpi">
+            <div class="lab">Words transcribed</div>
+            <div class="val">3 482<small>w</small></div>
+            <div class="delta">↑ 12.4%</div>
+          </div>
+          <div class="kpi">
+            <div class="lab">Drafts composed</div>
+            <div class="val">7</div>
+            <div class="delta flat">— same</div>
+          </div>
+          <div class="kpi">
+            <div class="lab">STT latency · p50</div>
+            <div class="val">112<small>ms</small></div>
+            <div class="delta">↓ 8 ms</div>
+          </div>
+        </section>
+
+        <!-- TWO ENGINE CARDS -->
+        <section class="row-2">
+
+          <article class="card stt">
+            <header class="card-head">
+              <div>
+                <div class="eyebrow">01 · Capture · STT</div>
+                <h2>Speech to Text <em>— Whisper</em></h2>
+                <p class="desc">Dictate into any focused field. Whisper transcribes locally and pastes at the cursor.</p>
+              </div>
+              <span class="status"><span class="led"></span> Operational</span>
+            </header>
+
+            <div class="action">
+              <span class="ic-flat stt-flat">
+                <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>
+              </span>
+              <div class="label">
+                <div class="t">Hold F24 to dictate</div>
+                <div class="d">Press once to start, again to stop.</div>
+              </div>
+              <span class="keys"><span class="kbd">F24</span></span>
+            </div>
+
+            <div class="wave-stage">
+              <div class="wave-bars">
+                <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+                <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              </div>
+              <div class="wave-bars refl">
+                <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+                <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              </div>
+              <span class="spark"></span>
+              <div class="wave-meta">
+                <span>16 kHz · vad on</span>
+                <span><b>112 ms</b> · pt-PT</span>
+              </div>
+            </div>
+
+            <div class="spec">
+              <div class="cell">
+                <div class="lab">Model</div>
+                <div class="val">Turbo<small>1.5 GB</small></div>
+              </div>
+              <div class="cell">
+                <div class="lab">Latency</div>
+                <div class="val">112<small>ms</small></div>
+              </div>
+              <div class="cell">
+                <div class="lab">Language</div>
+                <div class="val">pt-PT<small>auto</small></div>
+              </div>
+            </div>
+          </article>
+
+          <article class="card draft">
+            <header class="card-head">
+              <div>
+                <div class="eyebrow">02 · Compose · LLM</div>
+                <h2>Email Drafter <em>— Llama</em></h2>
+                <p class="desc">Speak an instruction. The local LLM drafts a polished message, kept on your machine.</p>
+              </div>
+              <span class="status"><span class="led"></span> Operational</span>
+            </header>
+
+            <div class="action">
+              <span class="ic-flat draft-flat">
+                <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.2"/><path d="M3.5 6.5l8.5 6 8.5-6"/></svg>
+              </span>
+              <div class="label">
+                <div class="t">Hold Pause to draft</div>
+                <div class="d">Voice instruction → finished draft.</div>
+              </div>
+              <span class="keys"><span class="kbd">Pause</span></span>
+            </div>
+
+            <div class="wave-stage">
+              <div class="wave-bars">
+                <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+                <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              </div>
+              <div class="wave-bars refl">
+                <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+                <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              </div>
+              <span class="spark"></span>
+              <div class="wave-meta">
+                <span>llama 3.2 · 1B · q4_k_m</span>
+                <span><b>3 drafts</b> today</span>
+              </div>
+            </div>
+
+            <div class="spec">
+              <div class="cell">
+                <div class="lab">Model</div>
+                <div class="val">Llama 3.2<small>1B</small></div>
+              </div>
+              <div class="cell">
+                <div class="lab">Quant</div>
+                <div class="val">Q4_K_M<small>0.8 GB</small></div>
+              </div>
+              <div class="cell">
+                <div class="lab">Runtime</div>
+                <div class="val">Ollama<small>local</small></div>
+              </div>
+            </div>
+          </article>
+
+        </section>
+
+        <!-- RECENT ACTIVITY -->
+        <section class="panel">
+          <header class="panel-head">
+            <h2>Recent activity <em>— last 24h</em><small>· 12 items</small></h2>
+            <div class="controls">
+              <button class="ghost on">All</button>
+              <button class="ghost">Drafts</button>
+              <button class="ghost">Dictations</button>
+            </div>
+          </header>
+
+          <div class="activity">
+
+            <div class="a-row">
+              <span class="ic warm">
+                <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.2"/><path d="M3.5 6.5l8.5 6 8.5-6"/></svg>
+              </span>
+              <div class="text"><span class="pre">Olá,</span>escrevo para informar que os materiais já foram postos no sítio que combinámos.</div>
+              <span class="tag draft-tag">Draft</span>
+              <span class="meta">36 words</span>
+              <span class="meta right">14:22</span>
+              <button class="copy" aria-label="Copy">
+                <svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+              </button>
+            </div>
+
+            <div class="a-row">
+              <span class="ic warm">
+                <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.2"/><path d="M3.5 6.5l8.5 6 8.5-6"/></svg>
+              </span>
+              <div class="text"><span class="pre">Olá,</span>escrevo para informar que e aí. Caso seja necessário ajustar algum detalhe…</div>
+              <span class="tag draft-tag">Draft</span>
+              <span class="meta">42 words</span>
+              <span class="meta right">11:08</span>
+              <button class="copy" aria-label="Copy">
+                <svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+              </button>
+            </div>
+
+            <div class="a-row">
+              <span class="ic">
+                <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>
+              </span>
+              <div class="text">faz-me um email a dizer que hoje vou lá às cinco da tarde para o senhor Bruno Rodrigues</div>
+              <span class="tag dict">Dictation</span>
+              <span class="meta">18 words</span>
+              <span class="meta right">09:54</span>
+              <button class="copy" aria-label="Copy">
+                <svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+              </button>
+            </div>
+
+            <div class="a-row">
+              <span class="ic warm">
+                <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.2"/><path d="M3.5 6.5l8.5 6 8.5-6"/></svg>
+              </span>
+              <div class="text"><span class="pre">Following up</span>on the offensive security position discussed last week.</div>
+              <span class="tag draft-tag">Draft</span>
+              <span class="meta">54 words</span>
+              <span class="meta right">yesterday</span>
+              <button class="copy" aria-label="Copy">
+                <svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+              </button>
+            </div>
+
+            <div class="a-row">
+              <span class="ic">
+                <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>
+              </span>
+              <div class="text">Sara, confirmo a marcação de quinta-feira no veterinário às seis da tarde.</div>
+              <span class="tag dict">Dictation</span>
+              <span class="meta">14 words</span>
+              <span class="meta right">yesterday</span>
+              <button class="copy" aria-label="Copy">
+                <svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+              </button>
+            </div>
+
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+  </div>
+</div>
+
+</body>
+</html>
