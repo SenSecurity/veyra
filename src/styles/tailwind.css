@@ -470,6 +470,114 @@
     letter-spacing: -0.005em;
   }
 
+  /* ---------- Glacier overlay capsule ---------- */
+  /* Used by src/overlay/pill.tsx — light-glass floating pill rendered
+     by the always-on-top "overlay" Tauri webview window. */
+  .veyra-capsule {
+    --accent: var(--cyan);
+    --accent-deep: var(--cyan-deep);
+    --accent-soft: var(--cyan-soft);
+    --accent-glow: var(--halo);
+    height: 56px;
+    border-radius: 28px;
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.92) 0%, rgb(241 245 250 / 0.78) 100%);
+    backdrop-filter: blur(28px) saturate(170%);
+    -webkit-backdrop-filter: blur(28px) saturate(170%);
+    border: 1px solid rgb(255 255 255 / 0.85);
+    box-shadow:
+      0 0 0 1px rgb(12 17 28 / 0.05),
+      0 1px 0 rgb(255 255 255 / 0.95) inset,
+      0 18px 40px -16px rgb(12 17 28 / 0.55),
+      0 6px 16px -8px var(--accent-glow);
+    color: var(--ink);
+    position: relative;
+  }
+  .veyra-capsule[data-mode="drafter"] {
+    --accent: var(--spark);
+    --accent-deep: var(--spark-deep);
+    --accent-soft: #ffe2b3;
+    --accent-glow: var(--spark-glow);
+  }
+
+  .veyra-capsule-led {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 10px var(--accent-glow);
+    animation: veyra-cap-led 1.4s ease-in-out infinite;
+  }
+  .veyra-capsule[data-state="idle"] .veyra-capsule-led {
+    animation: none;
+    background: var(--slate-300, #aab5c4);
+    box-shadow: none;
+  }
+  .veyra-capsule[data-state="transcribing"] .veyra-capsule-led {
+    background: #ef4444;
+    box-shadow: 0 0 10px rgb(239 68 68 / 0.55);
+    animation: veyra-cap-led 1.4s ease-in-out infinite;
+  }
+  @keyframes veyra-cap-led {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.5; }
+  }
+
+  /* Live waveform — wider than the home wave, ~40 cells. */
+  .veyra-capsule-wave {
+    height: 28px;
+    display: flex; gap: 2px; align-items: center;
+    overflow: hidden;
+  }
+  .veyra-capsule-wave > i {
+    flex: 1;
+    border-radius: 1.5px;
+    background: linear-gradient(180deg, var(--accent-soft), var(--accent), var(--accent-deep));
+    box-shadow: 0 0 4px var(--accent-glow);
+    min-width: 2px;
+    animation: veyra-cap-amp 1.4s ease-in-out infinite;
+  }
+  .veyra-capsule-wave > i:nth-child(odd)  { animation-duration: 1.05s; }
+  .veyra-capsule-wave > i:nth-child(7n)   { animation-duration: 1.7s; }
+  .veyra-capsule-wave > i:nth-child(11n)  { animation-duration: 1.3s; }
+
+  .veyra-capsule[data-state="idle"] .veyra-capsule-wave > i {
+    animation: none;
+    height: 4px !important;
+    opacity: 0.55;
+    background: rgb(12 17 28 / 0.18);
+    box-shadow: none;
+  }
+  .veyra-capsule[data-state="transcribing"] .veyra-capsule-wave > i {
+    animation: veyra-cap-shimmer 1.6s ease-in-out infinite;
+    background: linear-gradient(180deg, rgb(12 17 28 / 0.2), rgb(12 17 28 / 0.5));
+    box-shadow: none;
+  }
+  @keyframes veyra-cap-amp {
+    0%, 100% { height: calc(var(--cap-amp, 1) * 12%); opacity: 0.7; }
+    50%      { height: calc(var(--cap-amp, 1) * 86%); opacity: 1; }
+  }
+  @keyframes veyra-cap-shimmer {
+    0%, 100% { height: 18%; opacity: 0.35; }
+    50%      { height: 60%; opacity: 0.85; }
+  }
+
+  /* Ephemeral hotkey hint anchored under the capsule. */
+  .veyra-capsule-hint {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgb(255 255 255 / 0.65);
+  }
+  .veyra-capsule-hint kbd {
+    background: rgb(255 255 255 / 0.10);
+    border: 1px solid rgb(255 255 255 / 0.20);
+    border-radius: 4px;
+    padding: 1px 6px;
+    margin: 0 3px;
+    color: rgb(255 255 255 / 0.9);
+    font-family: var(--font-mono);
+  }
+
   /* ---------- Mono eyebrow caption ---------- */
   .veyra-eyebrow {
     font-family: var(--font-mono);

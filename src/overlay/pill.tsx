@@ -1,13 +1,23 @@
 import { motion } from "framer-motion";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Square, X } from "lucide-react";
+import { useSettings } from "@/hooks/use-settings";
+import { formatDrafterName, formatWhisperName } from "@/lib/engine-format";
 import { ipc } from "@/lib/tauri";
 import { useOverlayStore } from "@/stores/overlay-store";
 import type { OverlayMode, OverlayState } from "@/stores/overlay-store";
 
 const WAVE_BARS = [5, 8, 11, 7, 14, 9, 6, 12, 8, 5];
 const SPEAKING_THRESHOLD = 0.02;
+const CAPSULE_BAR_COUNT = 40;
 
+/**
+ * Legacy bar-height calculator. Kept verbatim so the pre-Glacier
+ * `pill.test.ts` contract continues to hold. The capsule no longer
+ * consumes its output directly — it renders 40 bars driven by the
+ * smoothed `voiceLevel` via a single CSS variable — but the math
+ * is preserved as the canonical reference for amplitude shaping.
+ */
 export function calculateWaveBarHeights({
   state,
   voiceLevel,
@@ -29,99 +39,125 @@ export function calculateWaveBarHeights({
   });
 }
 
+export function formatElapsed(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) ms = 0;
+  const total = Math.floor(ms);
+  const minutes = Math.floor(total / 60_000);
+  const seconds = Math.floor((total % 60_000) / 1000);
+  const tenths = Math.floor((total % 1000) / 100);
+  return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}.${tenths}`;
+}
+
 export function OverlayPill({ state, mode }: { state: OverlayState; mode: OverlayMode }) {
   const busy = state === "transcribing";
+  const recording = state === "recording";
   const commandMode = mode === "command";
-  const modeLabel = commandMode ? "Email Drafter" : "Speech to Text";
+  const dataMode = commandMode ? "drafter" : "stt";
+  const { settings } = useSettings();
+
+  const engineName = commandMode
+    ? formatDrafterName(settings?.emailDraftEngine, settings?.emailDraftModel)
+    : formatWhisperName(settings?.whisperModel);
+
   const level = useOverlayStore((s) => s.level);
-  const voiceLevel = state === "recording" ? Math.max(0, Math.min(1, level)) : 0;
-  const speaking = voiceLevel > SPEAKING_THRESHOLD;
-  const [phase, setPhase] = useState(0);
+  const recordingStartedAt = useOverlayStore((s) => s.recordingStartedAt);
+  const voiceLevel = recording ? Math.max(0, Math.min(1, level)) : 0;
 
-  useEffect(() => {
-    if (state !== "recording" || !speaking) {
-      setPhase(0);
-      return;
-    }
+  // Drive the wave amplitude via a single CSS variable; the per-bar
+  // stagger lives in tailwind.css keyframes (no per-frame React work).
+  const capAmp = recording
+    ? voiceLevel > SPEAKING_THRESHOLD
+      ? 0.4 + voiceLevel * 0.9
+      : 0.32
+    : busy
+      ? 0.6
+      : 0.3;
 
-    let frame = 0;
-    let previous = performance.now();
-    const animate = (now: number) => {
-      const delta = Math.min(48, now - previous);
-      previous = now;
-      setPhase((current) => current + delta * (0.018 + voiceLevel * 0.024));
-      frame = window.requestAnimationFrame(animate);
-    };
+  const elapsedLabel = useElapsedLabel(recordingStartedAt, state);
 
-    frame = window.requestAnimationFrame(animate);
-    return () => window.cancelAnimationFrame(frame);
-  }, [speaking, state, voiceLevel]);
-
-  const barHeights = useMemo(
-    () => calculateWaveBarHeights({ state, voiceLevel, phase }),
-    [phase, state, voiceLevel],
-  );
+  const primaryAction = busy
+    ? () => void ipc.cancelRecording().catch(() => {})
+    : () => void ipc.toggleRecording().catch(() => {});
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 6, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.16 }}
-      className="flex flex-col items-center gap-1 text-white"
+      className="flex w-[520px] flex-col items-center gap-1.5"
     >
       <div
-        className={
-          commandMode
-            ? "rounded-full border border-amber-200/40 bg-amber-300 px-2.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-zinc-950 shadow-sm"
-            : "rounded-full border border-sky-200/40 bg-sky-300 px-2.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-zinc-950 shadow-sm"
+        className="veyra-capsule grid w-full items-center gap-3.5 px-2.5 pl-3.5"
+        style={{
+          gridTemplateColumns: "12px auto 1fr 56px 36px",
+          ["--cap-amp" as string]: capAmp.toFixed(3),
+        }}
+        data-mode={dataMode}
+        data-state={state}
+        role="status"
+        aria-live="polite"
+        aria-label={
+          busy
+            ? `${commandMode ? "Email Drafter" : "Speech to Text"} transcribing`
+            : recording
+              ? `${commandMode ? "Email Drafter" : "Speech to Text"} recording`
+              : `${commandMode ? "Email Drafter" : "Speech to Text"} idle`
         }
       >
-        {modeLabel}
-      </div>
-      <div
-        className="flex h-8 items-center gap-2 rounded-full border border-white/10 bg-zinc-950/95 px-1.5 text-white backdrop-blur"
-        style={{ boxShadow: "0 10px 24px rgba(0,0,0,0.32)" }}
-      >
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void ipc.cancelRecording().catch(() => {})}
-          className="flex h-5 w-5 items-center justify-center rounded-full bg-zinc-700 text-zinc-200 hover:bg-zinc-600 disabled:opacity-50"
-          aria-label="Cancel recording"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
-        <div className="flex h-5 min-w-20 items-center justify-center gap-0.5 overflow-hidden" aria-hidden="true">
-          {busy ? (
-            <span className="typr-transcribing-label text-[11px] font-medium leading-none text-zinc-100">
-              Transcribing
-            </span>
-          ) : (
-            WAVE_BARS.map((height, index) => (
-              <motion.span
-                key={`${height}-${index}`}
-                className="block w-0.5 rounded-full bg-white"
-                animate={{
-                  height: barHeights[index],
-                  opacity: state === "recording" ? 0.48 + voiceLevel * 0.52 : 1,
-                }}
-                transition={{
-                  duration: 0.055,
-                }}
-              />
-            ))
-          )}
+        <span className="veyra-capsule-led" aria-hidden="true" />
+        <span className="flex flex-col leading-tight">
+          <span
+            className="font-mono text-[10px] uppercase tracking-[0.2em] font-medium"
+            style={{ color: "var(--accent-deep)" }}
+          >
+            {commandMode ? "Drafter" : "STT"}
+          </span>
+          <span className="text-[12.5px] font-semibold tracking-[-0.005em] text-[var(--ink,#0c111c)]">
+            {busy ? "Transcribing…" : recording ? engineName : "Listening…"}
+          </span>
+        </span>
+        <div className="veyra-capsule-wave" aria-hidden="true">
+          {Array.from({ length: CAPSULE_BAR_COUNT }).map((_, i) => (
+            <i key={i} />
+          ))}
         </div>
+        <span
+          className="text-right font-mono text-[12px] tabular-nums tracking-[0.04em]"
+          style={{ color: busy ? "var(--slate-400, #8b95a6)" : "var(--ink, #0c111c)" }}
+        >
+          {elapsedLabel}
+        </span>
         <button
           type="button"
-          disabled={busy}
-          onClick={() => void ipc.toggleRecording().catch(() => {})}
-          className="flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-white hover:bg-rose-400 disabled:bg-amber-500"
-          aria-label="Stop recording"
+          onClick={primaryAction}
+          className="grid h-9 w-9 place-items-center rounded-full bg-[#0c111c] text-white shadow-[inset_0_1px_0_rgb(255_255_255_/_0.15),0_4px_10px_-2px_rgb(12_17_28_/_0.45)] transition-colors hover:bg-[#1a212e] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
+          aria-label={busy ? "Cancel transcription" : "Stop recording"}
         >
-          <Square className="h-2.5 w-2.5 fill-current" />
+          {busy ? (
+            <X className="h-3 w-3" strokeWidth={2} />
+          ) : (
+            <Square className="h-3 w-3 fill-current" strokeWidth={0} />
+          )}
         </button>
       </div>
     </motion.div>
   );
+}
+
+function useElapsedLabel(
+  startedAt: number | null,
+  state: OverlayState,
+): string {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (state !== "recording" || startedAt == null) return;
+    const id = window.setInterval(() => setNow(Date.now()), 100);
+    return () => window.clearInterval(id);
+  }, [startedAt, state]);
+
+  if (startedAt == null) return "00:00.0";
+  if (state === "transcribing") return formatElapsed(Math.max(0, now - startedAt));
+  if (state !== "recording") return "00:00.0";
+  return formatElapsed(now - startedAt);
 }
