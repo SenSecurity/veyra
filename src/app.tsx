@@ -4,6 +4,7 @@ import { CommandPalette } from "@/layout/command-palette";
 import { WindowTitleBar } from "@/layout/window-titlebar";
 import { Toaster } from "@/components/ui/sonner";
 import { useLiveEvents } from "@/hooks/use-live-events";
+import { useWindowMaximized } from "@/hooks/use-window-maximized";
 import { useWizardGate } from "@/hooks/use-wizard-gate";
 
 // Root shell. Mounted by the rootRoute in router.tsx; renders the global
@@ -11,10 +12,15 @@ import { useWizardGate } from "@/hooks/use-wizard-gate";
 export function App() {
   useLiveEvents();
   const { completed: wizardCompleted } = useWizardGate();
+  const maximized = useWindowMaximized();
+  const dataMax = maximized ? "true" : "false";
 
   if (wizardCompleted !== true) {
     return (
-      <div className="veyra-window-shell flex h-screen overflow-hidden font-sans text-foreground">
+      <div
+        className="veyra-window-shell flex h-screen overflow-hidden font-sans text-foreground"
+        data-maximized={dataMax}
+      >
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <WindowTitleBar setupMode />
         <main className="min-h-0 flex-1 overflow-hidden bg-[radial-gradient(circle_at_20%_0%,rgb(59_130_246_/_0.16),transparent_34%),radial-gradient(circle_at_86%_22%,rgb(14_165_233_/_0.12),transparent_30%),linear-gradient(135deg,oklch(0.992_0.010_248),oklch(0.953_0.030_245)_58%,oklch(0.928_0.040_238))]">
@@ -27,7 +33,10 @@ export function App() {
   }
 
   return (
-    <div className="veyra-window-shell flex h-screen flex-col overflow-hidden font-sans text-foreground">
+    <div
+      className="veyra-window-shell flex h-screen flex-col overflow-hidden font-sans text-foreground"
+      data-maximized={dataMax}
+    >
       <WindowTitleBar />
       <div className="flex min-h-0 flex-1 overflow-hidden bg-app">
         <Sidebar />
