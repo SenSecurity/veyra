@@ -6,29 +6,21 @@ export interface WaveStageProps {
   variant: WaveStageVariant;
   /** Reserved for future amplitude wiring; currently animates the idle pulse. */
   live?: boolean;
-  /** Mono caption rendered bottom-left over the dark canvas. */
+  /** Mono caption rendered bottom-left under the strip. */
   metaLeft?: string;
   /** Mono caption rendered bottom-right; bold-style highlight allowed via children. */
   metaRight?: React.ReactNode;
   className?: string;
 }
 
-// V-shape bar height ladder — taller at edges, short in centre — matches
-// docs/mockups/08-glacier-veyra.html .vsg-bars geometry.
-const BAR_HEIGHTS = [
-  95, 88, 78, 70, 62, 54, 46, 38, 30, 22, 16, 12,
-  12, 16, 22, 30, 38, 46, 54, 62, 70, 78, 88, 95,
-];
-
-const BAR_DELAYS = [
-  0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, 0.60,
-  0.62, 0.55, 0.50, 0.45, 0.40, 0.35, 0.30, 0.25, 0.20, 0.15, 0.10, 0.05,
-];
+const BAR_COUNT = 40;
 
 /**
- * Dark "wave-stage" canvas hosting the V-shaped signal bars + a warm
- * spark below the horizon line. Used inside Glacier engine cards on
- * the Home route. Bar heights are baked in to match the brand mark.
+ * Light-glass horizontal waveform strip. Mirrors the visual language
+ * of the recording overlay capsule (docs/mockups/overlay-01-capsule.html)
+ * — subtle ice-tinted background, restrained cyan or spark bars, no
+ * dark canvas, no reflection, no central spark. The meta line lives
+ * directly below the strip rather than overlaid on it.
  */
 export function WaveStage({
   variant,
@@ -36,41 +28,27 @@ export function WaveStage({
   metaRight,
   className,
 }: WaveStageProps) {
+  const isSpark = variant === "drafter";
   return (
-    <div
-      className={cn("veyra-wave-stage", className)}
-      data-variant={variant}
-      role="presentation"
-    >
-      <div className="vsg-bars">
-        {BAR_HEIGHTS.map((h, i) => (
+    <div className={cn("flex flex-col gap-2", className)}>
+      <div
+        className={cn(
+          "veyra-wave relative h-16 px-3.5",
+          isSpark && "veyra-wave-spark",
+        )}
+        data-variant={variant}
+        role="presentation"
+      >
+        {Array.from({ length: BAR_COUNT }).map((_, i) => (
           <i
-            key={`b-${i}`}
-            style={
-              {
-                "--h": `${h}%`,
-                animationDelay: `${BAR_DELAYS[i]}s`,
-              } as React.CSSProperties
-            }
+            key={i}
+            style={{ animationDelay: `${(i % 13) * 0.06}s` }}
+            className="veyra-wave-cell"
           />
         ))}
       </div>
-      <div className="vsg-bars vsg-refl" aria-hidden="true">
-        {BAR_HEIGHTS.map((h, i) => (
-          <i
-            key={`r-${i}`}
-            style={
-              {
-                "--h": `${h * 0.45}%`,
-                animationDelay: `${BAR_DELAYS[i]}s`,
-              } as React.CSSProperties
-            }
-          />
-        ))}
-      </div>
-      <span className="vsg-spark" aria-hidden="true" />
       {(metaLeft || metaRight) && (
-        <div className="vsg-meta">
+        <div className="flex justify-between font-mono text-[0.6rem] tracking-[0.18em] uppercase text-muted-foreground">
           <span>{metaLeft}</span>
           <span>{metaRight}</span>
         </div>
