@@ -24,9 +24,9 @@ export function HomeRoute() {
   }, []);
 
   return (
-    <section className="space-y-6 p-6">
+    <section className="mx-auto max-w-5xl space-y-6 p-8">
       <div>
-        <h1 className="text-2xl font-semibold">Home</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Home</h1>
         <p className="text-sm text-muted-foreground">Dictation activity and recent captures.</p>
       </div>
       <div className="grid gap-4 md:grid-cols-4">

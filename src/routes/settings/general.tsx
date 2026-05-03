@@ -68,9 +68,9 @@ export function SettingsPanel({
   children?: React.ReactNode;
 }) {
   return (
-    <section className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-6">
+    <section className="mx-auto flex w-full max-w-3xl flex-col gap-5 p-8">
       <div>
-        <h1 className="text-xl font-semibold">{title}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
         {muted && <p className="mt-1 text-sm text-muted-foreground">{muted}</p>}
       </div>
       {children}

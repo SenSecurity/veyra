@@ -41,9 +41,9 @@ export function HistoryRoute() {
   }
 
   return (
-    <section className="space-y-4 p-6">
+    <section className="mx-auto max-w-5xl space-y-4 p-8">
       <div>
-        <h1 className="text-2xl font-semibold">History</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">History</h1>
         <p className="text-sm text-muted-foreground">Search, filter, and delete dictation captures.</p>
       </div>
       <div className="flex flex-col gap-2 md:flex-row">
@@ -51,7 +51,7 @@ export function HistoryRoute() {
           <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input className="pl-9" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search transcriptions" />
         </div>
-        <select className="h-8 rounded-md border border-border bg-background px-3 text-sm" value={engine} onChange={(e) => setEngine(e.target.value)}>
+        <select className="h-9 rounded-lg border border-border bg-card px-3 text-sm shadow-sm" value={engine} onChange={(e) => setEngine(e.target.value)}>
           <option value="all">All engines</option>
           <option value="local">Local</option>
           <option value="groq">Groq</option>

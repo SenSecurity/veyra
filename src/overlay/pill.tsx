@@ -1,18 +1,68 @@
 import { motion } from "framer-motion";
+import { useEffect, useMemo, useState } from "react";
 import { Square, X } from "lucide-react";
 import { ipc } from "@/lib/tauri";
 import { useOverlayStore } from "@/stores/overlay-store";
 import type { OverlayMode, OverlayState } from "@/stores/overlay-store";
+
+const WAVE_BARS = [5, 8, 11, 7, 14, 9, 6, 12, 8, 5];
+const SPEAKING_THRESHOLD = 0.035;
+
+export function calculateWaveBarHeights({
+  state,
+  voiceLevel,
+  phase,
+}: {
+  state: OverlayState;
+  voiceLevel: number;
+  phase: number;
+}) {
+  const speaking = voiceLevel > SPEAKING_THRESHOLD;
+  return WAVE_BARS.map((height, index) => {
+    if (state !== "recording") return height;
+    if (!speaking) return Math.max(3, Math.round(height * 0.42));
+
+    const wave = (Math.sin(phase + index * 0.88) + 1) / 2;
+    const flutter = (Math.sin(phase * 1.7 + index * 0.46) + 1) / 2;
+    const lift = voiceLevel * (0.9 + wave * 1.45 + flutter * 0.45);
+    return Math.min(20, Math.max(3, Math.round(height * (0.35 + lift))));
+  });
+}
 
 export function OverlayPill({ state, mode }: { state: OverlayState; mode: OverlayMode }) {
   const busy = state === "transcribing";
   const commandMode = mode === "command";
   const modeLabel = commandMode ? "Email Drafter" : "Speech to Text";
   const level = useOverlayStore((s) => s.level);
-  const bars = [5, 8, 11, 7, 14, 9, 6, 12, 8, 5];
   const voiceLevel = state === "recording"
     ? Math.min(1, Math.pow(Math.max(0, level - 0.001) / 0.055, 0.55))
     : 0;
+  const speaking = voiceLevel > SPEAKING_THRESHOLD;
+  const [phase, setPhase] = useState(0);
+
+  useEffect(() => {
+    if (state !== "recording" || !speaking) {
+      setPhase(0);
+      return;
+    }
+
+    let frame = 0;
+    let previous = performance.now();
+    const animate = (now: number) => {
+      const delta = Math.min(48, now - previous);
+      previous = now;
+      setPhase((current) => current + delta * (0.018 + voiceLevel * 0.024));
+      frame = window.requestAnimationFrame(animate);
+    };
+
+    frame = window.requestAnimationFrame(animate);
+    return () => window.cancelAnimationFrame(frame);
+  }, [speaking, state, voiceLevel]);
+
+  const barHeights = useMemo(
+    () => calculateWaveBarHeights({ state, voiceLevel, phase }),
+    [phase, state, voiceLevel],
+  );
 
   return (
     <motion.div
@@ -31,8 +81,8 @@ export function OverlayPill({ state, mode }: { state: OverlayState; mode: Overla
         {modeLabel}
       </div>
       <div
-        className="flex h-8 items-center gap-2 rounded-full border border-white/10 bg-zinc-950/95 px-1.5 text-white"
-        style={{ boxShadow: "0 8px 20px rgba(0,0,0,0.28)" }}
+        className="flex h-8 items-center gap-2 rounded-full border border-white/10 bg-zinc-950/95 px-1.5 text-white backdrop-blur"
+        style={{ boxShadow: "0 10px 24px rgba(0,0,0,0.32)" }}
       >
         <button
           type="button"
@@ -49,27 +99,16 @@ export function OverlayPill({ state, mode }: { state: OverlayState; mode: Overla
               Transcribing
             </span>
           ) : (
-            bars.map((height, index) => (
+            WAVE_BARS.map((height, index) => (
               <motion.span
                 key={`${height}-${index}`}
                 className="block w-0.5 rounded-full bg-white"
                 animate={{
-                  height:
-                    state === "recording"
-                      ? Math.min(
-                          20,
-                          Math.max(
-                            3,
-                            Math.round(
-                              height * (0.35 + voiceLevel * (index % 2 === 0 ? 1.55 : 1.2)),
-                            ),
-                          ),
-                        )
-                      : height,
-                  opacity: state === "recording" ? 0.58 + voiceLevel * 0.42 : 1,
+                  height: barHeights[index],
+                  opacity: state === "recording" ? 0.48 + voiceLevel * 0.52 : 1,
                 }}
                 transition={{
-                  duration: 0.08,
+                  duration: 0.055,
                 }}
               />
             ))
