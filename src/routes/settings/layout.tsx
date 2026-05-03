@@ -6,6 +6,7 @@ const tabs: { to: string; label: string }[] = [
   { to: "/settings/general", label: "General" },
   { to: "/settings/transcription", label: "Transcription" },
   { to: "/settings/hotkeys", label: "Hotkeys" },
+  { to: "/settings/overlay", label: "Overlay" },
 ];
 
 // Settings parent layout: horizontal tab strip + outlet for active tab.
