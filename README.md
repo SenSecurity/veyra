@@ -40,6 +40,8 @@ Email draft:
 3. Press **Pause** again.
 4. Veyra writes the draft and saves a copy under **Email Drafter**.
 
+Email drafts use the same preprompt for every model. By default Veyra writes in the language you are speaking. Ask for another language explicitly, for example `diz em ingles` or `diz em frances`. Drafts are intentionally a bit fuller so you can delete extra text instead of asking for more.
+
 ## Models
 
 Speech-to-text uses local `whisper.cpp`.
