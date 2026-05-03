@@ -39,6 +39,7 @@ export const ipc = {
   toggleRecording: () => invoke<string>("toggle_recording"),
   setOverlayLayout: (style: string, size: string) =>
     invoke<void>("set_overlay_layout", { style, size }),
+  isOllamaInstalled: () => invoke<boolean>("is_ollama_installed"),
 
   // transcriptions
   listTranscriptions: (limit: number, offset: number) =>

@@ -1303,6 +1303,66 @@ async fn download_email_draft_model(
     .await
 }
 
+/// Cheap synchronous probe: is the Ollama CLI present on the user's
+/// machine? Used by the first-boot wizard to render the right CTA
+/// without invoking the heavier `check_email_draft_model` (which also
+/// triggers a model pull). Mirrors the file-existence checks in
+/// `src-tauri/windows/hooks.nsh`.
+#[tauri::command]
+fn is_ollama_installed() -> bool {
+    let candidates: Vec<std::path::PathBuf> = ollama_candidate_paths();
+    if candidates.iter().any(|p| p.is_file()) {
+        return true;
+    }
+    // PATH lookup as final fallback.
+    if let Ok(path) = std::env::var("PATH") {
+        let exe = if cfg!(target_os = "windows") {
+            "ollama.exe"
+        } else {
+            "ollama"
+        };
+        for dir in std::env::split_paths(&path) {
+            if dir.join(exe).is_file() {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+#[cfg(target_os = "windows")]
+fn ollama_candidate_paths() -> Vec<std::path::PathBuf> {
+    let mut out: Vec<std::path::PathBuf> = Vec::new();
+    if let Ok(local) = std::env::var("LOCALAPPDATA") {
+        out.push(std::path::PathBuf::from(local).join("Programs/Ollama/ollama.exe"));
+    }
+    if let Ok(pf) = std::env::var("ProgramFiles") {
+        out.push(std::path::PathBuf::from(pf).join("Ollama/ollama.exe"));
+    }
+    if let Ok(pf86) = std::env::var("ProgramFiles(x86)") {
+        out.push(std::path::PathBuf::from(pf86).join("Ollama/ollama.exe"));
+    }
+    out
+}
+
+#[cfg(target_os = "macos")]
+fn ollama_candidate_paths() -> Vec<std::path::PathBuf> {
+    vec![
+        std::path::PathBuf::from("/Applications/Ollama.app/Contents/Resources/ollama"),
+        std::path::PathBuf::from("/usr/local/bin/ollama"),
+        std::path::PathBuf::from("/opt/homebrew/bin/ollama"),
+    ]
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+fn ollama_candidate_paths() -> Vec<std::path::PathBuf> {
+    vec![
+        std::path::PathBuf::from("/usr/local/bin/ollama"),
+        std::path::PathBuf::from("/usr/bin/ollama"),
+        std::path::PathBuf::from("/opt/ollama/ollama"),
+    ]
+}
+
 #[tauri::command]
 fn open_ollama_download() -> Result<(), String> {
     let url = "https://ollama.com/download";
@@ -1457,6 +1517,7 @@ fn main() {
             check_email_draft_model,
             download_email_draft_model,
             open_ollama_download,
+            is_ollama_installed,
         ])
         .on_window_event(|window, event| {
             if window.label() != "main" {
