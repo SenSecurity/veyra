@@ -1,6 +1,7 @@
 @theme {
-  --font-sans: 'Inter Variable', 'Segoe UI Variable', system-ui, sans-serif;
+  --font-sans: 'Inter Tight Variable', 'Geist Variable', 'Inter Variable', 'Segoe UI Variable', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono Variable', 'Cascadia Code', monospace;
+  --font-display-italic: 'Newsreader', serif;
 
   --color-bg: oklch(99% 0.005 90);
   --color-surface: oklch(98% 0.008 90);

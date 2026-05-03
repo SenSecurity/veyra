@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Veyra Overlay · Halo Orb</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@1,6..72,300;1,6..72,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink:        #0c111c;
+    --slate-700:  #2d384a;
+    --slate-500:  #677386;
+    --slate-400:  #8b95a6;
+    --slate-200:  #cbd2dd;
+
+    --cyan:       #2bc7ff;
+    --cyan-soft:  #a4e6ff;
+    --cyan-deep:  #0a8bc4;
+    --halo:       rgba(43, 199, 255, 0.45);
+
+    --spark:      #ffb454;
+    --spark-deep: #ff8a1f;
+    --spark-glow: rgba(255, 180, 84, 0.55);
+
+    --hairline:   rgba(12, 17, 28, 0.10);
+    --hairline-2: rgba(12, 17, 28, 0.18);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; min-height: 100%; }
+  body {
+    font-family: 'Inter Tight', system-ui, sans-serif;
+    color: #e6ecf3;
+    background:
+      radial-gradient(1200px 700px at 20% 10%, #2a3a52 0%, transparent 55%),
+      radial-gradient(900px 600px at 80% 90%, #1c2333 0%, transparent 60%),
+      #0a0e15;
+    min-height: 100vh;
+    padding: 60px 40px 100px;
+    letter-spacing: -0.005em;
+  }
+
+  h1 {
+    font-size: 30px; font-weight: 500;
+    letter-spacing: -0.025em;
+    margin: 0 0 6px; color: #fff;
+  }
+  .lead {
+    color: #8b95a6;
+    margin: 0 0 50px;
+    max-width: 660px;
+    font-size: 15px; line-height: 1.55;
+  }
+
+  .grid {
+    display: grid;
+    gap: 40px;
+    grid-template-columns: 1fr 1fr;
+    max-width: 1200px;
+  }
+
+  .stage {
+    padding: 60px 40px;
+    border-radius: 22px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015));
+    border: 1px solid rgba(255,255,255,0.07);
+    text-align: center;
+    min-height: 360px;
+    position: relative;
+    display: flex; flex-direction: column;
+  }
+  .stage h3 {
+    margin: 0 0 6px;
+    font-size: 18px; color: #fff;
+    font-weight: 500;
+    letter-spacing: -0.015em;
+    text-align: left;
+  }
+  .stage .desc {
+    color: #8b95a6;
+    font-size: 13px;
+    line-height: 1.5;
+    text-align: left;
+    margin-bottom: 32px;
+  }
+  .state-cap {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #8b95a6;
+    margin-bottom: 6px;
+    text-align: left;
+  }
+  .stage-body {
+    flex: 1;
+    display: grid; place-items: center;
+  }
+
+  /* ---------- THE ORB ---------- */
+  .orb-wrap {
+    position: relative;
+    width: 240px; height: 240px;
+    display: grid; place-items: center;
+  }
+  .orb {
+    --accent:      var(--cyan);
+    --accent-deep: var(--cyan-deep);
+    --accent-glow: var(--halo);
+    --accent-soft: var(--cyan-soft);
+    position: relative;
+    width: 96px; height: 96px;
+    border-radius: 50%;
+    background:
+      radial-gradient(120% 120% at 30% 25%, #3a4658 0%, #1a212e 40%, #07090d 95%);
+    box-shadow:
+      inset 0 1.5px 0 rgba(255,255,255,0.18),
+      inset 0 -2px 0 rgba(255,255,255,0.04),
+      inset 0 0 0 1px rgba(255,255,255,0.08),
+      0 14px 32px -8px rgba(12,17,28,0.7),
+      0 0 30px -4px rgba(43,199,255,0.35);
+    display: grid; place-items: center;
+    cursor: pointer;
+    z-index: 3;
+    animation: orbBreathe 3.8s ease-in-out infinite;
+  }
+  .orb.drafter {
+    --accent:      var(--spark);
+    --accent-deep: var(--spark-deep);
+    --accent-glow: var(--spark-glow);
+    --accent-soft: #ffe2b3;
+    box-shadow:
+      inset 0 1.5px 0 rgba(255,255,255,0.18),
+      inset 0 -2px 0 rgba(255,255,255,0.04),
+      inset 0 0 0 1px rgba(255,255,255,0.08),
+      0 14px 32px -8px rgba(12,17,28,0.7),
+      0 0 30px -4px rgba(255,180,84,0.4);
+  }
+  @keyframes orbBreathe {
+    0%,100% { transform: scale(1); }
+    50%     { transform: scale(1.04); }
+  }
+  /* glossy highlight */
+  .orb::before {
+    content: "";
+    position: absolute; inset: 6% 6% 55% 6%;
+    border-radius: 50%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.04) 70%, transparent 100%);
+    pointer-events: none;
+  }
+  /* V mark inside */
+  .orb svg.mark {
+    position: relative;
+    z-index: 2;
+    width: 60%; height: 60%;
+  }
+
+  /* concentric pulse rings */
+  .ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1.5px solid var(--cyan);
+    opacity: 0;
+    animation: ringPulse 2.4s ease-out infinite;
+    pointer-events: none;
+    box-shadow: 0 0 12px var(--halo);
+  }
+  .orb.drafter ~ .ring { border-color: var(--spark); box-shadow: 0 0 12px var(--spark-glow); }
+  .ring.r1 { width: 130px; height: 130px; animation-delay: 0s; }
+  .ring.r2 { width: 170px; height: 170px; animation-delay: 0.6s; }
+  .ring.r3 { width: 210px; height: 210px; animation-delay: 1.2s; }
+  @keyframes ringPulse {
+    0%   { opacity: 0; transform: scale(0.8); }
+    20%  { opacity: 0.85; }
+    100% { opacity: 0; transform: scale(1.05); }
+  }
+
+  /* idle = no rings, slower breathe */
+  .orb-wrap[data-state="idle"] .ring { display: none; }
+  .orb-wrap[data-state="idle"] .orb { animation-duration: 6s; box-shadow:
+    inset 0 1.5px 0 rgba(255,255,255,0.18),
+    inset 0 0 0 1px rgba(255,255,255,0.08),
+    0 8px 20px -6px rgba(12,17,28,0.5); }
+
+  /* transcribing = halo replaced with shimmer ring */
+  .orb-wrap[data-state="transcribing"] .ring { animation: shimmerSpin 1.6s linear infinite; opacity: 0.9; }
+  .orb-wrap[data-state="transcribing"] .ring.r2,
+  .orb-wrap[data-state="transcribing"] .ring.r3 { display: none; }
+  @keyframes shimmerSpin {
+    0%   { transform: rotate(0deg) scale(1); border-style: dashed; }
+    100% { transform: rotate(360deg) scale(1); border-style: dashed; }
+  }
+  .orb-wrap[data-state="transcribing"] .ring.r1 {
+    width: 130px; height: 130px;
+    border-style: dashed;
+    animation-name: shimmerSpin;
+    animation-iteration-count: infinite;
+  }
+
+  /* timer chip below the orb */
+  .timer-chip {
+    position: absolute;
+    left: 50%; bottom: -34px;
+    transform: translateX(-50%);
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(20px) saturate(170%);
+    -webkit-backdrop-filter: blur(20px) saturate(170%);
+    border: 1px solid rgba(255,255,255,0.85);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.95) inset,
+      0 6px 18px -8px rgba(12,17,28,0.55);
+    border-radius: 999px;
+    padding: 4px 10px 4px 8px;
+    color: var(--ink);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    z-index: 4;
+  }
+  .timer-chip .led {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 6px var(--halo);
+    animation: ledPulse 1.4s ease-in-out infinite;
+  }
+  .orb.drafter ~ .timer-chip .led { background: var(--spark); box-shadow: 0 0 6px var(--spark-glow); }
+  @keyframes ledPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+  .timer-chip .role {
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--slate-500);
+    font-size: 9.5px;
+  }
+  .timer-chip strong {
+    color: var(--ink);
+    font-family: 'Inter Tight', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    margin-right: 2px;
+    font-feature-settings: "tnum";
+  }
+
+  /* expanded transcript bubble (on hover) */
+  .bubble {
+    position: absolute;
+    left: 50%;
+    top: -98px;
+    transform: translateX(-50%);
+    width: 360px;
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(24px) saturate(170%);
+    -webkit-backdrop-filter: blur(24px) saturate(170%);
+    border: 1px solid rgba(255,255,255,0.85);
+    border-radius: 16px;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.95) inset,
+      0 0 0 1px rgba(12,17,28,0.05),
+      0 26px 50px -22px rgba(12,17,28,0.6);
+    padding: 12px 16px;
+    color: var(--ink);
+    text-align: left;
+    z-index: 5;
+  }
+  .bubble::after {
+    content: "";
+    position: absolute;
+    left: 50%; bottom: -6px;
+    width: 14px; height: 14px;
+    background: rgba(255,255,255,0.95);
+    border-right: 1px solid rgba(12,17,28,0.05);
+    border-bottom: 1px solid rgba(12,17,28,0.05);
+    transform: translateX(-50%) rotate(45deg);
+  }
+  .bubble .meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--slate-400);
+    margin-bottom: 6px;
+  }
+  .bubble .meta b { color: var(--cyan-deep); font-weight: 500; }
+  .orb.drafter ~ .bubble .meta b { color: var(--spark-deep); }
+  .bubble p {
+    margin: 0;
+    font-family: 'Newsreader', serif;
+    font-style: italic;
+    font-weight: 300;
+    font-size: 16px;
+    line-height: 1.4;
+    color: var(--ink);
+  }
+  .bubble p .partial { color: var(--slate-500); }
+  .caret {
+    display: inline-block;
+    width: 1.5px; height: 0.95em;
+    background: var(--cyan-deep);
+    margin-left: 3px;
+    vertical-align: -3px;
+    border-radius: 1px;
+    animation: blink 1s steps(2,end) infinite;
+    box-shadow: 0 0 6px var(--halo);
+  }
+  .orb.drafter ~ .bubble .caret { background: var(--spark-deep); box-shadow: 0 0 6px var(--spark-glow); }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .hint {
+    margin-top: 60px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.5);
+    text-align: left;
+  }
+  .hint .k {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 4px;
+    padding: 1px 6px;
+    margin: 0 3px;
+    color: rgba(255,255,255,0.85);
+  }
+</style>
+</head>
+<body>
+
+  <h1>Overlay · Halo Orb</h1>
+  <p class="lead">
+    A 96 px floating orb (the brand mark itself) anchored where the user
+    last gestured, with concentric rings rippling outward at the rhythm
+    of the voice. Smallest footprint of the three; expands on hover into
+    a transcript bubble. The orb pulses cyan for STT and spark amber for
+    Drafter — the same accent rule used everywhere else in the app.
+  </p>
+
+  <div class="grid">
+
+    <!-- STT recording -->
+    <section class="stage">
+      <h3>STT · recording</h3>
+      <p class="desc">Three concentric cyan rings ripple outward in sequence. The transcript bubble appears on hover, summary chip stays visible at all times beneath the orb.</p>
+      <div class="state-cap">Recording · 00:14</div>
+      <div class="stage-body">
+        <div class="orb-wrap" data-state="recording">
+          <div class="ring r1"></div>
+          <div class="ring r2"></div>
+          <div class="ring r3"></div>
+          <div class="orb">
+            <svg class="mark" viewBox="0 0 100 100" aria-hidden="true">
+              <defs>
+                <linearGradient id="vbar1" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#a4e6ff"/>
+                  <stop offset="50%" stop-color="#2bc7ff"/>
+                  <stop offset="100%" stop-color="#0a8bc4"/>
+                </linearGradient>
+                <radialGradient id="spark1" cx="50%" cy="100%" r="60%">
+                  <stop offset="0%"  stop-color="#fff1d0"/>
+                  <stop offset="40%" stop-color="#ffb454"/>
+                  <stop offset="100%" stop-color="#ff8a1f" stop-opacity="0"/>
+                </radialGradient>
+              </defs>
+              <g fill="url(#vbar1)">
+                <rect x="14" y="20" width="3" height="42" rx="1.5"/>
+                <rect x="20" y="24" width="3" height="38" rx="1.5"/>
+                <rect x="26" y="30" width="3" height="32" rx="1.5"/>
+                <rect x="32" y="36" width="3" height="26" rx="1.5"/>
+                <rect x="38" y="42" width="3" height="20" rx="1.5"/>
+                <rect x="44" y="48" width="3" height="14" rx="1.5"/>
+                <rect x="53" y="48" width="3" height="14" rx="1.5"/>
+                <rect x="59" y="42" width="3" height="20" rx="1.5"/>
+                <rect x="65" y="36" width="3" height="26" rx="1.5"/>
+                <rect x="71" y="30" width="3" height="32" rx="1.5"/>
+                <rect x="77" y="24" width="3" height="38" rx="1.5"/>
+                <rect x="83" y="20" width="3" height="42" rx="1.5"/>
+              </g>
+              <ellipse cx="50" cy="78" rx="9" ry="14" fill="url(#spark1)"/>
+              <rect x="49" y="64" width="2" height="14" rx="1" fill="#ffb454"/>
+            </svg>
+          </div>
+          <div class="bubble">
+            <div class="meta">STT · <b>recording</b> · 00:14.8 · 16 kHz</div>
+            <p>faz-me um email a dizer que hoje<span class="partial"> vou lá às cinco</span><span class="caret"></span></p>
+          </div>
+          <div class="timer-chip">
+            <span class="led"></span>
+            <span class="role">REC</span>
+            <strong>00:14</strong>
+            <span class="role">F24</span>
+          </div>
+        </div>
+      </div>
+      <div class="hint">tap <span class="k">F24</span> to stop · hover to expand</div>
+    </section>
+
+    <!-- Drafter recording -->
+    <section class="stage">
+      <h3>Drafter · recording</h3>
+      <p class="desc">Same orb, spark amber halo. Expanded bubble previews the spoken instruction; the LLM compose phase swaps the bubble copy without moving the orb.</p>
+      <div class="state-cap">Recording · 00:08</div>
+      <div class="stage-body">
+        <div class="orb-wrap" data-state="recording">
+          <div class="ring r1" style="border-color: var(--spark); box-shadow: 0 0 12px var(--spark-glow);"></div>
+          <div class="ring r2" style="border-color: var(--spark); box-shadow: 0 0 12px var(--spark-glow);"></div>
+          <div class="ring r3" style="border-color: var(--spark); box-shadow: 0 0 12px var(--spark-glow);"></div>
+          <div class="orb drafter">
+            <svg class="mark" viewBox="0 0 100 100" aria-hidden="true">
+              <defs>
+                <linearGradient id="vbar2" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#a4e6ff"/>
+                  <stop offset="50%" stop-color="#2bc7ff"/>
+                  <stop offset="100%" stop-color="#0a8bc4"/>
+                </linearGradient>
+                <radialGradient id="spark2" cx="50%" cy="100%" r="60%">
+                  <stop offset="0%"  stop-color="#fff1d0"/>
+                  <stop offset="40%" stop-color="#ffb454"/>
+                  <stop offset="100%" stop-color="#ff8a1f" stop-opacity="0"/>
+                </radialGradient>
+              </defs>
+              <g fill="url(#vbar2)">
+                <rect x="14" y="20" width="3" height="42" rx="1.5"/>
+                <rect x="20" y="24" width="3" height="38" rx="1.5"/>
+                <rect x="26" y="30" width="3" height="32" rx="1.5"/>
+                <rect x="32" y="36" width="3" height="26" rx="1.5"/>
+                <rect x="38" y="42" width="3" height="20" rx="1.5"/>
+                <rect x="44" y="48" width="3" height="14" rx="1.5"/>
+                <rect x="53" y="48" width="3" height="14" rx="1.5"/>
+                <rect x="59" y="42" width="3" height="20" rx="1.5"/>
+                <rect x="65" y="36" width="3" height="26" rx="1.5"/>
+                <rect x="71" y="30" width="3" height="32" rx="1.5"/>
+                <rect x="77" y="24" width="3" height="38" rx="1.5"/>
+                <rect x="83" y="20" width="3" height="42" rx="1.5"/>
+              </g>
+              <ellipse cx="50" cy="78" rx="9" ry="14" fill="url(#spark2)"/>
+              <rect x="49" y="64" width="2" height="14" rx="1" fill="#ffb454"/>
+            </svg>
+          </div>
+          <div class="bubble">
+            <div class="meta">Drafter · <b style="color:var(--spark-deep);">recording</b> · 00:08.2</div>
+            <p>escreve ao Bruno a confirmar a reunião<span class="partial"> de quinta-feira</span><span class="caret" style="background:var(--spark-deep); box-shadow:0 0 6px var(--spark-glow);"></span></p>
+          </div>
+          <div class="timer-chip">
+            <span class="led" style="background:var(--spark); box-shadow:0 0 6px var(--spark-glow);"></span>
+            <span class="role">REC</span>
+            <strong>00:08</strong>
+            <span class="role">Pause</span>
+          </div>
+        </div>
+      </div>
+      <div class="hint">tap <span class="k">Pause</span> to draft · hover to expand</div>
+    </section>
+
+    <!-- transcribing -->
+    <section class="stage">
+      <h3>STT · transcribing</h3>
+      <p class="desc">User has stopped. Rings collapse into a single dashed shimmer ring rotating around the orb. Timer freezes; chip caption changes to "Transcribing…".</p>
+      <div class="state-cap">Transcribing</div>
+      <div class="stage-body">
+        <div class="orb-wrap" data-state="transcribing">
+          <div class="ring r1" style="border-style: dashed;"></div>
+          <div class="orb">
+            <svg class="mark" viewBox="0 0 100 100" aria-hidden="true">
+              <use href="#vmark" />
+              <g fill="url(#vbar1)">
+                <rect x="14" y="20" width="3" height="42" rx="1.5"/>
+                <rect x="20" y="24" width="3" height="38" rx="1.5"/>
+                <rect x="26" y="30" width="3" height="32" rx="1.5"/>
+                <rect x="32" y="36" width="3" height="26" rx="1.5"/>
+                <rect x="38" y="42" width="3" height="20" rx="1.5"/>
+                <rect x="44" y="48" width="3" height="14" rx="1.5"/>
+                <rect x="53" y="48" width="3" height="14" rx="1.5"/>
+                <rect x="59" y="42" width="3" height="20" rx="1.5"/>
+                <rect x="65" y="36" width="3" height="26" rx="1.5"/>
+                <rect x="71" y="30" width="3" height="32" rx="1.5"/>
+                <rect x="77" y="24" width="3" height="38" rx="1.5"/>
+                <rect x="83" y="20" width="3" height="42" rx="1.5"/>
+              </g>
+              <ellipse cx="50" cy="78" rx="9" ry="14" fill="url(#spark1)"/>
+              <rect x="49" y="64" width="2" height="14" rx="1" fill="#ffb454"/>
+            </svg>
+          </div>
+          <div class="timer-chip">
+            <span class="led" style="background:#ef4444; box-shadow:0 0 6px rgba(239,68,68,0.55);"></span>
+            <span class="role">working</span>
+            <strong>transcribing…</strong>
+          </div>
+        </div>
+      </div>
+      <div class="hint">paste lands in <span class="k">~120 ms</span></div>
+    </section>
+
+    <!-- idle -->
+    <section class="stage">
+      <h3>State · idle</h3>
+      <p class="desc">VAD is on, no speech yet. Orb breathes slowly without rings; chip reads "Listening". Auto-dismisses after 3 s of silence.</p>
+      <div class="state-cap">Idle · listening</div>
+      <div class="stage-body">
+        <div class="orb-wrap" data-state="idle">
+          <div class="orb">
+            <svg class="mark" viewBox="0 0 100 100" aria-hidden="true">
+              <g fill="url(#vbar1)">
+                <rect x="14" y="20" width="3" height="42" rx="1.5"/>
+                <rect x="20" y="24" width="3" height="38" rx="1.5"/>
+                <rect x="26" y="30" width="3" height="32" rx="1.5"/>
+                <rect x="32" y="36" width="3" height="26" rx="1.5"/>
+                <rect x="38" y="42" width="3" height="20" rx="1.5"/>
+                <rect x="44" y="48" width="3" height="14" rx="1.5"/>
+                <rect x="53" y="48" width="3" height="14" rx="1.5"/>
+                <rect x="59" y="42" width="3" height="20" rx="1.5"/>
+                <rect x="65" y="36" width="3" height="26" rx="1.5"/>
+                <rect x="71" y="30" width="3" height="32" rx="1.5"/>
+                <rect x="77" y="24" width="3" height="38" rx="1.5"/>
+                <rect x="83" y="20" width="3" height="42" rx="1.5"/>
+              </g>
+              <ellipse cx="50" cy="78" rx="9" ry="14" fill="url(#spark1)"/>
+              <rect x="49" y="64" width="2" height="14" rx="1" fill="#ffb454"/>
+            </svg>
+          </div>
+          <div class="timer-chip">
+            <span class="led" style="background:var(--slate-400); box-shadow:none;"></span>
+            <span class="role">listen</span>
+            <strong>00:00</strong>
+          </div>
+        </div>
+      </div>
+      <div class="hint">awaiting voice · auto-dismiss in 3 s</div>
+    </section>
+
+  </div>
+
+</body>
+</html>

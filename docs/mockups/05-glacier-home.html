@@ -1,0 +1,800 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Veyra · Glacier Home</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,300;1,6..72,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-0: #eaf2fb;
+    --bg-1: #f5faff;
+    --bg-2: #dbe9f8;
+    --ice: #cfe1f5;
+    --ice-2: #b6d2ef;
+    --glacier: #5b9bd8;
+    --deep: #0a3a6d;
+    --abyss: #06203f;
+    --ink: #0f1c2e;
+    --ink-soft: #4d6480;
+    --ink-mute: #7a8fa8;
+    --hairline: rgba(10, 58, 109, 0.10);
+    --hairline-strong: rgba(10, 58, 109, 0.18);
+    --glass: rgba(255, 255, 255, 0.62);
+    --glass-edge: rgba(255, 255, 255, 0.85);
+    --accent: #2f7ad9;
+    --accent-2: #1c5fb6;
+    --halo: rgba(91, 155, 216, 0.45);
+    --green: #1f8b3c;
+    --green-soft: #d8f1de;
+
+    --titlebar-h: 38px;
+    --sidebar-w: 232px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body {
+    font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    color: var(--ink);
+    background: #0a3a6d;
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.005em;
+    overflow: hidden;
+  }
+
+  /* window chrome wrapper for "desktop app" framing */
+  .window {
+    position: relative;
+    width: min(1200px, 96vw);
+    height: min(820px, 92vh);
+    margin: 24px auto;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.5) inset,
+      0 0 0 1px rgba(255,255,255,0.15),
+      0 60px 120px -40px rgba(6,32,63,0.7),
+      0 30px 60px -20px rgba(6,32,63,0.5);
+    background:
+      radial-gradient(700px 500px at 0% 0%, #ffffff 0%, transparent 55%),
+      radial-gradient(900px 700px at 100% 0%, #d4e7fb 0%, transparent 55%),
+      radial-gradient(900px 700px at 80% 110%, #b9d6f3 0%, transparent 55%),
+      linear-gradient(180deg, var(--bg-1) 0%, var(--bg-0) 60%, var(--bg-2) 100%);
+  }
+  .window::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.04  0 0 0 0 0.18  0 0 0 0 0.32  0 0 0 0.05 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    opacity: 0.5;
+    mix-blend-mode: multiply;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* ---------- TITLE BAR ---------- */
+  .titlebar {
+    position: relative;
+    z-index: 5;
+    height: var(--titlebar-h);
+    display: grid;
+    grid-template-columns: var(--sidebar-w) 1fr auto;
+    align-items: center;
+    border-bottom: 1px solid var(--hairline);
+    background: linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0.55));
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+  }
+  .titlebar .brand {
+    display: flex; align-items: center; gap: 9px;
+    padding-left: 14px;
+  }
+  .brand-mark {
+    width: 22px; height: 22px;
+    border-radius: 7px;
+    background:
+      radial-gradient(120% 120% at 30% 20%, #ffffff 0%, #cfe2f7 35%, #6aa6df 70%, #1f5ea8 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.95),
+      inset 0 -2px 4px rgba(10,58,109,0.25),
+      0 4px 8px -4px rgba(31,94,168,0.55);
+    position: relative;
+  }
+  .brand-mark::after {
+    content: "";
+    position: absolute; inset: 2px 2px auto 2px; height: 6px;
+    border-radius: 4px 4px 8px 8px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0));
+  }
+  .brand-name {
+    font-family: 'Newsreader', serif;
+    font-weight: 500;
+    font-size: 16px;
+    letter-spacing: -0.01em;
+    color: var(--deep);
+  }
+
+  .titlebar .center {
+    display: flex; justify-content: center; align-items: center; gap: 10px;
+  }
+  .palette {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 10px 5px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.55);
+    border: 1px solid var(--hairline);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.9) inset;
+    font-size: 12px;
+    color: var(--ink-soft);
+    font-weight: 500;
+    letter-spacing: -0.005em;
+  }
+  .palette .magnifier {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    border: 1.5px solid var(--ink-soft);
+    position: relative;
+    margin-right: 2px;
+  }
+  .palette .magnifier::after {
+    content: "";
+    position: absolute;
+    width: 1.5px; height: 6px;
+    background: var(--ink-soft);
+    right: -2px; bottom: -3px;
+    transform: rotate(-45deg);
+    border-radius: 1px;
+  }
+  .keycap {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    padding: 2px 6px;
+    border-radius: 5px;
+    background: linear-gradient(180deg, #ffffff, #e7eff9);
+    border: 1px solid var(--hairline-strong);
+    color: var(--deep);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.9) inset,
+      0 1px 0 rgba(10,58,109,0.06);
+  }
+  .ready-pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 5px 11px;
+    border-radius: 999px;
+    background: var(--green-soft);
+    color: var(--green);
+    border: 1px solid rgba(31, 139, 60, 0.25);
+    font-size: 12px;
+    font-weight: 500;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.7) inset;
+  }
+  .ready-pill .led {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #fff 0%, #6cd37a 50%, #1f8b3c 100%);
+    box-shadow: 0 0 8px rgba(31,139,60,0.45);
+    animation: ledPulse 2.4s ease-in-out infinite;
+  }
+  @keyframes ledPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
+
+  .win-controls {
+    display: flex; gap: 2px;
+    height: 100%;
+  }
+  .win-controls button {
+    width: 46px; height: 100%;
+    border: none;
+    background: transparent;
+    color: var(--ink-soft);
+    font-size: 13px;
+    cursor: pointer;
+    display: grid; place-items: center;
+  }
+  .win-controls button:hover { background: rgba(10,58,109,0.06); }
+  .win-controls .close:hover { background: #e63946; color: #fff; }
+
+  /* ---------- BODY ---------- */
+  .body {
+    position: relative;
+    z-index: 4;
+    height: calc(100% - var(--titlebar-h));
+    display: grid;
+    grid-template-columns: var(--sidebar-w) 1fr;
+  }
+
+  /* ---------- SIDEBAR ---------- */
+  .sidebar {
+    position: relative;
+    padding: 14px 12px;
+    border-right: 1px solid var(--hairline);
+    background: linear-gradient(180deg, rgba(255,255,255,0.6) 0%, rgba(231,242,253,0.45) 100%);
+    backdrop-filter: blur(28px) saturate(160%);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+    overflow-y: auto;
+  }
+  .nav { list-style: none; padding: 0; margin: 0; display: grid; gap: 2px; }
+  .nav li a {
+    display: grid;
+    grid-template-columns: 22px 1fr;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    text-decoration: none;
+    color: var(--ink-soft);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+    transition: background .2s ease, color .2s ease;
+  }
+  .nav li a:hover { background: rgba(255,255,255,0.55); color: var(--deep); }
+  .nav li.on a {
+    background: linear-gradient(180deg, #ffffff, #e7f1fc);
+    color: var(--deep);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.9) inset,
+      0 0 0 1px var(--hairline-strong),
+      0 6px 14px -10px rgba(31,94,168,0.4);
+  }
+  .nav svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+  .side-section {
+    margin-top: 22px;
+    padding: 0 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+
+  .session-card {
+    margin: 10px 4px 0;
+    padding: 14px 14px;
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0.4));
+    border: 1px solid var(--hairline);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.9) inset;
+  }
+  .session-card .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    margin-bottom: 4px;
+  }
+  .session-card .value {
+    font-family: 'Newsreader', serif;
+    font-weight: 400;
+    font-style: italic;
+    font-size: 16px;
+    color: var(--deep);
+  }
+  .session-card .row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--ink-soft);
+  }
+  .session-card .row b { color: var(--accent); font-weight: 500; }
+
+  /* ---------- MAIN ---------- */
+  .main {
+    overflow-y: auto;
+    padding: 30px 38px 40px;
+  }
+  .page-head { margin-bottom: 26px; }
+  .page-head h1 {
+    margin: 0;
+    font-family: 'Newsreader', serif;
+    font-weight: 400;
+    font-size: 42px;
+    letter-spacing: -0.025em;
+    color: var(--deep);
+    line-height: 1.05;
+  }
+  .page-head h1 em {
+    font-style: italic;
+    font-weight: 300;
+    background: linear-gradient(120deg, #2f7ad9 0%, #5b9bd8 35%, #0a3a6d 80%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .page-head p {
+    margin: 8px 0 0;
+    color: var(--ink-soft);
+    font-size: 15px;
+    max-width: 640px;
+  }
+
+  .row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 22px;
+  }
+
+  /* card */
+  .card {
+    border-radius: 22px;
+    padding: 22px 24px 22px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.78), rgba(255,255,255,0.42));
+    backdrop-filter: blur(28px) saturate(160%);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+    border: 1px solid var(--glass-edge);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.95) inset,
+      0 0 0 1px rgba(10,58,109,0.04),
+      0 30px 60px -36px rgba(10,58,109,0.35);
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: "";
+    position: absolute; inset: 0;
+    background: radial-gradient(420px 200px at 100% 0%, rgba(91,155,216,0.18) 0%, transparent 65%);
+    pointer-events: none;
+  }
+  .card > * { position: relative; }
+
+  .card-head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .card-head h2 {
+    margin: 0;
+    font-family: 'Newsreader', serif;
+    font-weight: 500;
+    font-size: 22px;
+    color: var(--deep);
+    letter-spacing: -0.015em;
+  }
+  .card-head .sub {
+    margin: 4px 0 0;
+    color: var(--ink-soft);
+    font-size: 13.5px;
+  }
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 5px 11px;
+    border-radius: 999px;
+    background: var(--green-soft);
+    color: var(--green);
+    border: 1px solid rgba(31,139,60,0.25);
+    font-size: 11.5px;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+  .status-pill .led {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #fff 0%, #6cd37a 50%, #1f8b3c 100%);
+    box-shadow: 0 0 8px rgba(31,139,60,0.45);
+  }
+
+  .action-row {
+    margin-top: 14px;
+    display: grid;
+    grid-template-columns: 56px 1fr auto;
+    gap: 14px;
+    align-items: center;
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: rgba(255,255,255,0.62);
+    border: 1px solid var(--hairline);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.85) inset;
+  }
+  .action-row .icon {
+    width: 44px; height: 44px;
+    border-radius: 14px;
+    display: grid; place-items: center;
+    background:
+      radial-gradient(120% 120% at 30% 20%, #ffffff 0%, #d8ecff 35%, #5b9bd8 75%, #1c5fb6 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.95),
+      inset 0 -2px 6px rgba(10,58,109,0.25),
+      0 6px 14px -8px rgba(31,94,168,0.55);
+    color: #fff;
+  }
+  .action-row.warm .icon {
+    background:
+      radial-gradient(120% 120% at 30% 20%, #ffffff 0%, #ffe2c7 35%, #f3a25b 75%, #b95a14 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.95),
+      inset 0 -2px 6px rgba(120,50,10,0.3),
+      0 6px 14px -8px rgba(180,70,10,0.45);
+  }
+  .action-row .icon svg { width: 22px; height: 22px; stroke: #fff; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+  .action-row .label .title {
+    font-size: 15.5px;
+    font-weight: 600;
+    color: var(--deep);
+    letter-spacing: -0.005em;
+  }
+  .action-row .label .desc {
+    margin-top: 2px;
+    color: var(--ink-soft);
+    font-size: 13px;
+  }
+
+  .keystack {
+    display: flex; gap: 6px; align-items: center;
+  }
+  .kbd-big {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #ffffff, #e7eff9);
+    border: 1px solid var(--hairline-strong);
+    color: var(--deep);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.9) inset,
+      0 1px 0 rgba(10,58,109,0.08),
+      0 2px 0 rgba(10,58,109,0.06);
+    text-transform: uppercase;
+  }
+
+  .wave {
+    margin-top: 18px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: rgba(91,155,216,0.10);
+    border: 1px solid rgba(91,155,216,0.22);
+    height: 76px;
+    display: flex; gap: 3px; align-items: center;
+  }
+  .wave i {
+    flex: 1;
+    border-radius: 3px;
+    background: linear-gradient(180deg, #2f7ad9 0%, #91c0ec 100%);
+    animation: amp 1.6s ease-in-out infinite;
+    box-shadow: 0 0 6px rgba(91,155,216,0.4);
+  }
+  .wave i:nth-child(odd)  { animation-duration: 1.1s; }
+  .wave i:nth-child(7n)   { background: linear-gradient(180deg, #5b9bd8, #0a3a6d); }
+  .wave i:nth-child(13n)  { background: linear-gradient(180deg, #cfe1f5, #5b9bd8); animation-duration: 2.1s; }
+  @keyframes amp {
+    0%, 100% { height: 18%; opacity: 0.7; }
+    50%      { height: 90%; opacity: 1; }
+  }
+
+  .card.warm .wave {
+    background: rgba(243,162,91,0.12);
+    border-color: rgba(243,162,91,0.28);
+  }
+  .card.warm .wave i {
+    background: linear-gradient(180deg, #f3a25b 0%, #f7c896 100%);
+    box-shadow: 0 0 6px rgba(243,162,91,0.45);
+  }
+  .card.warm .wave i:nth-child(7n)  { background: linear-gradient(180deg, #b95a14, #6f2c00); }
+  .card.warm .wave i:nth-child(13n) { background: linear-gradient(180deg, #ffe2c7, #f3a25b); }
+
+  /* ---------- RECENT ACTIVITY ---------- */
+  .recent {
+    margin-top: 26px;
+    padding: 24px 26px 18px;
+    border-radius: 22px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.78), rgba(255,255,255,0.42));
+    backdrop-filter: blur(28px) saturate(160%);
+    -webkit-backdrop-filter: blur(28px) saturate(160%);
+    border: 1px solid var(--glass-edge);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.95) inset,
+      0 0 0 1px rgba(10,58,109,0.04),
+      0 30px 60px -36px rgba(10,58,109,0.35);
+  }
+  .recent-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 14px;
+  }
+  .recent-head h2 {
+    margin: 0;
+    font-family: 'Newsreader', serif;
+    font-weight: 500;
+    font-size: 22px;
+    color: var(--deep);
+    letter-spacing: -0.015em;
+  }
+  .recent-head a {
+    color: var(--accent);
+    font-size: 13.5px;
+    text-decoration: none;
+    font-weight: 500;
+  }
+  .recent-head a:hover { color: var(--deep); text-decoration: underline; text-decoration-color: var(--accent); }
+
+  .activity {
+    display: grid; gap: 0;
+  }
+  .activity-row {
+    display: grid;
+    grid-template-columns: 44px 1fr auto;
+    align-items: center;
+    gap: 16px;
+    padding: 13px 8px;
+    border-bottom: 1px solid var(--hairline);
+  }
+  .activity-row:last-child { border-bottom: none; }
+  .activity-row .ic {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: grid; place-items: center;
+    background: rgba(91,155,216,0.14);
+    color: var(--accent);
+  }
+  .activity-row .ic svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .activity-row .body-text {
+    min-width: 0;
+  }
+  .activity-row .preview {
+    font-family: 'Newsreader', serif;
+    font-weight: 400;
+    font-size: 16px;
+    color: var(--ink);
+    line-height: 1.35;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .activity-row .preview em {
+    font-style: italic;
+    color: var(--accent);
+  }
+  .activity-row .meta {
+    margin-top: 2px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+  .activity-row .meta b { color: var(--ink-soft); font-weight: 500; }
+  .activity-row .copy {
+    width: 32px; height: 32px;
+    border-radius: 9px;
+    border: 1px solid var(--hairline);
+    background: rgba(255,255,255,0.7);
+    color: var(--ink-soft);
+    cursor: pointer;
+    display: grid; place-items: center;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.9) inset;
+  }
+  .activity-row .copy:hover { color: var(--deep); border-color: var(--hairline-strong); }
+  .activity-row .copy svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* scrollbar refinement */
+  .main::-webkit-scrollbar, .sidebar::-webkit-scrollbar { width: 8px; }
+  .main::-webkit-scrollbar-thumb, .sidebar::-webkit-scrollbar-thumb {
+    background: rgba(10,58,109,0.18); border-radius: 4px;
+  }
+  .main::-webkit-scrollbar-thumb:hover, .sidebar::-webkit-scrollbar-thumb:hover {
+    background: rgba(10,58,109,0.32);
+  }
+</style>
+</head>
+<body>
+
+<div class="window">
+
+  <!-- TITLE BAR -->
+  <header class="titlebar">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div class="brand-name">Veyra</div>
+    </div>
+
+    <div class="center">
+      <div class="palette">
+        <span class="magnifier"></span>
+        Command
+        <span class="keycap">Ctrl</span>
+        <span class="keycap">K</span>
+      </div>
+      <span class="ready-pill"><span class="led"></span> ready</span>
+    </div>
+
+    <div class="win-controls">
+      <button aria-label="Minimize">—</button>
+      <button aria-label="Maximize">▢</button>
+      <button class="close" aria-label="Close">✕</button>
+    </div>
+  </header>
+
+  <!-- BODY -->
+  <div class="body">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <ul class="nav">
+        <li class="on">
+          <a href="#">
+            <svg viewBox="0 0 24 24"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg>
+            <span>Home</span>
+          </a>
+        </li>
+        <li>
+          <a href="#">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+            <span>History</span>
+          </a>
+        </li>
+        <li>
+          <a href="#">
+            <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.2"/><path d="M3.5 6.5l8.5 6 8.5-6"/></svg>
+            <span>Email Drafter</span>
+          </a>
+        </li>
+        <li>
+          <a href="#">
+            <svg viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3V4z"/><path d="M5 17h11"/><path d="M9 8h6"/></svg>
+            <span>Dictionary</span>
+          </a>
+        </li>
+        <li>
+          <a href="#">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .35 1.86l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.86-.35 1.7 1.7 0 0 0-1.05 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.05-1.55 1.7 1.7 0 0 0-1.86.35l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1.05H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 9 1.7 1.7 0 0 0 4.27 7.14l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.86.35h.02A1.7 1.7 0 0 0 10 3.09V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.05 1.55h.02a1.7 1.7 0 0 0 1.86-.35l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9v.02a1.7 1.7 0 0 0 1.55 1.05H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1.05z"/></svg>
+            <span>Settings</span>
+          </a>
+        </li>
+      </ul>
+
+      <div class="side-section">Session</div>
+      <div class="session-card">
+        <div class="label">Whisper</div>
+        <div class="value">Turbo · 1.5 GB</div>
+        <div class="row"><span>Drafter</span><b>Llama 3.2 1B</b></div>
+        <div class="row"><span>Uptime</span><b>02:14:08</b></div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+
+      <header class="page-head">
+        <h1>Home <em>—</em> a quiet desk.</h1>
+        <p>Quick controls, readiness, and recent work.</p>
+      </header>
+
+      <!-- TWO CARDS -->
+      <section class="row-2">
+
+        <!-- SPEECH TO TEXT -->
+        <article class="card">
+          <header class="card-head">
+            <div>
+              <h2>Speech to Text</h2>
+              <p class="sub">Dictate and transcribe anywhere.</p>
+            </div>
+            <span class="status-pill"><span class="led"></span> Operational</span>
+          </header>
+
+          <div class="action-row">
+            <span class="icon">
+              <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>
+            </span>
+            <div class="label">
+              <div class="title">Hold F24 to dictate</div>
+              <div class="desc">Dictate and transcribe anywhere.</div>
+            </div>
+            <span class="keystack"><span class="kbd-big">F24</span></span>
+          </div>
+
+          <div class="wave">
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          </div>
+        </article>
+
+        <!-- EMAIL DRAFTER -->
+        <article class="card warm">
+          <header class="card-head">
+            <div>
+              <h2>Email Drafter</h2>
+              <p class="sub">Draft emails from your voice.</p>
+            </div>
+            <span class="status-pill"><span class="led"></span> Operational</span>
+          </header>
+
+          <div class="action-row warm">
+            <span class="icon">
+              <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.2"/><path d="M3.5 6.5l8.5 6 8.5-6"/></svg>
+            </span>
+            <div class="label">
+              <div class="title">Hold Pause to draft</div>
+              <div class="desc">Draft emails from your voice.</div>
+            </div>
+            <span class="keystack"><span class="kbd-big">Pause</span></span>
+          </div>
+
+          <div class="wave">
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          </div>
+        </article>
+
+      </section>
+
+      <!-- RECENT ACTIVITY -->
+      <section class="recent">
+        <header class="recent-head">
+          <h2>Recent activity</h2>
+          <a href="#">View all →</a>
+        </header>
+
+        <div class="activity">
+
+          <div class="activity-row">
+            <span class="ic">
+              <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.2"/><path d="M3.5 6.5l8.5 6 8.5-6"/></svg>
+            </span>
+            <div class="body-text">
+              <div class="preview">Olá, escrevo para informar que <em>os materiais já foram postos no sítio que…</em></div>
+              <div class="meta">36 words · <b>local</b> · command · 14:22</div>
+            </div>
+            <button class="copy" aria-label="Copy">
+              <svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+            </button>
+          </div>
+
+          <div class="activity-row">
+            <span class="ic">
+              <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.2"/><path d="M3.5 6.5l8.5 6 8.5-6"/></svg>
+            </span>
+            <div class="body-text">
+              <div class="preview">Olá, escrevo para informar que <em>e aí. Caso seja necessário ajustar algum…</em></div>
+              <div class="meta">42 words · <b>local</b> · command · 11:08</div>
+            </div>
+            <button class="copy" aria-label="Copy">
+              <svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+            </button>
+          </div>
+
+          <div class="activity-row">
+            <span class="ic">
+              <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>
+            </span>
+            <div class="body-text">
+              <div class="preview">faz-me um email a dizer que hoje vou lá <em>às cinco da tarde…</em></div>
+              <div class="meta">18 words · <b>dictation</b> · turbo · 09:54</div>
+            </div>
+            <button class="copy" aria-label="Copy">
+              <svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+            </button>
+          </div>
+
+          <div class="activity-row">
+            <span class="ic">
+              <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.2"/><path d="M3.5 6.5l8.5 6 8.5-6"/></svg>
+            </span>
+            <div class="body-text">
+              <div class="preview">Following up on <em>the offensive security position discussed last week…</em></div>
+              <div class="meta">54 words · <b>local</b> · command · yesterday</div>
+            </div>
+            <button class="copy" aria-label="Copy">
+              <svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+            </button>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+
+  </div>
+
+</div>
+
+</body>
+</html>
