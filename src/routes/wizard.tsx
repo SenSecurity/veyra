@@ -1,41 +1,45 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { CheckCircle2, Keyboard, Mail, Mic } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Download,
+  Keyboard,
+  Loader2,
+  Mail,
+  Mic,
+  RefreshCw,
+} from "lucide-react";
 import { BrandMark } from "@/components/brand-mark";
 import { HotkeyInput } from "@/components/hotkey-input";
 import { Panel } from "@/components/page-shell";
 import { Button } from "@/components/ui/button";
-import { ipc } from "@/lib/tauri";
+import { useInstallOrchestrator, type StepState } from "@/hooks/use-install-orchestrator";
 import { useSettings } from "@/hooks/use-settings";
+import { ipc } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import type { MicDevice } from "@/types/ipc";
 
-const steps = ["Welcome", "Models", "Microphone", "Hotkeys", "Ready"] as const;
+const steps = ["Welcome", "Install", "Microphone", "Hotkeys", "Ready"] as const;
 
 export function WizardRoute() {
   const navigate = useNavigate();
   const { settings, update, loading, error, reload } = useSettings();
   const [step, setStep] = useState(0);
   const [mics, setMics] = useState<MicDevice[]>([]);
-  const [modelReady, setModelReady] = useState<boolean | null>(null);
-  const [emailReady, setEmailReady] = useState<boolean | null>(null);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   useEffect(() => {
     void ipc.listMicrophones().then(setMics).catch(() => setMics([]));
   }, []);
 
-  useEffect(() => {
-    if (!settings) return;
-    void ipc
-      .checkModelDownloaded(settings.whisperModel)
-      .then(setModelReady)
-      .catch(() => setModelReady(false));
-    void ipc
-      .checkEmailDraftModel(settings.groqApiKey, settings.emailDraftEngine, settings.emailDraftModel)
-      .then(() => setEmailReady(true))
-      .catch(() => setEmailReady(false));
-  }, [settings]);
+  const orchestrator = useInstallOrchestrator({
+    whisperModel: settings?.whisperModel ?? "turbo",
+    emailDraftEngine: settings?.emailDraftEngine ?? "ollama",
+    emailDraftModel: settings?.emailDraftModel ?? "llama3.2:1b",
+    groqApiKey: settings?.groqApiKey ?? "",
+  });
 
   const selectedMic = useMemo(() => {
     if (!settings) return "System default";
@@ -67,6 +71,8 @@ export function WizardRoute() {
     );
   }
 
+  const installLocked = orchestrator.anyRunning;
+
   return (
     <OnboardingShell step={step}>
       {step === 0 ? (
@@ -75,7 +81,7 @@ export function WizardRoute() {
             eyebrow={`Step 01 · ${steps[0]}`}
             title="Set up Veyra"
             accent="— quiet desk, ready when you are."
-            description="Choose the essentials before the app opens. Menus stay locked until this setup is complete."
+            description="Three quick steps. The next screen installs everything Veyra needs in one click; the rest is just preferences."
           />
           <div className="grid gap-3 md:grid-cols-2">
             <SetupChoice
@@ -98,55 +104,103 @@ export function WizardRoute() {
         <>
           <SetupHero
             eyebrow={`Step 02 · ${steps[1]}`}
-            title="Models"
-            accent="— Whisper + Llama"
-            description="Use fast local defaults now. You can change or re-download them later."
+            title="Install everything"
+            accent="— Whisper, Ollama, Llama"
+            description="One click downloads the speech model, installs Ollama if missing, and pulls the local email-draft model. You can keep going through the wizard while these finish in the background."
           />
-          <div className="grid gap-3 md:grid-cols-2">
-            <label className="grid gap-2 text-sm">
-              <span className="font-semibold tracking-[-0.005em]">Speech model</span>
-              <select
-                className="veyra-select w-full"
-                value={settings.whisperModel}
-                onChange={(event) => void update({ whisperModel: event.target.value })}
-              >
-                <option value="turbo">turbo · recommended</option>
-                <option value="base">base · fastest / lightest</option>
-                <option value="large-v3">large-v3 · highest accuracy</option>
-              </select>
-            </label>
-            <label className="grid gap-2 text-sm">
-              <span className="font-semibold tracking-[-0.005em]">Email model</span>
-              <select
-                className="veyra-select w-full"
-                value={settings.emailDraftModel}
-                onChange={(event) =>
-                  void update({ emailDraftEngine: "ollama", emailDraftModel: event.target.value })
-                }
-              >
-                <option value="llama3.2:1b">Llama 3.2 1B · recommended</option>
-                <option value="llama3.2">Llama 3.2 3B · stronger</option>
-                <option value="qwen3:1.7b">Qwen3 1.7B · fast</option>
-                <option value="qwen3:4b">Qwen3 4B · stronger</option>
-              </select>
-            </label>
-          </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            <SetupChoice
-              icon={<CheckCircle2 className="h-4 w-4" />}
+
+          <div className="grid gap-3 md:grid-cols-3">
+            <InstallCard
+              icon={<Mic className="h-4 w-4" />}
               tone="stt"
-              title="Speech model"
-              detail={settings.whisperModel}
-              status={modelReady ? "Operational" : "Download later"}
+              title="Whisper"
+              subtitle={`${settings.whisperModel} · 1.5 GB`}
+              state={orchestrator.whisper}
+              onRetry={() => void orchestrator.retry("whisper")}
             />
-            <SetupChoice
-              icon={<CheckCircle2 className="h-4 w-4" />}
+            <InstallCard
+              icon={<Download className="h-4 w-4" />}
+              tone="stt"
+              title="Ollama runtime"
+              subtitle="Local LLM host"
+              state={orchestrator.ollama}
+              onRetry={() => void orchestrator.retry("ollama")}
+            />
+            <InstallCard
+              icon={<Mail className="h-4 w-4" />}
               tone="drafter"
               title="Email model"
-              detail={settings.emailDraftModel}
-              status={emailReady ? "Operational" : "Install / check later"}
+              subtitle={settings.emailDraftModel}
+              state={orchestrator.drafter}
+              onRetry={() => void orchestrator.retry("drafter")}
             />
           </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <Button
+              type="button"
+              size="lg"
+              onClick={() => void orchestrator.runAll()}
+              disabled={orchestrator.allDone || orchestrator.anyRunning}
+            >
+              {orchestrator.allDone
+                ? "All set"
+                : orchestrator.anyRunning
+                  ? "Installing…"
+                  : orchestrator.anyFailed
+                    ? "Resume install"
+                    : "Install everything"}
+            </Button>
+
+            <button
+              type="button"
+              className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+              onClick={() => setAdvancedOpen((o) => !o)}
+            >
+              {advancedOpen ? "Hide advanced" : "Advanced…"}
+            </button>
+          </div>
+
+          {advancedOpen ? (
+            <div className="grid gap-3 rounded-xl border border-border bg-frost/50 p-3 md:grid-cols-2">
+              <label className="grid gap-1.5 text-xs">
+                <span className="font-mono uppercase tracking-[0.2em] text-muted-foreground">
+                  Speech model
+                </span>
+                <select
+                  className="veyra-select w-full disabled:cursor-not-allowed disabled:opacity-60"
+                  value={settings.whisperModel}
+                  disabled={installLocked}
+                  onChange={(event) => void update({ whisperModel: event.target.value })}
+                >
+                  <option value="turbo">turbo · recommended</option>
+                  <option value="base">base · fastest / lightest</option>
+                  <option value="large-v3">large-v3 · highest accuracy</option>
+                </select>
+              </label>
+              <label className="grid gap-1.5 text-xs">
+                <span className="font-mono uppercase tracking-[0.2em] text-muted-foreground">
+                  Email model
+                </span>
+                <select
+                  className="veyra-select w-full disabled:cursor-not-allowed disabled:opacity-60"
+                  value={settings.emailDraftModel}
+                  disabled={installLocked}
+                  onChange={(event) =>
+                    void update({
+                      emailDraftEngine: "ollama",
+                      emailDraftModel: event.target.value,
+                    })
+                  }
+                >
+                  <option value="llama3.2:1b">Llama 3.2 1B · recommended</option>
+                  <option value="llama3.2">Llama 3.2 3B · stronger</option>
+                  <option value="qwen3:1.7b">Qwen3 1.7B · fast</option>
+                  <option value="qwen3:4b">Qwen3 4B · stronger</option>
+                </select>
+              </label>
+            </div>
+          ) : null}
         </>
       ) : null}
 
@@ -220,22 +274,36 @@ export function WizardRoute() {
             eyebrow={`Step 05 · ${steps[4]}`}
             title="Ready"
             accent="— quiet desk, ready when you are."
-            description="Veyra is configured. The main app opens after this step."
+            description={
+              orchestrator.allDone
+                ? "All components installed. Veyra opens after this step."
+                : "Install is still finishing in the background. The button below unlocks once everything is ready."
+            }
           />
-          <div className="grid gap-3 md:grid-cols-2">
-            <SetupChoice
+          <div className="grid gap-3 md:grid-cols-3">
+            <InstallCard
               icon={<Mic className="h-4 w-4" />}
               tone="stt"
-              title="Speech to Text"
-              detail={`${settings.whisperModel} via ${settings.engine}`}
-              status="Ready"
+              title="Whisper"
+              subtitle={settings.whisperModel}
+              state={orchestrator.whisper}
+              onRetry={() => void orchestrator.retry("whisper")}
             />
-            <SetupChoice
+            <InstallCard
+              icon={<Download className="h-4 w-4" />}
+              tone="stt"
+              title="Ollama runtime"
+              subtitle="Local LLM host"
+              state={orchestrator.ollama}
+              onRetry={() => void orchestrator.retry("ollama")}
+            />
+            <InstallCard
               icon={<Mail className="h-4 w-4" />}
               tone="drafter"
-              title="Email Drafter"
-              detail={`${settings.emailDraftModel} via ${settings.emailDraftEngine}`}
-              status="Ready"
+              title="Email model"
+              subtitle={settings.emailDraftModel}
+              state={orchestrator.drafter}
+              onRetry={() => void orchestrator.retry("drafter")}
             />
           </div>
         </>
@@ -255,7 +323,16 @@ export function WizardRoute() {
             Next
           </Button>
         ) : (
-          <Button type="button" onClick={() => void finish()}>
+          <Button
+            type="button"
+            disabled={!orchestrator.allDone}
+            onClick={() => void finish()}
+            title={
+              orchestrator.allDone
+                ? undefined
+                : "Waiting for installs to finish before opening Veyra."
+            }
+          >
             Start using Veyra
           </Button>
         )}
@@ -358,6 +435,121 @@ function SetupChoice({
           {status}
         </span>
       ) : null}
+    </div>
+  );
+}
+
+function InstallCard({
+  icon,
+  title,
+  subtitle,
+  tone,
+  state,
+  onRetry,
+}: {
+  icon: ReactNode;
+  title: string;
+  subtitle: string;
+  tone: "stt" | "drafter";
+  state: StepState;
+  onRetry: () => void;
+}) {
+  const isFailed = state.status === "failed";
+  const isRunning = state.status === "running";
+  const isDone = state.status === "done";
+
+  const iconAccent =
+    tone === "drafter"
+      ? "text-[var(--spark-deep)] bg-[#fff5e6] border-[rgba(255,138,31,0.22)]"
+      : "text-[var(--cyan-deep)] bg-[var(--ice-50)] border-[rgba(43,199,255,0.25)]";
+
+  return (
+    <div className="relative flex flex-col gap-3 rounded-xl border border-border bg-white p-4 shadow-[0_1px_0_rgb(12_17_28_/_0.025)]">
+      <span
+        className={cn(
+          "pointer-events-none absolute left-0 top-4 bottom-4 w-[2px] rounded-[2px]",
+          tone === "drafter"
+            ? "bg-[linear-gradient(180deg,var(--spark),var(--spark-deep))] shadow-[0_0_8px_var(--spark-glow)]"
+            : "bg-[linear-gradient(180deg,var(--cyan),var(--cyan-deep))] shadow-[0_0_8px_var(--halo)]",
+        )}
+        aria-hidden="true"
+      />
+      <div className="flex items-center gap-3 pl-2">
+        <span className={cn("flex h-9 w-9 items-center justify-center rounded-xl border", iconAccent)}>
+          {icon}
+        </span>
+        <div className="min-w-0">
+          <p className="font-semibold tracking-[-0.005em] text-foreground">{title}</p>
+          <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
+        </div>
+      </div>
+
+      <StatusLine state={state} />
+
+      {isRunning ? (
+        <div className="h-1.5 overflow-hidden rounded-full bg-border/60">
+          <div
+            className={cn(
+              "h-full rounded-full transition-[width]",
+              tone === "drafter"
+                ? "bg-[linear-gradient(90deg,var(--spark),var(--spark-deep))]"
+                : "bg-[linear-gradient(90deg,var(--cyan),var(--cyan-deep))]",
+            )}
+            style={{ width: `${Math.max(2, Math.min(100, state.progress))}%` }}
+          />
+        </div>
+      ) : null}
+
+      {isFailed && state.error ? (
+        <p className="text-[0.75rem] leading-snug text-amber-700">{state.error}</p>
+      ) : null}
+
+      {isFailed ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="self-start"
+          onClick={onRetry}
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+          Retry
+        </Button>
+      ) : null}
+
+      {isDone ? null : null}
+    </div>
+  );
+}
+
+function StatusLine({ state }: { state: StepState }) {
+  if (state.status === "done") {
+    return (
+      <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
+        <CheckCircle2 className="h-3.5 w-3.5" />
+        Ready
+      </div>
+    );
+  }
+  if (state.status === "running") {
+    return (
+      <div className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--cyan-deep)]">
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        {state.detail ?? "Working"}
+      </div>
+    );
+  }
+  if (state.status === "failed") {
+    return (
+      <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700">
+        <AlertTriangle className="h-3.5 w-3.5" />
+        Needs attention
+      </div>
+    );
+  }
+  return (
+    <div className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+      Idle
     </div>
   );
 }
