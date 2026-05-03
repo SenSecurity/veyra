@@ -29,9 +29,14 @@ use typr_lib::storage::Db;
 use typr_lib::telemetry;
 use typr_lib::transcribe_local;
 
-const OVERLAY_WIDTH: i32 = 210;
-const OVERLAY_HEIGHT: i32 = 58;
-const OVERLAY_BOTTOM_MARGIN: i32 = 8;
+// Glacier overlay capsule (docs/mockups/overlay-01-capsule.html):
+// 520 px capsule body + soft-shadow halo on each side, 56 px capsule
+// height + ~24 px hotkey-hint area + ~16 px shadow halo. The visible
+// chrome is rendered by CSS; the OS window is transparent + frameless
+// + always-on-top, so these constants only define the bounding box.
+const OVERLAY_WIDTH: i32 = 560;
+const OVERLAY_HEIGHT: i32 = 96;
+const OVERLAY_BOTTOM_MARGIN: i32 = 12;
 const TRAY_SHOW_ID: &str = "tray_show";
 const TRAY_HIDE_ID: &str = "tray_hide";
 const TRAY_EXIT_ID: &str = "tray_exit";
