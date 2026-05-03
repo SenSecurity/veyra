@@ -890,11 +890,15 @@ fn ollama_model_matches(installed: &str, selected: &str) -> bool {
 
 fn system_prompt() -> String {
     [
-        "You write polished drafts for direct insertion into the user's active text field.",
-        "The user speaks an instruction, often in Portuguese, for an email or message reply.",
-        "Return only the finished draft text. No explanations, no markdown fences, no subject line unless explicitly requested.",
-        "Respect the language requested by the user. If no language is requested, use the language that best fits the instruction.",
-        "Keep the tone professional, warm, concise, and natural. Do not invent facts not present in the instruction.",
+        "You are Veyra's email draft preprompt, used identically for every email draft model.",
+        "The user speaks an instruction for an email, reply, or short professional message.",
+        "Return only the finished draft text for direct insertion into the active text field.",
+        "Do not include explanations, markdown fences, labels, alternatives, or a subject line unless the user explicitly asks for one.",
+        "Language rule: by default, write in the same language the user is speaking.",
+        "Override that only when the user explicitly asks for another language, for example 'diz em ingles', 'em frances', 'write it in English', or 'reply in French'.",
+        "Prefer a complete, slightly fuller draft over a terse one. Include enough context, warmth, and professional polish that the user can delete extra text if needed.",
+        "Use a natural greeting, one or two substantive body paragraphs when useful, and a clean closing for emails.",
+        "Preserve all concrete facts from the instruction, but do not invent names, dates, promises, attachments, or details not provided.",
     ]
     .join(" ")
 }
@@ -908,7 +912,8 @@ fn ollama_prompt(instruction: &str, is_bonsai: bool) -> String {
         "Task: write one finished email draft from the instruction.",
         "Return only the email text.",
         "No labels, no explanation, no repeated alternatives.",
-        "Use Portuguese unless the instruction asks for another language.",
+        "Use the same language as the instruction unless it explicitly asks for another language.",
+        "Make the draft complete and moderately detailed, not terse.",
         "",
         "Instruction:",
         instruction.trim(),
@@ -999,19 +1004,78 @@ fn has_repeated_ngram(text: &str, size: usize) -> bool {
 }
 
 fn local_email_fallback(instruction: &str) -> String {
+    let language = detect_requested_language(instruction);
     let instruction = clean_email_instruction(instruction);
     let recipient = extract_portuguese_recipient(&instruction);
     let body = clean_body_sentence(&instruction);
 
-    let greeting = recipient
-        .map(|name| format!("Olá Sr. {name},"))
-        .unwrap_or_else(|| "Olá,".to_string());
+    match language {
+        DraftLanguage::English => {
+            let greeting = recipient
+                .map(|name| format!("Dear Mr. {name},"))
+                .unwrap_or_else(|| "Hello,".to_string());
+            format!(
+                "{greeting}\n\nI am writing to let you know that {}. Please let me know if this still works for you or if there is anything else I should take into account.\n\nBest regards,",
+                portuguese_body_to_english(&body)
+            )
+        }
+        DraftLanguage::French => {
+            let greeting = recipient
+                .map(|name| format!("Bonjour Monsieur {name},"))
+                .unwrap_or_else(|| "Bonjour,".to_string());
+            format!(
+                "{greeting}\n\nJe vous ecris pour vous informer que {}. N'hesitez pas a me dire si cela vous convient ou s'il y a autre chose a prendre en compte.\n\nCordialement,",
+                portuguese_body_to_french(&body)
+            )
+        }
+        DraftLanguage::Portuguese => {
+            let greeting = recipient
+                .map(|name| format!("Olá Sr. {name},"))
+                .unwrap_or_else(|| "Olá,".to_string());
+            format!(
+                "{greeting}\n\nEscrevo para informar que {body}. Caso seja necessário ajustar algum detalhe, fico totalmente disponível para alinhar consigo.\n\nCumprimentos,"
+            )
+        }
+    }
+}
 
-    format!("{greeting}\n\nEscrevo para informar que {body}.\n\nCumprimentos,")
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum DraftLanguage {
+    Portuguese,
+    English,
+    French,
+}
+
+fn detect_requested_language(instruction: &str) -> DraftLanguage {
+    let lower = instruction.to_lowercase();
+    if lower.contains("em ingles")
+        || lower.contains("em inglês")
+        || lower.contains("in english")
+        || lower.contains("write it in english")
+        || lower.contains("reply in english")
+        || lower.contains("diz em english")
+        || lower.contains("diz em ingles")
+        || lower.contains("diz em inglês")
+    {
+        DraftLanguage::English
+    } else if lower.contains("em frances")
+        || lower.contains("em francês")
+        || lower.contains("in french")
+        || lower.contains("reply in french")
+        || lower.contains("diz em frances")
+        || lower.contains("diz em francês")
+        || lower.contains("en francais")
+        || lower.contains("en français")
+    {
+        DraftLanguage::French
+    } else {
+        DraftLanguage::Portuguese
+    }
 }
 
 fn clean_email_instruction(instruction: &str) -> String {
     let mut text = instruction.trim().trim_matches('"').trim().to_string();
+    text = strip_language_directives(&text);
     let prefixes = [
         "queria-me um email que diga que",
         "queria me um email que diga que",
@@ -1054,6 +1118,52 @@ fn clean_email_instruction(instruction: &str) -> String {
         }
     }
 
+    strip_language_directives(&text)
+}
+
+fn strip_language_directives(input: &str) -> String {
+    let mut text = input.trim().to_string();
+    let directives = [
+        "diz em ingles",
+        "diz em inglês",
+        "em ingles",
+        "em inglês",
+        "in english",
+        "write it in english",
+        "reply in english",
+        "diz em frances",
+        "diz em francês",
+        "em frances",
+        "em francês",
+        "in french",
+        "reply in french",
+        "en francais",
+        "en français",
+    ];
+
+    loop {
+        let lower = text.to_lowercase();
+        let Some(directive) = directives
+            .iter()
+            .find(|directive| lower.starts_with(**directive))
+        else {
+            break;
+        };
+        text = text[directive.len()..]
+            .trim_start_matches(|c: char| c == ',' || c == ':' || c.is_whitespace())
+            .to_string();
+    }
+
+    for directive in directives {
+        let lower = text.to_lowercase();
+        if let Some(pos) = lower.find(directive) {
+            let before = text[..pos].trim_end_matches(|c: char| c == ',' || c.is_whitespace());
+            let after = text[pos + directive.len()..]
+                .trim_start_matches(|c: char| c == ',' || c == ':' || c.is_whitespace());
+            text = format!("{before} {after}").trim().to_string();
+        }
+    }
+
     text
 }
 
@@ -1092,6 +1202,32 @@ fn clean_body_sentence(instruction: &str) -> String {
     body.trim()
         .trim_start_matches(|c: char| c == ',' || c.is_whitespace())
         .to_string()
+}
+
+fn portuguese_body_to_english(body: &str) -> String {
+    let mut text = body.to_string();
+    text = text.replace("hoje ", "today ");
+    text = text.replace("amanhã ", "tomorrow ");
+    text = text.replace("vou aí estar", "I will be there");
+    text = text.replace("vou aí", "I will go there");
+    text = text.replace("vou la", "I will go there");
+    text = text.replace("vou lá", "I will go there");
+    text = text.replace(" às ", " at ");
+    text = text.replace(" as ", " at ");
+    text.trim().to_string()
+}
+
+fn portuguese_body_to_french(body: &str) -> String {
+    let mut text = body.to_string();
+    text = text.replace("hoje ", "aujourd'hui ");
+    text = text.replace("amanhã ", "demain ");
+    text = text.replace("vou aí estar", "je serai present");
+    text = text.replace("vou aí", "je passerai");
+    text = text.replace("vou la", "je passerai");
+    text = text.replace("vou lá", "je passerai");
+    text = text.replace(" às ", " a ");
+    text = text.replace(" as ", " a ");
+    text.trim().to_string()
 }
 
 fn normalize_portuguese_times(input: &str) -> String {
@@ -1140,8 +1276,8 @@ mod tests {
         let result =
             generate_email_draft("", "groq", DEFAULT_GROQ_DRAFT_MODEL, "reply in English").await;
         let draft = result.unwrap();
-        assert!(draft.contains("Olá,"));
-        assert!(draft.contains("reply in English"));
+        assert!(draft.contains("Hello,"));
+        assert!(draft.contains("Best regards,"));
     }
 
     #[tokio::test]
@@ -1230,6 +1366,37 @@ mod tests {
         assert!(draft.contains("vou aí estar às 22h"));
         assert!(!draft.contains("Queria-me"));
         assert!(!draft.contains("email que diga"));
+    }
+
+    #[test]
+    fn shared_preprompt_prefers_user_language_and_dense_drafts() {
+        let prompt = system_prompt();
+
+        assert!(prompt.contains("used identically for every email draft model"));
+        assert!(prompt.contains("same language the user is speaking"));
+        assert!(prompt.contains("slightly fuller draft"));
+    }
+
+    #[test]
+    fn local_fallback_obeys_explicit_english_request() {
+        let draft = local_email_fallback(
+            "diz em ingles faz me um email a dizer, que hoje vou la as 5 da tarde para o senhor Bruno Rodrigues",
+        );
+
+        assert!(draft.contains("Dear Mr. Bruno Rodrigues,"));
+        assert!(draft.contains("today"));
+        assert!(draft.contains("17h"));
+        assert!(draft.contains("Best regards,"));
+        assert!(!draft.contains("diz em ingles"));
+    }
+
+    #[test]
+    fn bonsai_prompt_uses_shared_language_policy() {
+        let prompt = ollama_prompt("diz em frances obrigado", true);
+
+        assert!(prompt.contains("same language as the instruction"));
+        assert!(prompt.contains("explicitly asks for another language"));
+        assert!(prompt.contains("moderately detailed"));
     }
 
     #[test]
