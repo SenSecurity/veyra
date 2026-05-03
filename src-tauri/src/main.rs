@@ -30,7 +30,7 @@ use typr_lib::telemetry;
 use typr_lib::transcribe_local;
 
 const OVERLAY_WIDTH: i32 = 210;
-const OVERLAY_HEIGHT: i32 = 36;
+const OVERLAY_HEIGHT: i32 = 58;
 const OVERLAY_BOTTOM_MARGIN: i32 = 8;
 const TRAY_SHOW_ID: &str = "tray_show";
 const TRAY_HIDE_ID: &str = "tray_hide";
