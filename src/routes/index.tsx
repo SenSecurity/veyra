@@ -158,15 +158,7 @@ export function HomeRoute() {
             </span>
           </button>
           <div className="mt-3">
-            <WaveStage
-              variant="stt"
-              metaLeft="16 kHz · vad on"
-              metaRight={
-                <span>
-                  <b>112 ms</b> · pt-PT
-                </span>
-              }
-            />
+            <WaveStage variant="stt" />
           </div>
           <SpecRow
             cells={[
@@ -211,15 +203,7 @@ export function HomeRoute() {
             </span>
           </Link>
           <div className="mt-3">
-            <WaveStage
-              variant="drafter"
-              metaLeft="llama 3.2 · 1B · q4_k_m"
-              metaRight={
-                <span>
-                  <b>{todayDrafts ?? 0} drafts</b> today
-                </span>
-              }
-            />
+            <WaveStage variant="drafter" />
           </div>
           <SpecRow
             cells={[
