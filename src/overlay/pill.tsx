@@ -6,6 +6,9 @@ import { formatDrafterName, formatWhisperName } from "@/lib/engine-format";
 import { ipc } from "@/lib/tauri";
 import { useOverlayStore } from "@/stores/overlay-store";
 import type { OverlayMode, OverlayState } from "@/stores/overlay-store";
+import { formatElapsed, useElapsedLabel } from "./use-elapsed-label";
+
+export { formatElapsed };
 
 const WAVE_BARS = [5, 8, 11, 7, 14, 9, 6, 12, 8, 5];
 const SPEAKING_THRESHOLD = 0.02;
@@ -37,15 +40,6 @@ export function calculateWaveBarHeights({
     const lift = voiceLevel * (0.9 + wave * 1.45 + flutter * 0.45);
     return Math.min(20, Math.max(3, Math.round(height * (0.35 + lift))));
   });
-}
-
-export function formatElapsed(ms: number): string {
-  if (!Number.isFinite(ms) || ms < 0) ms = 0;
-  const total = Math.floor(ms);
-  const minutes = Math.floor(total / 60_000);
-  const seconds = Math.floor((total % 60_000) / 1000);
-  const tenths = Math.floor((total % 1000) / 100);
-  return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}.${tenths}`;
 }
 
 export function OverlayPill({ state, mode }: { state: OverlayState; mode: OverlayMode }) {
@@ -165,9 +159,9 @@ export function OverlayPill({ state, mode }: { state: OverlayState; mode: Overla
   );
 }
 
-const HINT_DURATION_MS = 600;
+export const HINT_DURATION_MS = 600;
 
-function useHintVisibility(
+export function useHintVisibility(
   startedAt: number | null,
   state: OverlayState,
 ): boolean {
@@ -194,20 +188,3 @@ function useHintVisibility(
   return visible;
 }
 
-function useElapsedLabel(
-  startedAt: number | null,
-  state: OverlayState,
-): string {
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    if (state !== "recording" || startedAt == null) return;
-    const id = window.setInterval(() => setNow(Date.now()), 100);
-    return () => window.clearInterval(id);
-  }, [startedAt, state]);
-
-  if (startedAt == null) return "00:00.0";
-  if (state === "transcribing") return formatElapsed(Math.max(0, now - startedAt));
-  if (state !== "recording") return "00:00.0";
-  return formatElapsed(now - startedAt);
-}
