@@ -350,11 +350,12 @@
   .veyra-wave {
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: 1px;
     overflow: hidden;
-    border-radius: calc(var(--radius-xl) + 1px);
+    border-radius: 999px;
     background: linear-gradient(180deg, var(--ice-50), var(--ice-100));
     border: 1px solid var(--hairline);
+    padding-inline: 0.5rem;
   }
 
   .veyra-wave > i {
