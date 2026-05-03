@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import { HaloOrb } from "./halo-orb";
 import { OverlayPill } from "./pill";
 import { INITIAL_VOICE_ACTIVITY, nextVoiceActivity } from "./voice-activity";
-import { useSettings } from "@/hooks/use-settings";
 import { ipc } from "@/lib/tauri";
 import { useOverlayStore, type OverlayMode, type OverlayState } from "@/stores/overlay-store";
 import type { RecordingState } from "@/types/ipc";
@@ -22,12 +21,9 @@ export function OverlayApp() {
   const setMode = useOverlayStore((s) => s.setMode);
   const setLevel = useOverlayStore((s) => s.setLevel);
   const setRecordingStartedAt = useOverlayStore((s) => s.setRecordingStartedAt);
-  // The overlay webview lives in its own zustand context, so the main
-  // window's `useSettings()` updates do not propagate here. Seed from
-  // `useSettings()` on first load and then react to the `overlay:layout`
-  // event (emitted by `apply_overlay_layout` in src-tauri/src/main.rs)
-  // for live updates whenever the user changes the choice in Settings.
-  const { settings } = useSettings();
+  // The overlay webview is hidden and receives live layout from Rust before
+  // it is shown. Do not load settings here: a late settings fetch can race
+  // with `overlay:layout` and put Capsule content inside an Orb-sized window.
   const [overlayStyle, setOverlayStyle] = useState<OverlayStyle>("capsule");
   const [overlaySize, setOverlaySize] = useState<OverlaySize>("medium");
   const [layoutRevision, setLayoutRevision] = useState(0);
@@ -37,11 +33,6 @@ export function OverlayApp() {
   useEffect(() => {
     previewActiveRef.current = previewActive;
   }, [previewActive]);
-
-  useEffect(() => {
-    if (settings?.overlayStyle) setOverlayStyle(settings.overlayStyle);
-    if (settings?.overlaySize) setOverlaySize(settings.overlaySize);
-  }, [settings?.overlayStyle, settings?.overlaySize]);
 
   useEffect(() => {
     const un = listen<{ style: OverlayStyle; size: OverlaySize; revision?: number }>(

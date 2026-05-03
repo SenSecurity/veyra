@@ -38,8 +38,8 @@ use typr_lib::transcribe_local;
 // 520 px body + ~40 px shadow halo, 56 px capsule body + ~24 px
 // hotkey-hint area + ~16 px shadow halo.
 //
-// Halo Orb (docs/mockups/overlay-03-halo-orb.html): square box sized
-// to the largest concentric ring + chip + hint clearance.
+// Halo Orb (docs/mockups/overlay-03-halo-orb.html): transparent box sized
+// to the largest concentric ring + chip + short hotkey hint clearance.
 const OVERLAY_BOTTOM_MARGIN: i32 = 12;
 
 /// Returns (width, height) for the (style, size) pair, falling back to
@@ -51,18 +51,14 @@ pub fn overlay_dims(style: &str, size: &str) -> (i32, i32) {
         ("capsule", "small") => (460, 92),
         ("capsule", "medium") => (560, 96),
         ("capsule", "large") => (680, 104),
-        ("orb", "small") => (200, 168),
-        ("orb", "medium") => (240, 200),
-        ("orb", "large") => (300, 248),
+        ("orb", "small") => (240, 240),
+        ("orb", "medium") => (290, 300),
+        ("orb", "large") => (360, 380),
         // Fallback: capsule + medium.
         _ => (560, 96),
     }
 }
 
-/// Default overlay dimensions used at startup before settings load.
-fn default_overlay_dims() -> (i32, i32) {
-    overlay_dims("capsule", "medium")
-}
 const TRAY_SHOW_ID: &str = "tray_show";
 const TRAY_HIDE_ID: &str = "tray_hide";
 const TRAY_EXIT_ID: &str = "tray_exit";
@@ -528,6 +524,8 @@ fn update_overlay(app: &tauri::AppHandle, state: &RecordingState) {
                 let _ = overlay.hide();
             }
             RecordingState::Recording | RecordingState::Transcribing => {
+                let (style, size) = current_overlay_layout(app);
+                apply_overlay_layout(app, &style, &size);
                 if *state == RecordingState::Recording {
                     let (w, h) = current_overlay_dims(app);
                     if let Some(position) = active_monitor_bottom_position(w, h) {
@@ -552,6 +550,12 @@ fn current_overlay_dims(app: &tauri::AppHandle) -> (i32, i32) {
     let state: tauri::State<AppState> = app.state::<AppState>();
     let s = state.settings.lock().unwrap();
     overlay_dims(&s.overlay.style, &s.overlay.size)
+}
+
+fn current_overlay_layout(app: &tauri::AppHandle) -> (String, String) {
+    let state: tauri::State<AppState> = app.state::<AppState>();
+    let s = state.settings.lock().unwrap();
+    (s.overlay.style.clone(), s.overlay.size.clone())
 }
 
 fn spawn_level_emitter(app: tauri::AppHandle) {
@@ -1813,20 +1817,10 @@ fn main() {
             // recording/transcribing, Wispr Flow style. Dimensions come from
             // the persisted overlay style/size and may be resized later via
             // the `set_overlay_layout` Tauri command.
-            let (overlay_w, overlay_h) = default_overlay_dims();
-            let monitor = app.primary_monitor().ok().flatten();
-            let (x, y) = if let Some(m) = monitor {
-                let size = m.size();
-                let scale = m.scale_factor();
-                let logical_w = size.width as f64 / scale;
-                let logical_h = size.height as f64 / scale;
-                (
-                    (logical_w / 2.0 - (overlay_w as f64 / 2.0)) as i32,
-                    (logical_h - 110.0) as i32,
-                )
-            } else {
-                (640, 720)
-            };
+            let (overlay_w, overlay_h) = current_overlay_dims(app.handle());
+            let (x, y) = active_monitor_bottom_position(overlay_w, overlay_h)
+                .map(|pos| (pos.x, pos.y))
+                .unwrap_or((640, 720));
 
             let overlay = WebviewWindowBuilder::new(
                 app,
@@ -1906,5 +1900,12 @@ mod tests {
         }
 
         assert_eq!(preview_level_at(0), preview_level_at(16));
+    }
+
+    #[test]
+    fn halo_orb_overlay_dims_fit_full_orb_chrome() {
+        assert_eq!(overlay_dims("orb", "small"), (240, 240));
+        assert_eq!(overlay_dims("orb", "medium"), (290, 300));
+        assert_eq!(overlay_dims("orb", "large"), (360, 380));
     }
 }
