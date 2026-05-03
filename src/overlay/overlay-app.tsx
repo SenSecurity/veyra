@@ -21,6 +21,7 @@ export function OverlayApp() {
   const setState = useOverlayStore((s) => s.setState);
   const setMode = useOverlayStore((s) => s.setMode);
   const setLevel = useOverlayStore((s) => s.setLevel);
+  const setRecordingStartedAt = useOverlayStore((s) => s.setRecordingStartedAt);
   // The overlay webview lives in its own zustand context, so the main
   // window's `useSettings()` updates do not propagate here. Seed from
   // `useSettings()` on first load and then react to the `overlay:layout`
@@ -29,6 +30,13 @@ export function OverlayApp() {
   const { settings } = useSettings();
   const [overlayStyle, setOverlayStyle] = useState<OverlayStyle>("capsule");
   const [overlaySize, setOverlaySize] = useState<OverlaySize>("medium");
+  const [layoutRevision, setLayoutRevision] = useState(0);
+  const [previewActive, setPreviewActive] = useState(false);
+  const previewActiveRef = useRef(false);
+
+  useEffect(() => {
+    previewActiveRef.current = previewActive;
+  }, [previewActive]);
 
   useEffect(() => {
     if (settings?.overlayStyle) setOverlayStyle(settings.overlayStyle);
@@ -36,7 +44,7 @@ export function OverlayApp() {
   }, [settings?.overlayStyle, settings?.overlaySize]);
 
   useEffect(() => {
-    const un = listen<{ style: OverlayStyle; size: OverlaySize }>(
+    const un = listen<{ style: OverlayStyle; size: OverlaySize; revision?: number }>(
       "overlay:layout",
       (e) => {
         if (e.payload.style === "capsule" || e.payload.style === "orb") {
@@ -49,6 +57,9 @@ export function OverlayApp() {
         ) {
           setOverlaySize(e.payload.size);
         }
+        if (typeof e.payload.revision === "number") {
+          setLayoutRevision(e.payload.revision);
+        }
       },
     );
     return () => void un.then((fn) => fn()).catch(() => {});
@@ -59,27 +70,64 @@ export function OverlayApp() {
 
   useEffect(() => {
     void ipc.getRecordingState().then((recordingState) => {
+      if (previewActiveRef.current) return;
       setState(mapState(recordingState));
     }).catch(() => {});
-    void ipc.getRecordingMode().then(setMode).catch(() => {});
+    void ipc.getRecordingMode().then((recordingMode) => {
+      if (!previewActiveRef.current) setMode(recordingMode);
+    }).catch(() => {});
   }, [setMode, setState]);
 
   useEffect(() => {
-    const un = listen<RecordingState>("overlay:state", (e) => setState(mapState(e.payload)));
+    const un = listen<RecordingState>("overlay:state", (e) => {
+      if (previewActiveRef.current) return;
+      setState(mapState(e.payload));
+    });
     return () => void un.then((fn) => fn()).catch(() => {});
   }, [setState]);
 
   useEffect(() => {
-    const un = listen<{ mode: OverlayMode }>("overlay:mode", (e) => setMode(e.payload.mode));
+    const un = listen<{ mode: OverlayMode }>("overlay:mode", (e) => {
+      if (previewActiveRef.current) return;
+      setMode(e.payload.mode);
+    });
     return () => void un.then((fn) => fn()).catch(() => {});
   }, [setMode]);
 
   useEffect(() => {
+    const un = listen<{
+      active: boolean;
+      mode?: OverlayMode;
+      state?: RecordingState;
+    }>("overlay:preview", (e) => {
+      if (!e.payload.active) {
+        setPreviewActive(false);
+        setState("idle");
+        setLevel(0);
+        setRecordingStartedAt(null);
+        return;
+      }
+
+      setPreviewActive(true);
+      if (e.payload.mode === "dictation" || e.payload.mode === "command") {
+        setMode(e.payload.mode);
+      }
+      if (e.payload.state) {
+        setState(mapState(e.payload.state));
+      }
+    });
+    return () => void un.then((fn) => fn()).catch(() => {});
+  }, [setLevel, setMode, setRecordingStartedAt, setState]);
+
+  useEffect(() => {
     const timer = window.setInterval(() => {
       void ipc.getRecordingState().then((recordingState) => {
+        if (previewActiveRef.current) return;
         setState(mapState(recordingState));
       }).catch(() => {});
-      void ipc.getRecordingMode().then(setMode).catch(() => {});
+      void ipc.getRecordingMode().then((recordingMode) => {
+        if (!previewActiveRef.current) setMode(recordingMode);
+      }).catch(() => {});
     }, 180);
     return () => window.clearInterval(timer);
   }, [setMode, setState]);
@@ -103,12 +151,14 @@ export function OverlayApp() {
     setLevel(0);
   }, [setLevel, state]);
 
+  const overlayKey = `${overlayStyle}:${overlaySize}:${layoutRevision}`;
+
   return (
     <main className="flex h-screen w-screen items-center justify-center overflow-hidden bg-transparent">
       {overlayStyle === "orb" ? (
-        <HaloOrb state={state} mode={mode} size={overlaySize} />
+        <HaloOrb key={overlayKey} state={state} mode={mode} size={overlaySize} />
       ) : (
-        <OverlayPill state={state} mode={mode} size={overlaySize} />
+        <OverlayPill key={overlayKey} state={state} mode={mode} size={overlaySize} />
       )}
     </main>
   );

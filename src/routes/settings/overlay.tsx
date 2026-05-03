@@ -1,5 +1,7 @@
-import { Check } from "lucide-react";
+import { Check, Eye, EyeOff } from "lucide-react";
+import { useState } from "react";
 import { useSettings } from "@/hooks/use-settings";
+import { ipc } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { SettingsPanel } from "./general";
 import type { OverlaySize, OverlayStyle } from "@/types/settings";
@@ -32,6 +34,7 @@ const SIZES: { value: OverlaySize; label: string; capsule: string; orb: string }
 
 export function SettingsOverlayRoute() {
   const { settings, update, error, reload } = useSettings();
+  const [previewError, setPreviewError] = useState<string | null>(null);
 
   if (!settings) {
     return (
@@ -47,6 +50,27 @@ export function SettingsOverlayRoute() {
 
   const currentStyle = settings.overlayStyle;
   const currentSize = settings.overlaySize;
+
+  async function preview(
+    mode: "dictation" | "command",
+    recordingState: "Recording" | "Transcribing",
+  ) {
+    setPreviewError(null);
+    try {
+      await ipc.previewOverlay(currentStyle, currentSize, mode, recordingState);
+    } catch (error) {
+      setPreviewError(String(error));
+    }
+  }
+
+  async function hidePreview() {
+    setPreviewError(null);
+    try {
+      await ipc.hideOverlayPreview();
+    } catch (error) {
+      setPreviewError(String(error));
+    }
+  }
 
   return (
     <SettingsPanel
@@ -136,6 +160,52 @@ export function SettingsOverlayRoute() {
         <p className="text-xs text-muted-foreground">
           Changes apply to the next dictation; the live overlay window resizes immediately.
         </p>
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-xl border border-border/70 bg-white/70 p-3 shadow-sm">
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-medium text-foreground">Preview</span>
+          <span className="text-xs text-muted-foreground">
+            Uses the real desktop overlay window. No audio is recorded.
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="veyra-select inline-flex w-auto items-center gap-2 px-3"
+            onClick={() => void preview("dictation", "Recording")}
+          >
+            <Eye className="h-3.5 w-3.5" />
+            Preview STT
+          </button>
+          <button
+            type="button"
+            className="veyra-select inline-flex w-auto items-center gap-2 px-3"
+            onClick={() => void preview("command", "Recording")}
+          >
+            <Eye className="h-3.5 w-3.5" />
+            Preview Drafter
+          </button>
+          <button
+            type="button"
+            className="veyra-select inline-flex w-auto items-center gap-2 px-3"
+            onClick={() => void preview("dictation", "Transcribing")}
+          >
+            <Eye className="h-3.5 w-3.5" />
+            Preview Transcribing
+          </button>
+          <button
+            type="button"
+            className="veyra-select inline-flex w-auto items-center gap-2 px-3"
+            onClick={() => void hidePreview()}
+          >
+            <EyeOff className="h-3.5 w-3.5" />
+            Hide preview
+          </button>
+        </div>
+        {previewError ? (
+          <p className="text-xs font-medium text-destructive">{previewError}</p>
+        ) : null}
       </div>
     </SettingsPanel>
   );

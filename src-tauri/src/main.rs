@@ -3,7 +3,7 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Mutex;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
@@ -401,6 +401,8 @@ struct AppState {
     recording_state: Mutex<RecordingState>,
     active_pipeline_mode: Mutex<PipelineMode>,
     model_download_cancel: AtomicBool,
+    overlay_layout_revision: AtomicU64,
+    overlay_preview_generation: AtomicU64,
 }
 
 fn show_main_window(app: &tauri::AppHandle) {
@@ -477,6 +479,30 @@ fn pipeline_mode_label(mode: PipelineMode) -> &'static str {
         PipelineMode::Dictation => "dictation",
         PipelineMode::Command => "command",
     }
+}
+
+fn parse_overlay_mode(mode: &str) -> Result<PipelineMode, String> {
+    match mode {
+        "dictation" => Ok(PipelineMode::Dictation),
+        "command" => Ok(PipelineMode::Command),
+        other => Err(format!("Unsupported overlay preview mode `{other}`")),
+    }
+}
+
+fn parse_preview_recording_state(state: &str) -> Result<RecordingState, String> {
+    match state {
+        "Recording" => Ok(RecordingState::Recording),
+        "Transcribing" => Ok(RecordingState::Transcribing),
+        other => Err(format!("Unsupported overlay preview state `{other}`")),
+    }
+}
+
+fn preview_level_at(tick: u64) -> f32 {
+    const LEVELS: [f32; 16] = [
+        0.10, 0.34, 0.58, 0.42, 0.72, 0.28, 0.49, 0.84, 0.38, 0.64, 0.18, 0.52, 0.76, 0.31,
+        0.46, 0.68,
+    ];
+    LEVELS[(tick as usize) % LEVELS.len()]
 }
 
 fn emit_overlay_mode(app: &tauri::AppHandle, mode: PipelineMode) {
@@ -655,16 +681,119 @@ fn apply_overlay_layout(app: &tauri::AppHandle, style: &str, size: &str) {
             let _ = overlay.set_position(position);
         }
     }
+    let revision = app
+        .try_state::<AppState>()
+        .map(|state| state.overlay_layout_revision.fetch_add(1, Ordering::SeqCst) + 1)
+        .unwrap_or(0);
     let _ = app.emit_to(
         "overlay",
         "overlay:layout",
-        serde_json::json!({ "style": style, "size": size }),
+        serde_json::json!({ "style": style, "size": size, "revision": revision }),
     );
 }
 
 #[tauri::command]
 fn set_overlay_layout(app: tauri::AppHandle, style: String, size: String) -> Result<(), String> {
     apply_overlay_layout(&app, &style, &size);
+    Ok(())
+}
+
+#[tauri::command]
+fn preview_overlay(
+    app: tauri::AppHandle,
+    state: State<AppState>,
+    style: String,
+    size: String,
+    mode: String,
+    recording_state: String,
+) -> Result<(), String> {
+    let mode = parse_overlay_mode(&mode)?;
+    let recording_state = parse_preview_recording_state(&recording_state)?;
+    let generation = state
+        .overlay_preview_generation
+        .fetch_add(1, Ordering::SeqCst)
+        + 1;
+
+    apply_overlay_layout(&app, &style, &size);
+    let (w, h) = overlay_dims(&style, &size);
+    if let Some(overlay) = app.get_webview_window("overlay") {
+        if let Some(position) = active_monitor_bottom_position(w, h) {
+            let _ = overlay.set_position(position);
+        }
+        let _ = overlay.show();
+    }
+
+    let payload = serde_json::json!({
+        "active": true,
+        "mode": pipeline_mode_label(mode),
+        "state": recording_state,
+    });
+    let _ = app.emit_to("overlay", "overlay:preview", payload);
+
+    let app_for_task = app.clone();
+    tauri::async_runtime::spawn(async move {
+        for tick in 0..40_u64 {
+            let current_generation = app_for_task
+                .state::<AppState>()
+                .overlay_preview_generation
+                .load(Ordering::SeqCst);
+            if current_generation != generation {
+                return;
+            }
+
+            if recording_state == RecordingState::Recording {
+                let _ = app_for_task.emit_to(
+                    "overlay",
+                    "overlay:level",
+                    serde_json::json!({ "level": preview_level_at(tick) }),
+                );
+            }
+
+            tokio::time::sleep(std::time::Duration::from_millis(120)).await;
+        }
+
+        let state = app_for_task.state::<AppState>();
+        if state.overlay_preview_generation.load(Ordering::SeqCst) == generation {
+            state.overlay_preview_generation.fetch_add(1, Ordering::SeqCst);
+            let _ = app_for_task.emit_to(
+                "overlay",
+                "overlay:preview",
+                serde_json::json!({ "active": false }),
+            );
+            let ready = state
+                .recording_state
+                .lock()
+                .map(|recording_state| *recording_state == RecordingState::Ready)
+                .unwrap_or(false);
+            if ready {
+                if let Some(overlay) = app_for_task.get_webview_window("overlay") {
+                    let _ = overlay.hide();
+                }
+            }
+        }
+    });
+
+    Ok(())
+}
+
+#[tauri::command]
+fn hide_overlay_preview(app: tauri::AppHandle, state: State<AppState>) -> Result<(), String> {
+    state.overlay_preview_generation.fetch_add(1, Ordering::SeqCst);
+    let _ = app.emit_to(
+        "overlay",
+        "overlay:preview",
+        serde_json::json!({ "active": false }),
+    );
+    let ready = state
+        .recording_state
+        .lock()
+        .map_err(|e| e.to_string())
+        .map(|recording_state| *recording_state == RecordingState::Ready)?;
+    if ready {
+        if let Some(overlay) = app.get_webview_window("overlay") {
+            let _ = overlay.hide();
+        }
+    }
     Ok(())
 }
 
@@ -1560,6 +1689,8 @@ fn main() {
             recording_state: Mutex::new(RecordingState::Ready),
             active_pipeline_mode: Mutex::new(PipelineMode::Dictation),
             model_download_cancel: AtomicBool::new(false),
+            overlay_layout_revision: AtomicU64::new(0),
+            overlay_preview_generation: AtomicU64::new(0),
         })
         .invoke_handler(tauri::generate_handler![
             // Phase 1+2 (existing)
@@ -1578,6 +1709,8 @@ fn main() {
             cancel_recording,
             toggle_recording,
             set_overlay_layout,
+            preview_overlay,
+            hide_overlay_preview,
             // Phase 3: transcriptions
             list_transcriptions,
             list_email_drafts,
@@ -1739,4 +1872,39 @@ fn main() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn preview_mode_parser_accepts_supported_modes_only() {
+        assert_eq!(parse_overlay_mode("dictation"), Ok(PipelineMode::Dictation));
+        assert_eq!(parse_overlay_mode("command"), Ok(PipelineMode::Command));
+        assert!(parse_overlay_mode("../dictation").is_err());
+    }
+
+    #[test]
+    fn preview_state_parser_accepts_recording_and_transcribing_only() {
+        assert_eq!(
+            parse_preview_recording_state("Recording"),
+            Ok(RecordingState::Recording)
+        );
+        assert_eq!(
+            parse_preview_recording_state("Transcribing"),
+            Ok(RecordingState::Transcribing)
+        );
+        assert!(parse_preview_recording_state("Ready").is_err());
+    }
+
+    #[test]
+    fn preview_level_sequence_loops_inside_expected_bounds() {
+        for tick in 0..64 {
+            let level = preview_level_at(tick);
+            assert!((0.0..=1.0).contains(&level));
+        }
+
+        assert_eq!(preview_level_at(0), preview_level_at(16));
+    }
 }

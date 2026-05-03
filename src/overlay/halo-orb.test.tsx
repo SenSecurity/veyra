@@ -93,6 +93,11 @@ describe("HaloOrb", () => {
     expect(orb3.style.width).toBe("128px");
   });
 
+  it("marks the selected orb size on the root wrapper", () => {
+    const { container } = render(<HaloOrb state="recording" mode="dictation" size="large" />);
+    expect(container.querySelector("[data-size='large']")).not.toBeNull();
+  });
+
   it("calls toggleRecording when the orb button is clicked while recording", () => {
     useOverlayStore.setState({
       state: "recording",

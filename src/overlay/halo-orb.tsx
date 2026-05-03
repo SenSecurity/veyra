@@ -64,7 +64,7 @@ export function HaloOrb({
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.16 }}
-      className="flex flex-col items-center gap-3"
+      className="flex flex-col items-center gap-3 overflow-visible"
     >
       <div
         className="veyra-orb-wrap relative grid place-items-center"

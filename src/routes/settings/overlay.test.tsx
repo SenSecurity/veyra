@@ -6,6 +6,8 @@ import { useSettingsStore } from "@/stores/settings-store";
 afterEach(() => cleanup());
 
 const mockUpdate = vi.hoisted(() => vi.fn(() => Promise.resolve()));
+const mockPreviewOverlay = vi.hoisted(() => vi.fn(() => Promise.resolve()));
+const mockHideOverlayPreview = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 
 vi.mock("@/hooks/use-settings", () => ({
   useSettings: () => ({
@@ -27,8 +29,17 @@ vi.mock("@/hooks/use-settings", () => ({
   }),
 }));
 
+vi.mock("@/lib/tauri", () => ({
+  ipc: {
+    previewOverlay: mockPreviewOverlay,
+    hideOverlayPreview: mockHideOverlayPreview,
+  },
+}));
+
 beforeEach(() => {
   mockUpdate.mockClear();
+  mockPreviewOverlay.mockClear();
+  mockHideOverlayPreview.mockClear();
   useSettingsStore.setState({
     settings: null,
     loading: false,
@@ -76,5 +87,44 @@ describe("SettingsOverlayRoute", () => {
     expect(
       screen.getByRole("radio", { name: /medium/i }).getAttribute("aria-checked"),
     ).toBe("true");
+  });
+
+  it("previews STT recording with the current style and size", () => {
+    render(<SettingsOverlayRoute />);
+    fireEvent.click(screen.getByRole("button", { name: /preview stt/i }));
+    expect(mockPreviewOverlay).toHaveBeenCalledWith(
+      "capsule",
+      "medium",
+      "dictation",
+      "Recording",
+    );
+  });
+
+  it("previews email drafter recording with the current style and size", () => {
+    render(<SettingsOverlayRoute />);
+    fireEvent.click(screen.getByRole("button", { name: /preview drafter/i }));
+    expect(mockPreviewOverlay).toHaveBeenCalledWith(
+      "capsule",
+      "medium",
+      "command",
+      "Recording",
+    );
+  });
+
+  it("previews transcribing state with the current style and size", () => {
+    render(<SettingsOverlayRoute />);
+    fireEvent.click(screen.getByRole("button", { name: /preview transcribing/i }));
+    expect(mockPreviewOverlay).toHaveBeenCalledWith(
+      "capsule",
+      "medium",
+      "dictation",
+      "Transcribing",
+    );
+  });
+
+  it("hides the live overlay preview", () => {
+    render(<SettingsOverlayRoute />);
+    fireEvent.click(screen.getByRole("button", { name: /hide preview/i }));
+    expect(mockHideOverlayPreview).toHaveBeenCalledTimes(1);
   });
 });
