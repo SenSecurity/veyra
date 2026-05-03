@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Clock, Flame, Keyboard, Mail, Mic, Type } from "lucide-react";
+import { ArrowRight, CheckCircle2, Copy, Keyboard, Mail, Mic } from "lucide-react";
+import { toast } from "sonner";
 import { EmptyState } from "@/components/empty-state";
 import { PageShell, Panel } from "@/components/page-shell";
-import { StatCard } from "@/components/stat-card";
-import { TranscriptionRow } from "@/components/transcription-row";
 import { Button } from "@/components/ui/button";
 import { useSettings } from "@/hooks/use-settings";
 import { ipc } from "@/lib/tauri";
@@ -17,6 +16,23 @@ export function HomeRoute() {
   const { settings } = useSettings();
   const dictationHotkey = settings?.hotkey || "F24";
   const emailHotkey = settings?.commandHotkey || "Pause";
+  const operational = (
+    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[0.68rem] font-medium text-emerald-700 ring-1 ring-emerald-200">
+      <CheckCircle2 className="h-3 w-3" />
+      Operational
+    </span>
+  );
+
+  async function copyRecent(row: Transcription) {
+    const text = row.finalText || row.rawText;
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Copied");
+    } catch (error) {
+      toast.error(`Copy failed: ${String(error)}`);
+    }
+  }
 
   useEffect(() => {
     void Promise.all([
@@ -32,8 +48,8 @@ export function HomeRoute() {
 
   return (
     <PageShell title="Home" description="Quick overview and controls.">
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Panel title="Speech to Text" description="Dictate and transcribe anywhere.">
+      <div className="grid gap-4 md:grid-cols-2">
+        <Panel title="Speech to Text" description="Dictate and transcribe anywhere." action={operational}>
           <button
             type="button"
             className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-white/72 p-3 text-left shadow-sm transition-colors hover:bg-white focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/35"
@@ -44,14 +60,14 @@ export function HomeRoute() {
                 <Mic className="h-4 w-4" />
               </span>
               <span>
-                <span className="block text-sm font-medium">Toggle dictation</span>
-                <span className="block text-xs text-muted-foreground">{dictationHotkey} hotkey works anywhere</span>
+                <span className="block text-sm font-medium">Hold {dictationHotkey} to dictate</span>
+                <span className="block text-xs text-muted-foreground">Dictate and transcribe anywhere</span>
               </span>
             </span>
             <Keyboard className="h-4 w-4 text-muted-foreground" />
           </button>
           <div className="mt-4 flex h-14 items-center gap-1 overflow-hidden rounded-xl bg-accent/45 px-3">
-            {Array.from({ length: 42 }).map((_, index) => (
+            {Array.from({ length: 38 }).map((_, index) => (
               <span
                 key={index}
                 className="w-1 rounded-full bg-primary/70"
@@ -60,7 +76,7 @@ export function HomeRoute() {
             ))}
           </div>
         </Panel>
-        <Panel title="Email Drafter" description="Draft emails from your voice.">
+        <Panel title="Email Drafter" description="Draft emails from your voice." action={operational}>
           <Link
             to="/email-drafts"
             className="flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-white/72 p-3 text-left shadow-sm transition-colors hover:bg-white focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/35"
@@ -70,28 +86,22 @@ export function HomeRoute() {
                 <Mail className="h-4 w-4" />
               </span>
               <span>
-                <span className="block text-sm font-medium">Open email drafts</span>
-                <span className="block text-xs text-muted-foreground">{emailHotkey} hotkey drafts from voice</span>
+                <span className="block text-sm font-medium">Hold {emailHotkey} to draft email</span>
+                <span className="block text-xs text-muted-foreground">Draft emails from your voice</span>
               </span>
             </span>
             <ArrowRight className="h-4 w-4 text-muted-foreground" />
           </Link>
-          <div className="mt-4 flex h-14 items-center gap-1 overflow-hidden rounded-xl bg-sky-50 px-3">
-            {Array.from({ length: 42 }).map((_, index) => (
+          <div className="mt-4 flex h-14 items-center gap-1 overflow-hidden rounded-xl bg-orange-50 px-3">
+            {Array.from({ length: 38 }).map((_, index) => (
               <span
                 key={index}
-                className="w-1 rounded-full bg-sky-400/75"
+                className="w-1 rounded-full bg-orange-400/75"
                 style={{ height: `${16 + ((index * 17) % 32)}px` }}
               />
             ))}
           </div>
         </Panel>
-      </div>
-      <div className="grid gap-4 md:grid-cols-4">
-        <StatCard label="Total words" value={totals?.wordCount ?? 0} icon={<Type className="h-4 w-4 text-muted-foreground" />} />
-        <StatCard label="Sessions" value={totals?.sessionCount ?? 0} icon={<Mic className="h-4 w-4 text-muted-foreground" />} />
-        <StatCard label="Current streak" value={streak?.current ?? 0} icon={<Flame className="h-4 w-4 text-muted-foreground" />} />
-        <StatCard label="Longest streak" value={streak?.longest ?? 0} icon={<Clock className="h-4 w-4 text-muted-foreground" />} />
       </div>
       <Panel
         title="Recent activity"
@@ -107,11 +117,38 @@ export function HomeRoute() {
         {recent.length === 0 ? (
           <EmptyState title="No transcriptions yet">Record once and the last captures appear here.</EmptyState>
         ) : (
-          <div className="space-y-3">
-            {recent.map((row) => <TranscriptionRow key={row.id} row={row} />)}
+          <div className="overflow-hidden rounded-xl border border-border/80 bg-white/62">
+            {recent.map((row) => (
+              <div key={row.id} className="flex items-center gap-3 border-b border-border/70 px-3 py-2.5 last:border-b-0">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-primary">
+                  {row.mode === "command" ? <Mail className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm text-foreground">{row.finalText || row.rawText}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {row.wordCount} words - {row.engine} - {row.mode}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="veyra-icon-button"
+                  onClick={() => void copyRecent(row)}
+                  aria-label="Copy recent transcription"
+                  title="Copy"
+                >
+                  <Copy className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
           </div>
         )}
       </Panel>
+      <div className="grid gap-3 text-sm md:grid-cols-4">
+        <div className="rounded-xl border border-border/80 bg-white/58 p-3"><span className="text-muted-foreground">Total words</span><strong className="mt-1 block text-xl">{totals?.wordCount ?? 0}</strong></div>
+        <div className="rounded-xl border border-border/80 bg-white/58 p-3"><span className="text-muted-foreground">Sessions</span><strong className="mt-1 block text-xl">{totals?.sessionCount ?? 0}</strong></div>
+        <div className="rounded-xl border border-border/80 bg-white/58 p-3"><span className="text-muted-foreground">Current streak</span><strong className="mt-1 block text-xl">{streak?.current ?? 0}</strong></div>
+        <div className="rounded-xl border border-border/80 bg-white/58 p-3"><span className="text-muted-foreground">Longest streak</span><strong className="mt-1 block text-xl">{streak?.longest ?? 0}</strong></div>
+      </div>
     </PageShell>
   );
 }

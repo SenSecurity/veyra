@@ -1,15 +1,14 @@
 import { Link } from "@tanstack/react-router";
+import { getVersion } from "@tauri-apps/api/app";
 import type { ComponentType } from "react";
 import { useEffect, useState } from "react";
 import {
-  AudioLines,
   BookOpen,
-  ChevronLeft,
-  ChevronRight,
   Clock,
   Home,
   Mail,
   Settings,
+  SlidersHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -30,10 +29,15 @@ const items: NavItem[] = [
 ];
 
 export function Sidebar() {
+  const [version, setVersion] = useState("");
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(STORAGE_KEY) === "1";
   });
+
+  useEffect(() => {
+    void getVersion().then((value) => setVersion(value)).catch(() => setVersion(""));
+  }, []);
 
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, collapsed ? "1" : "0");
@@ -56,32 +60,12 @@ export function Sidebar() {
     <aside
       className={cn(
         "flex shrink-0 flex-col border-r border-sidebar-border/90 bg-sidebar/95 text-sidebar-foreground shadow-[inset_-1px_0_0_rgb(255_255_255_/_0.55)] transition-[width] duration-150",
-        collapsed ? "w-14" : "w-[208px]",
+        collapsed ? "w-14" : "w-44",
       )}
-      style={{ width: collapsed ? 56 : 208 }}
+      style={{ width: collapsed ? 56 : 176 }}
       aria-label="Primary navigation"
     >
-      <div
-        className={cn(
-          "flex h-14 items-center border-b border-sidebar-border/70",
-          collapsed ? "justify-center" : "px-3",
-        )}
-      >
-        <div className={cn("flex items-center gap-2", collapsed && "justify-center")}>
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-zinc-950 text-primary-foreground shadow-[0_8px_20px_rgb(15_23_42_/_0.16)] ring-1 ring-white/30">
-            <AudioLines className="h-4 w-4 text-sky-300" />
-          </span>
-          {!collapsed && (
-            <div className="min-w-0">
-              <span className="block text-sm font-semibold leading-4 tracking-tight">Veyra</span>
-              <span className="block truncate text-[0.68rem] leading-4 text-sidebar-foreground/55">
-                Local voice utility
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
-      <nav className="flex-1 space-y-1 overflow-y-auto p-2.5">
+      <nav className="flex-1 space-y-1 overflow-y-auto p-2.5 pt-4">
         {items.map((it) => {
           const Icon = it.icon;
           return (
@@ -118,18 +102,18 @@ export function Sidebar() {
         type="button"
         onClick={() => setCollapsed((c) => !c)}
         className={cn(
-          "m-2 flex h-8 items-center justify-center rounded-lg border border-sidebar-border/80 bg-white/58 text-xs text-sidebar-foreground/70 shadow-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+          "m-2 mt-0 flex h-8 items-center justify-center rounded-lg border border-sidebar-border/80 bg-white/58 text-xs text-sidebar-foreground/70 shadow-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
           collapsed ? "w-10" : "gap-1 px-2",
         )}
         title="Toggle sidebar (Ctrl+\\)"
         aria-label="Toggle sidebar"
       >
         {collapsed ? (
-          <ChevronRight className="h-4 w-4" />
+          <SlidersHorizontal className="h-4 w-4" />
         ) : (
           <>
-            <ChevronLeft className="h-4 w-4" />
-            <span>Collapse</span>
+            <SlidersHorizontal className="h-4 w-4" />
+            <span>{version ? `v${version}` : "Collapse"}</span>
           </>
         )}
       </button>

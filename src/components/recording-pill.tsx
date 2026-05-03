@@ -21,7 +21,7 @@ export function RecordingPill() {
   const label = state.toLowerCase();
   const live = state !== "Ready";
   return (
-    <div className="inline-flex h-8 items-center gap-2 rounded-lg border border-border bg-white/76 px-2.5 text-xs font-medium text-foreground shadow-sm">
+    <div className="inline-flex h-6 items-center gap-2 rounded-md border border-white/10 bg-white/8 px-2 text-[0.7rem] font-medium text-zinc-100 shadow-sm">
       <span
         className={
           live
