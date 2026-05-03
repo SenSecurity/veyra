@@ -4,15 +4,26 @@ import { EmptyState } from "@/components/empty-state";
 import { PageShell, Panel, Toolbar } from "@/components/page-shell";
 import { TranscriptionRow } from "@/components/transcription-row";
 import { Input } from "@/components/ui/input";
+import { isUsableTranscription } from "@/lib/email-output-quality";
 import { ipc } from "@/lib/tauri";
 import type { Transcription } from "@/types/transcription";
 
 export function EmailDraftsRoute() {
   const [rows, setRows] = useState<Transcription[]>([]);
   const [query, setQuery] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    void ipc.listEmailDrafts(100, 0).then(setRows).catch(() => setRows([]));
+    void ipc
+      .listEmailDrafts(100, 0)
+      .then((items) => {
+        setError(null);
+        setRows(items.filter(isUsableTranscription));
+      })
+      .catch((loadError) => {
+        setError(String(loadError));
+        setRows([]);
+      });
   }, []);
 
   const filtered = useMemo(() => {
@@ -52,7 +63,9 @@ export function EmailDraftsRoute() {
         </select>
       </Toolbar>
       <Panel className="p-3 md:p-3">
-        {filtered.length === 0 ? (
+        {error ? (
+          <EmptyState title="Could not load email drafts">{error}</EmptyState>
+        ) : filtered.length === 0 ? (
           <EmptyState title="No email drafts yet">
             Use the Email Draft hotkey once and generated drafts appear here.
           </EmptyState>

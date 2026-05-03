@@ -1,6 +1,10 @@
 !macro NSIS_HOOK_POSTINSTALL
   DetailPrint "Checking Ollama dependency"
   IfFileExists "$LOCALAPPDATA\Programs\Ollama\ollama.exe" ollama_done 0
+  IfFileExists "$PROGRAMFILES\Ollama\ollama.exe" ollama_done 0
+  IfFileExists "$PROGRAMFILES64\Ollama\ollama.exe" ollama_done 0
+  SearchPath $0 "ollama.exe"
+  IfFileExists "$0" ollama_done 0
 
   DetailPrint "Installing Ollama for local email drafts"
   ; Encoded PowerShell downloads the official OllamaSetup.exe, tries /S,

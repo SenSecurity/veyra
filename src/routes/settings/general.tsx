@@ -9,14 +9,24 @@ import { useSettings } from "@/hooks/use-settings";
 import type { MicDevice } from "@/types/ipc";
 
 export function SettingsGeneralRoute() {
-  const { settings, loading, error, update } = useSettings();
+  const { settings, error, update, reload } = useSettings();
   const [mics, setMics] = useState<MicDevice[]>([]);
 
   useEffect(() => {
     void ipc.listMicrophones().then(setMics).catch(() => setMics([]));
   }, []);
 
-  if (loading || !settings) return <SettingsPanel title="General" muted="Loading settings." />;
+  if (!settings) {
+    return (
+      <SettingsPanel title="General" muted={error ?? "Loading settings."}>
+        {error ? (
+          <Button type="button" variant="outline" onClick={() => void reload()}>
+            Retry settings
+          </Button>
+        ) : null}
+      </SettingsPanel>
+    );
+  }
 
   return (
     <SettingsPanel title="General" muted={error ?? "Microphone and recording mode."}>

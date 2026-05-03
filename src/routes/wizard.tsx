@@ -1,53 +1,238 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { CheckCircle2, Keyboard, Mail, Mic, Sparkles } from "lucide-react";
+import { BrandMark } from "@/components/brand-mark";
+import { HotkeyInput } from "@/components/hotkey-input";
 import { Button } from "@/components/ui/button";
 import { ipc } from "@/lib/tauri";
 import { useSettings } from "@/hooks/use-settings";
+import type { MicDevice } from "@/types/ipc";
 
-const steps = ["Welcome", "Microphone", "Engine", "Hotkey", "Language", "Done"];
+const steps = ["Welcome", "Microphone", "Models", "Hotkeys", "Ready"];
 
 export function WizardRoute() {
   const navigate = useNavigate();
-  const { settings } = useSettings();
+  const { settings, update, loading, error, reload } = useSettings();
   const [step, setStep] = useState(0);
-  const [completed, setCompleted] = useState<boolean | null>(null);
+  const [mics, setMics] = useState<MicDevice[]>([]);
+  const [modelReady, setModelReady] = useState<boolean | null>(null);
+  const [emailReady, setEmailReady] = useState<boolean | null>(null);
 
   useEffect(() => {
-    void ipc.wizardStatus().then((s) => setCompleted(s.completed)).catch(() => setCompleted(false));
+    void ipc.listMicrophones().then(setMics).catch(() => setMics([]));
   }, []);
+
+  useEffect(() => {
+    if (!settings) return;
+    void ipc.checkModelDownloaded(settings.whisperModel).then(setModelReady).catch(() => setModelReady(false));
+    void ipc
+      .checkEmailDraftModel(settings.groqApiKey, settings.emailDraftEngine, settings.emailDraftModel)
+      .then(() => setEmailReady(true))
+      .catch(() => setEmailReady(false));
+  }, [settings]);
+
+  const selectedMic = useMemo(() => {
+    if (!settings) return "System default";
+    if (settings.microphone === "default") return "System default";
+    return settings.microphone;
+  }, [settings]);
 
   async function finish() {
     await ipc.markWizardComplete();
+    window.dispatchEvent(new Event("veyra:wizard-complete"));
     await navigate({ to: "/" });
   }
 
+  if (loading || !settings) {
+    return (
+      <OnboardingShell step={step}>
+        <SetupHero title="Preparing Veyra" description={error ?? "Loading local settings."} />
+        {error ? (
+          <Button type="button" onClick={() => void reload()}>
+            Retry
+          </Button>
+        ) : null}
+      </OnboardingShell>
+    );
+  }
+
+  return (
+    <OnboardingShell step={step}>
+      {step === 0 ? (
+        <>
+          <SetupHero
+            title="Set up Veyra"
+            description="Choose the essentials before the app opens. Menus stay locked until this setup is complete."
+          />
+          <div className="grid gap-3 md:grid-cols-2">
+            <SetupChoice icon={<Mic className="h-4 w-4" />} title="Speech to Text" detail="Local whisper.cpp, ready for dictation." />
+            <SetupChoice icon={<Mail className="h-4 w-4" />} title="Email Drafter" detail="Voice intent becomes a polished draft." />
+          </div>
+        </>
+      ) : null}
+
+      {step === 1 ? (
+        <>
+          <SetupHero title="Microphone" description="Pick the input Veyra should use for dictation and email drafting." />
+          <label className="grid gap-2 text-sm">
+            <span className="font-semibold">Input device</span>
+            <select
+              className="veyra-select w-full"
+              value={settings.microphone}
+              onChange={(event) => void update({ microphone: event.target.value })}
+            >
+              <option value="default">System default</option>
+              {mics.map((mic) => (
+                <option key={mic.name} value={mic.name}>
+                  {mic.name}
+                  {mic.is_default ? " (default)" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+          <SetupChoice icon={<Mic className="h-4 w-4" />} title="Selected microphone" detail={selectedMic} status="Ready" />
+        </>
+      ) : null}
+
+      {step === 2 ? (
+        <>
+          <SetupHero title="Models" description="Use fast local defaults now. You can change or re-download them later." />
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="grid gap-2 text-sm">
+              <span className="font-semibold">Speech model</span>
+              <select
+                className="veyra-select w-full"
+                value={settings.whisperModel}
+                onChange={(event) => void update({ whisperModel: event.target.value })}
+              >
+                <option value="turbo">turbo - Recommended</option>
+                <option value="base">base - fastest/lightest</option>
+                <option value="large-v3">large-v3 - highest accuracy</option>
+              </select>
+            </label>
+            <label className="grid gap-2 text-sm">
+              <span className="font-semibold">Email model</span>
+              <select
+                className="veyra-select w-full"
+                value={settings.emailDraftModel}
+                onChange={(event) => void update({ emailDraftEngine: "ollama", emailDraftModel: event.target.value })}
+              >
+                <option value="llama3.2:1b">Llama 3.2 1B - Recommended</option>
+                <option value="llama3.2">Llama 3.2 3B - stronger</option>
+                <option value="qwen3:1.7b">Qwen3 1.7B - fast</option>
+                <option value="qwen3:4b">Qwen3 4B - stronger</option>
+              </select>
+            </label>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <SetupChoice icon={<CheckCircle2 className="h-4 w-4" />} title="Speech model" detail={settings.whisperModel} status={modelReady ? "Operational" : "Download later"} />
+            <SetupChoice icon={<CheckCircle2 className="h-4 w-4" />} title="Email model" detail={settings.emailDraftModel} status={emailReady ? "Operational" : "Install/check later"} />
+          </div>
+        </>
+      ) : null}
+
+      {step === 3 ? (
+        <>
+          <SetupHero title="Hotkeys" description="Global shortcuts can be changed now or later in Settings." />
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="grid gap-2 text-sm">
+              <span className="font-semibold">Dictation hotkey</span>
+              <HotkeyInput value={settings.hotkey} onChange={(hotkey) => void update({ hotkey })} />
+            </label>
+            <label className="grid gap-2 text-sm">
+              <span className="font-semibold">Email draft hotkey</span>
+              <HotkeyInput value={settings.commandHotkey} onChange={(commandHotkey) => void update({ commandHotkey })} />
+            </label>
+          </div>
+          <SetupChoice icon={<Keyboard className="h-4 w-4" />} title="Defaults" detail="F24 for dictation, Pause for email draft." />
+        </>
+      ) : null}
+
+      {step === 4 ? (
+        <>
+          <SetupHero title="Ready" description="Veyra is configured. The main app opens after this step." />
+          <div className="grid gap-3 md:grid-cols-2">
+            <SetupChoice icon={<Mic className="h-4 w-4" />} title="Speech to Text" detail={`${settings.whisperModel} via ${settings.engine}`} status="Ready" />
+            <SetupChoice icon={<Mail className="h-4 w-4" />} title="Email Drafter" detail={`${settings.emailDraftModel} via ${settings.emailDraftEngine}`} status="Ready" />
+          </div>
+        </>
+      ) : null}
+
+      <div className="mt-7 flex items-center justify-between">
+        <Button type="button" variant="outline" disabled={step === 0} onClick={() => setStep((s) => Math.max(0, s - 1))}>
+          Back
+        </Button>
+        {step < steps.length - 1 ? (
+          <Button type="button" onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}>
+            Next
+          </Button>
+        ) : (
+          <Button type="button" onClick={() => void finish()}>
+            Start using Veyra
+          </Button>
+        )}
+      </div>
+    </OnboardingShell>
+  );
+}
+
+function OnboardingShell({ step, children }: { step: number; children: ReactNode }) {
   return (
     <section className="flex min-h-full items-center justify-center p-8">
-      <div className="w-full max-w-xl rounded-lg border border-border bg-card p-7 shadow-2">
-        <div className="mb-6 flex gap-1.5">
-          {steps.map((s, i) => (
-            <div key={s} className={i <= step ? "h-1.5 flex-1 rounded bg-primary" : "h-1.5 flex-1 rounded bg-muted"} />
+      <div className="veyra-glass w-full max-w-3xl rounded-[1.75rem] p-7">
+        <div className="mb-7 grid grid-cols-5 gap-2">
+          {steps.map((name, index) => (
+            <div
+              key={name}
+              className={index <= step ? "h-1.5 rounded-full bg-primary" : "h-1.5 rounded-full bg-muted"}
+              title={name}
+            />
           ))}
         </div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{completed ? "Configured" : "First run"}</p>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight">{steps[step]}</h1>
-        <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          {step === 0 && "Set the basics before first dictation."}
-          {step === 1 && `Current microphone: ${settings?.microphone || "system default"}.`}
-          {step === 2 && `Engine: ${settings?.engine ?? "local"}. Configure Groq in Settings when needed.`}
-          {step === 3 && `Hotkey: ${settings?.hotkey ?? "not loaded"}.`}
-          {step === 4 && "Language detection is automatic."}
-          {step === 5 && "Setup complete."}
-        </p>
-        <div className="mt-8 flex justify-between">
-          <Button type="button" variant="outline" disabled={step === 0} onClick={() => setStep((s) => Math.max(0, s - 1))}>Back</Button>
-          {step < steps.length - 1 ? (
-            <Button type="button" onClick={() => setStep((s) => s + 1)}>Next</Button>
-          ) : (
-            <Button type="button" onClick={() => void finish()}>Finish</Button>
-          )}
-        </div>
+        <div className="flex flex-col gap-4">{children}</div>
       </div>
     </section>
+  );
+}
+
+function SetupHero({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="mb-2 flex items-center gap-4">
+      <BrandMark className="h-12 w-12 rounded-2xl" />
+      <div className="min-w-0">
+        <div className="mb-1 inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[0.7rem] font-semibold text-sky-800">
+          <Sparkles className="h-3 w-3" />
+          First boot
+        </div>
+        <h1 className="text-3xl font-semibold tracking-[-0.04em]">{title}</h1>
+        <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+function SetupChoice({
+  icon,
+  title,
+  detail,
+  status,
+}: {
+  icon: ReactNode;
+  title: string;
+  detail: string;
+  status?: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-white/70 p-3.5 shadow-sm">
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 text-primary">{icon}</span>
+        <div className="min-w-0">
+          <p className="font-semibold">{title}</p>
+          <p className="truncate text-sm text-muted-foreground">{detail}</p>
+        </div>
+      </div>
+      {status ? <span className="veyra-status-ready shrink-0 rounded-full border px-2 py-0.5 text-xs font-semibold">{status}</span> : null}
+    </div>
   );
 }

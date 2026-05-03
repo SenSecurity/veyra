@@ -18,7 +18,7 @@ export function PageShell({
     <section className={cn("veyra-page", className)}>
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-[1.45rem] font-semibold leading-tight tracking-tight text-foreground">
+          <h1 className="text-[1.6rem] font-semibold leading-tight tracking-[-0.03em] text-foreground">
             {title}
           </h1>
           {description ? (
@@ -50,7 +50,7 @@ export function Panel({
       {(title || description || action) && (
         <div className="mb-4 flex items-start justify-between gap-4">
           <div className="min-w-0">
-            {title ? <h2 className="text-sm font-semibold text-foreground">{title}</h2> : null}
+            {title ? <h2 className="text-[0.95rem] font-semibold tracking-[-0.01em] text-foreground">{title}</h2> : null}
             {description ? (
               <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
             ) : null}

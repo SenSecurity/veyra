@@ -19,7 +19,7 @@ function isOllamaMissingError(error: unknown) {
 }
 
 export function SettingsTranscriptionRoute() {
-  const { settings, loading, update } = useSettings();
+  const { settings, error, update, reload } = useSettings();
   const [checking, setChecking] = useState(false);
   const [modelReady, setModelReady] = useState(false);
   const [checkingModel, setCheckingModel] = useState(false);
@@ -112,8 +112,16 @@ export function SettingsTranscriptionRoute() {
     return () => void un.then((fn) => fn()).catch(() => {});
   }, [emailDraftModel]);
 
-  if (loading || !settings) {
-    return <SettingsPanel title="Transcription" muted="Loading settings." />;
+  if (!settings) {
+    return (
+      <SettingsPanel title="Transcription" muted={error ?? "Loading settings."}>
+        {error ? (
+          <Button type="button" variant="outline" onClick={() => void reload()}>
+            Retry settings
+          </Button>
+        ) : null}
+      </SettingsPanel>
+    );
   }
 
   async function downloadCurrentModel() {

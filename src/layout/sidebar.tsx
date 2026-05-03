@@ -10,6 +10,7 @@ import {
   Settings,
   SlidersHorizontal,
 } from "lucide-react";
+import { BrandMark } from "@/components/brand-mark";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "typr.sidebar.collapsed";
@@ -59,10 +60,10 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "flex shrink-0 flex-col border-r border-sidebar-border/90 bg-sidebar/95 text-sidebar-foreground shadow-[inset_-1px_0_0_rgb(255_255_255_/_0.55)] transition-[width] duration-150",
-        collapsed ? "w-14" : "w-44",
+        "flex shrink-0 flex-col border-r border-sidebar-border/90 bg-sidebar/90 text-sidebar-foreground shadow-[inset_-1px_0_0_rgb(255_255_255_/_0.62)] backdrop-blur transition-[width] duration-150",
+        collapsed ? "w-14" : "w-[182px]",
       )}
-      style={{ width: collapsed ? 56 : 176 }}
+      style={{ width: collapsed ? 56 : 182 }}
       aria-label="Primary navigation"
     >
       <nav className="flex-1 space-y-1 overflow-y-auto p-2.5 pt-4">
@@ -73,12 +74,12 @@ export function Sidebar() {
               key={it.to}
               to={it.to}
               className={cn(
-                "flex h-9 items-center gap-2 rounded-lg px-2.5 text-sm text-sidebar-foreground/70 transition-colors hover:bg-white/62 hover:text-sidebar-accent-foreground",
+                "flex h-9 items-center gap-2 rounded-xl px-2.5 text-sm font-medium text-sidebar-foreground/72 transition-colors hover:bg-white/62 hover:text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/35",
                 collapsed && "justify-center",
               )}
               activeProps={{
                 className:
-                  "bg-sidebar-accent text-sidebar-accent-foreground font-medium shadow-sm ring-1 ring-white/58",
+                  "bg-sidebar-accent text-sidebar-accent-foreground font-semibold shadow-sm ring-1 ring-white/62",
               }}
               activeOptions={{ exact: it.to === "/" }}
               title={collapsed ? it.label : undefined}
@@ -89,11 +90,11 @@ export function Sidebar() {
           );
         })}
       </nav>
-      <div className={cn("mx-2.5 mb-2 rounded-xl border border-sidebar-border/80 bg-white/60 p-2 shadow-sm", collapsed && "hidden")}>
+      <div className={cn("mx-2.5 mb-2 rounded-2xl border border-sidebar-border/80 bg-white/62 p-2.5 shadow-sm", collapsed && "hidden")}>
         <div className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgb(16_185_129_/_0.14)]" />
+          <BrandMark className="h-7 w-7 rounded-xl" />
           <div className="min-w-0">
-            <p className="truncate text-[0.72rem] font-medium text-sidebar-foreground">All systems operational</p>
+            <p className="truncate text-[0.72rem] font-semibold text-sidebar-foreground">Veyra ready</p>
             <p className="truncate text-[0.68rem] text-sidebar-foreground/55">Local services running</p>
           </div>
         </div>

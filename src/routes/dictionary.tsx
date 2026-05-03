@@ -14,8 +14,19 @@ export function DictionaryRoute() {
   const [replacement, setReplacement] = useState("");
   const [query, setQuery] = useState("");
   const [abbr, setAbbr] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const reload = () => ipc.listDictionaryTerms().then(setRows).catch(() => setRows([]));
+  const reload = () =>
+    ipc
+      .listDictionaryTerms()
+      .then((items) => {
+        setError(null);
+        setRows(items);
+      })
+      .catch((loadError) => {
+        setError(String(loadError));
+        setRows([]);
+      });
   useEffect(() => void reload(), []);
 
   async function save() {
@@ -62,7 +73,11 @@ export function DictionaryRoute() {
         </div>
       </Toolbar>
       <Panel className="p-0 md:p-0">
-        {filteredRows.length === 0 ? (
+        {error ? (
+          <div className="p-4">
+            <EmptyState title="Could not load dictionary">{error}</EmptyState>
+          </div>
+        ) : filteredRows.length === 0 ? (
           <div className="p-4">
             <EmptyState title="No dictionary entries" />
           </div>

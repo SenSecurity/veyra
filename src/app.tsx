@@ -10,7 +10,19 @@ import { useWizardGate } from "@/hooks/use-wizard-gate";
 // chrome (sidebar + topbar + command-palette stub) around the active route.
 export function App() {
   useLiveEvents();
-  useWizardGate();
+  const { completed: wizardCompleted } = useWizardGate();
+
+  if (wizardCompleted !== true) {
+    return (
+      <div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
+        <WindowTitleBar setupMode />
+        <main className="min-h-0 flex-1 overflow-auto bg-[radial-gradient(circle_at_50%_8%,rgb(74_158_255_/_0.18),transparent_34%),linear-gradient(180deg,oklch(0.994_0.006_245),oklch(0.958_0.022_245))]">
+          <Outlet />
+        </main>
+        <Toaster />
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
