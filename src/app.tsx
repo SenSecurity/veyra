@@ -20,7 +20,7 @@ export function App() {
         <Sidebar />
         <div className="flex min-w-0 flex-1 flex-col">
           <TopBar />
-          <main className="flex-1 overflow-auto">
+          <main className="flex-1 overflow-auto bg-[linear-gradient(180deg,color-mix(in_oklab,var(--app)_78%,white)_0%,var(--app)_220px)]">
             <Outlet />
           </main>
         </div>

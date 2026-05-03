@@ -32,9 +32,9 @@ export function EmailDraftsRoute() {
   }
 
   return (
-    <section className="space-y-4 p-6">
+    <section className="mx-auto max-w-5xl space-y-4 p-8">
       <div>
-        <h1 className="text-2xl font-semibold">Email Drafter</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Email Drafter</h1>
         <p className="text-sm text-muted-foreground">
           Email drafts generated from the draft hotkey, available to copy if insertion fails.
         </p>

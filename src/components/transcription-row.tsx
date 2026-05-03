@@ -27,13 +27,13 @@ export function TranscriptionRow({
   }
 
   return (
-    <article className="rounded-lg border border-border bg-card p-4 shadow-sm">
+    <article className="veyra-surface veyra-surface-hover rounded-xl border border-border bg-card p-4">
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
-          <p className="whitespace-pre-wrap text-sm leading-6 text-foreground">
+          <p className="whitespace-pre-wrap text-[0.95rem] leading-6 text-foreground">
             {parts.map((part, i) =>
               part.match ? (
-                <mark key={`${part.text}-${i}`} className="rounded bg-muted px-0.5">
+                <mark key={`${part.text}-${i}`} className="rounded bg-accent px-0.5 text-accent-foreground">
                   {part.text}
                 </mark>
               ) : (
@@ -41,17 +41,17 @@ export function TranscriptionRow({
               ),
             )}
           </p>
-          <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+          <div className="mt-3 flex flex-wrap gap-1.5 text-xs text-muted-foreground">
             <span>{formatDateTime(row.createdAt)}</span>
-            <span>{row.wordCount} words</span>
-            <span>{formatDuration(row.durationMs)}</span>
-            <span>{row.engine}</span>
-            <span>{row.mode}</span>
+            <span className="rounded-full bg-muted px-2 py-0.5">{row.wordCount} words</span>
+            <span className="rounded-full bg-muted px-2 py-0.5">{formatDuration(row.durationMs)}</span>
+            <span className="rounded-full bg-muted px-2 py-0.5">{row.engine}</span>
+            <span className="rounded-full bg-muted px-2 py-0.5">{row.mode}</span>
           </div>
         </div>
         <button
           type="button"
-          className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+          className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
           onClick={() => void copyText()}
           aria-label="Copy transcription"
           title="Copy"
@@ -61,7 +61,7 @@ export function TranscriptionRow({
         {onDelete && (
           <button
             type="button"
-            className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-danger"
+            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive"
             onClick={() => onDelete(row.id)}
             aria-label="Delete transcription"
           >

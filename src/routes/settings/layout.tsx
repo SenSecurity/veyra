@@ -15,8 +15,8 @@ export function SettingsLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   return (
     <div className="flex flex-col h-full">
-      <div className="border-b border-border bg-background/95">
-        <nav className="flex gap-1 overflow-x-auto px-4 py-2" aria-label="Settings sections">
+      <div className="border-b border-border bg-background/80 backdrop-blur">
+        <nav className="flex gap-1 overflow-x-auto px-5 py-2.5" aria-label="Settings sections">
           {tabs.map((t) => {
             const active = pathname.startsWith(t.to);
             return (
@@ -24,9 +24,9 @@ export function SettingsLayout() {
                 key={t.to}
                 to={t.to}
                 className={cn(
-                  "rounded-md px-3 py-1.5 text-sm whitespace-nowrap transition-colors",
+                  "rounded-lg px-3 py-1.5 text-sm whitespace-nowrap transition-colors",
                   active
-                    ? "bg-muted text-foreground"
+                    ? "bg-muted text-foreground shadow-sm"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >
