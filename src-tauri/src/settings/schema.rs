@@ -40,7 +40,7 @@ pub fn default_email_draft_engine() -> String {
 }
 
 pub fn default_email_draft_model() -> String {
-    "llama3.2".to_string()
+    "llama3.2:1b".to_string()
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -184,7 +184,7 @@ mod tests {
         assert_eq!(s.transcription.engine, "local");
         assert_eq!(s.transcription.whisper_model, "turbo");
         assert_eq!(s.transcription.email_draft_engine, "ollama");
-        assert_eq!(s.transcription.email_draft_model, "llama3.2");
+        assert_eq!(s.transcription.email_draft_model, "llama3.2:1b");
         assert_eq!(s.transcription.languages, vec!["pt", "en"]);
         assert!(s.transcription.auto_detect);
         assert_eq!(s.transcription.gpu_acceleration, "auto");
@@ -206,7 +206,7 @@ mod tests {
         assert_eq!(json["schemaVersion"], 3);
         assert_eq!(json["transcription"]["whisperModel"], "turbo");
         assert_eq!(json["transcription"]["emailDraftEngine"], "ollama");
-        assert_eq!(json["transcription"]["emailDraftModel"], "llama3.2");
+        assert_eq!(json["transcription"]["emailDraftModel"], "llama3.2:1b");
         assert_eq!(json["hotkeys"]["recordingMode"], "push-to-talk");
         assert_eq!(json["data"]["wordCountCap"], 500_000);
         assert_eq!(json["system"]["muteMusicOnDictate"], false);

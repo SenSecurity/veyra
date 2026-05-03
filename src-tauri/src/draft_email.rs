@@ -8,7 +8,7 @@ use tauri::{AppHandle, Emitter};
 use tokio::time::timeout;
 
 pub const DEFAULT_GROQ_DRAFT_MODEL: &str = "llama-3.3-70b-versatile";
-pub const DEFAULT_OLLAMA_DRAFT_MODEL: &str = "llama3.2";
+pub const DEFAULT_OLLAMA_DRAFT_MODEL: &str = "llama3.2:1b";
 const OLLAMA_DRAFT_TIMEOUT: Duration = Duration::from_secs(15);
 const BONSAI_MODEL_DIR: &str = "email-draft-models";
 pub const ALLOWED_GROQ_DRAFT_MODELS: &[&str] = &[
@@ -17,15 +17,8 @@ pub const ALLOWED_GROQ_DRAFT_MODELS: &[&str] = &[
     "openai/gpt-oss-120b",
     "openai/gpt-oss-20b",
 ];
-pub const ALLOWED_OLLAMA_DRAFT_MODELS: &[&str] = &[
-    "llama3.2",
-    "llama3.2:1b",
-    "qwen3:1.7b",
-    "qwen3:4b",
-    "veyra-bonsai-1.7b",
-    "veyra-bonsai-4b",
-    "veyra-bonsai-8b",
-];
+pub const ALLOWED_OLLAMA_DRAFT_MODELS: &[&str] =
+    &["llama3.2", "llama3.2:1b", "qwen3:1.7b", "qwen3:4b"];
 
 #[derive(Clone, Copy)]
 struct BonsaiModel {
@@ -367,14 +360,16 @@ async fn check_ollama_email_draft_model(model: &str) -> Result<(), String> {
         return Err(format!("Ollama model `{model}` is not downloaded."));
     }
 
-    if let Some(bonsai) = bonsai {
-        smoke_test_ollama_model(bonsai.ollama_name).await.map_err(|e| {
+    smoke_test_ollama_model(&model).await.map_err(|e| {
+        if let Some(bonsai) = bonsai {
             format!(
                 "Bonsai model `{}` is installed but cannot run in this Ollama build yet: {e}",
                 bonsai.ollama_name
             )
-        })?;
-    }
+        } else {
+            format!("Ollama model `{model}` is installed but did not pass a generation test: {e}")
+        }
+    })?;
 
     Ok(())
 }
@@ -629,16 +624,16 @@ async fn smoke_test_ollama_model(model: &str) -> Result<(), String> {
             num_predict: 4,
         },
     };
-    let client = ollama_client(Duration::from_secs(45))?;
+    let client = ollama_client(OLLAMA_DRAFT_TIMEOUT)?;
     let response = timeout(
-        Duration::from_secs(45),
+        OLLAMA_DRAFT_TIMEOUT,
         client
             .post("http://localhost:11434/api/generate")
             .json(&request)
             .send(),
     )
     .await
-    .map_err(|_| "load test timed out after 45 seconds".to_string())?
+    .map_err(|_| "load test timed out after 15 seconds".to_string())?
     .map_err(|e| format!("load test request failed: {e}"))?;
 
     if response.status().is_success() {
@@ -1028,16 +1023,17 @@ mod tests {
     fn accepts_only_known_ollama_draft_models() {
         assert!(normalize_ollama_draft_model("llama3.2").is_ok());
         assert!(normalize_ollama_draft_model("llama3.2:1b").is_ok());
-        assert!(normalize_ollama_draft_model("veyra-bonsai-1.7b").is_ok());
+        assert!(normalize_ollama_draft_model("veyra-bonsai-1.7b").is_err());
         assert!(normalize_ollama_draft_model("../not-a-model").is_err());
     }
 
     #[test]
-    fn bonsai_model_maps_to_ollama_runtime_name() {
+    fn bonsai_model_metadata_maps_to_ollama_runtime_name() {
         assert_eq!(
-            ollama_runtime_model("veyra-bonsai-1.7b").unwrap(),
+            bonsai_model("veyra-bonsai-1.7b").unwrap().ollama_name,
             "veyra-bonsai:1.7b"
         );
+        assert!(ollama_runtime_model("veyra-bonsai-1.7b").is_err());
     }
 
     #[test]

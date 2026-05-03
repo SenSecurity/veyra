@@ -29,3 +29,4 @@ target/
 # App-specific
 src-tauri/binaries/
 whisper.cpp/
+.context/
