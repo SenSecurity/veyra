@@ -9,7 +9,7 @@ const TARGET_SAMPLE_RATE: usize = 16_000;
 const MAX_SECONDS: usize = 120;
 /// Mic meter gain. Raw WASAPI f32 RMS values are commonly tiny, so the overlay
 /// needs perceptual gain before mapping speech to visible bars.
-const LEVEL_GAIN: f32 = 26.0;
+const LEVEL_GAIN: f32 = 44.0;
 /// Rolling-window cap measured against the eventual 16kHz mono stream the test
 /// helpers and `current_duration_ms` assume. Production capture caps in raw
 /// samples computed from the live cpal config (see `apply_cap_with`).

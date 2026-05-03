@@ -9,9 +9,9 @@ export function OverlayPill({ state, mode }: { state: OverlayState; mode: Overla
   const commandMode = mode === "command";
   const modeLabel = commandMode ? "Email Drafter" : "Speech to Text";
   const level = useOverlayStore((s) => s.level);
-  const bars = [6, 9, 12, 8, 14, 10, 7, 12, 9, 6];
+  const bars = [5, 8, 11, 7, 14, 9, 6, 12, 8, 5];
   const voiceLevel = state === "recording"
-    ? Math.min(1, Math.pow(Math.max(0, (level - 0.008) / 0.16), 0.72))
+    ? Math.min(1, Math.pow(Math.max(0, level - 0.001) / 0.055, 0.55))
     : 0;
 
   return (
@@ -56,9 +56,17 @@ export function OverlayPill({ state, mode }: { state: OverlayState; mode: Overla
                 animate={{
                   height:
                     state === "recording"
-                      ? Math.min(20, Math.max(4, Math.round(height * (0.42 + voiceLevel * 1.25))))
+                      ? Math.min(
+                          20,
+                          Math.max(
+                            3,
+                            Math.round(
+                              height * (0.35 + voiceLevel * (index % 2 === 0 ? 1.55 : 1.2)),
+                            ),
+                          ),
+                        )
                       : height,
-                  opacity: 1,
+                  opacity: state === "recording" ? 0.58 + voiceLevel * 0.42 : 1,
                 }}
                 transition={{
                   duration: 0.08,
