@@ -339,15 +339,13 @@ export function SettingsTranscriptionRoute() {
               <option value="llama3.2">Llama 3.2 3B - stronger</option>
               <option value="qwen3:1.7b">Qwen3 1.7B - fast</option>
               <option value="qwen3:4b">Qwen3 4B - stronger</option>
-              <optgroup label="Experimental - disabled until Ollama can load it reliably">
-                <option value="veyra-bonsai-1.7b" disabled>
-                  Ternary Bonsai 1.7B - unavailable
-                </option>
+              <optgroup label="Experimental">
+                <option value="veyra-bonsai-1.7b">Ternary Bonsai 1.7B F16 - experimental</option>
                 <option value="veyra-bonsai-4b" disabled>
-                  Ternary Bonsai 4B - unavailable
+                  Ternary Bonsai 4B Q2 - unsupported by Ollama
                 </option>
                 <option value="veyra-bonsai-8b" disabled>
-                  Ternary Bonsai 8B - unavailable
+                  Ternary Bonsai 8B Q2 - unsupported by Ollama
                 </option>
               </optgroup>
             </>

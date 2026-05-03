@@ -10,6 +10,7 @@ use tokio::time::timeout;
 pub const DEFAULT_GROQ_DRAFT_MODEL: &str = "llama-3.3-70b-versatile";
 pub const DEFAULT_OLLAMA_DRAFT_MODEL: &str = "llama3.2:1b";
 const OLLAMA_DRAFT_TIMEOUT: Duration = Duration::from_secs(15);
+const BONSAI_DRAFT_TIMEOUT: Duration = Duration::from_secs(90);
 const BONSAI_MODEL_DIR: &str = "email-draft-models";
 pub const ALLOWED_GROQ_DRAFT_MODELS: &[&str] = &[
     "llama-3.3-70b-versatile",
@@ -17,8 +18,13 @@ pub const ALLOWED_GROQ_DRAFT_MODELS: &[&str] = &[
     "openai/gpt-oss-120b",
     "openai/gpt-oss-20b",
 ];
-pub const ALLOWED_OLLAMA_DRAFT_MODELS: &[&str] =
-    &["llama3.2", "llama3.2:1b", "qwen3:1.7b", "qwen3:4b"];
+pub const ALLOWED_OLLAMA_DRAFT_MODELS: &[&str] = &[
+    "llama3.2",
+    "llama3.2:1b",
+    "qwen3:1.7b",
+    "qwen3:4b",
+    "veyra-bonsai-1.7b",
+];
 
 #[derive(Clone, Copy)]
 struct BonsaiModel {
@@ -32,10 +38,10 @@ struct BonsaiModel {
 const BONSAI_MODELS: &[BonsaiModel] = &[
     BonsaiModel {
         selected_id: "veyra-bonsai-1.7b",
-        ollama_name: "veyra-bonsai:1.7b",
+        ollama_name: "veyra-bonsai:f16-1.7b",
         repo: "prism-ml/Ternary-Bonsai-1.7B-gguf",
-        file: "Ternary-Bonsai-1.7B-Q2_0.gguf",
-        min_bytes: 400_000_000,
+        file: "Ternary-Bonsai-1.7B-F16.gguf",
+        min_bytes: 3_400_000_000,
     },
     BonsaiModel {
         selected_id: "veyra-bonsai-4b",
@@ -106,6 +112,7 @@ struct OllamaPullRequest {
 struct OllamaOptions {
     temperature: f32,
     num_predict: u32,
+    repeat_penalty: f32,
 }
 
 #[derive(Debug, Deserialize)]
@@ -227,29 +234,42 @@ async fn generate_groq_email_draft(
 }
 
 async fn generate_ollama_email_draft(model: &str, instruction: &str) -> Result<String, String> {
-    let model = ollama_runtime_model(model)?;
+    let selected_model = normalize_ollama_draft_model(model)?;
+    let is_bonsai = bonsai_model(&selected_model).is_some();
+    let model = ollama_runtime_model(&selected_model)?;
     ensure_ollama_running().await?;
+    let timeout_duration = if is_bonsai {
+        BONSAI_DRAFT_TIMEOUT
+    } else {
+        OLLAMA_DRAFT_TIMEOUT
+    };
     let request = OllamaGenerateRequest {
         model,
         system: system_prompt(),
-        prompt: instruction.to_string(),
+        prompt: ollama_prompt(instruction, is_bonsai),
         stream: false,
         options: OllamaOptions {
-            temperature: 0.35,
-            num_predict: 320,
+            temperature: if is_bonsai { 0.0 } else { 0.35 },
+            num_predict: if is_bonsai { 180 } else { 320 },
+            repeat_penalty: if is_bonsai { 1.35 } else { 1.1 },
         },
     };
 
-    let client = ollama_client(OLLAMA_DRAFT_TIMEOUT)?;
+    let client = ollama_client(timeout_duration)?;
     let response = timeout(
-        OLLAMA_DRAFT_TIMEOUT,
+        timeout_duration,
         client
             .post("http://localhost:11434/api/generate")
             .json(&request)
             .send(),
     )
     .await
-    .map_err(|_| "Ollama draft timed out after 15 seconds.".to_string())?
+    .map_err(|_| {
+        format!(
+            "Ollama draft timed out after {} seconds.",
+            timeout_duration.as_secs()
+        )
+    })?
     .map_err(|e| format!("Ollama request failed. Is Ollama running? {e}"))?;
 
     if !response.status().is_success() {
@@ -265,8 +285,14 @@ async fn generate_ollama_email_draft(model: &str, instruction: &str) -> Result<S
     let draft = parsed.response.trim().to_string();
     if draft.is_empty() {
         Err("Ollama response did not include text.".to_string())
+    } else if is_bonsai && should_use_local_fallback(&draft) {
+        tracing::warn!(
+            selected_model,
+            "email draft model returned low-quality text; using local fallback"
+        );
+        Ok(local_email_fallback(instruction))
     } else {
-        Ok(draft)
+        Ok(clean_model_draft(&draft))
     }
 }
 
@@ -360,10 +386,10 @@ async fn check_ollama_email_draft_model(model: &str) -> Result<(), String> {
         return Err(format!("Ollama model `{model}` is not downloaded."));
     }
 
-    smoke_test_ollama_model(&model).await.map_err(|e| {
+    smoke_test_ollama_model(&model, bonsai.is_some()).await.map_err(|e| {
         if let Some(bonsai) = bonsai {
             format!(
-                "Bonsai model `{}` is installed but cannot run in this Ollama build yet: {e}",
+                "Bonsai model `{}` is installed but cannot run. Restart Ollama/Veyra and retry; Bonsai needs Ollama's new runner: {e}",
                 bonsai.ollama_name
             )
         } else {
@@ -491,9 +517,9 @@ async fn download_bonsai_email_draft_model(
     let modelfile_path = model_dir.join(format!("{}.Modelfile", bonsai.selected_id));
     write_bonsai_modelfile(&modelfile_path, &gguf_path)?;
     create_ollama_model(bonsai, &modelfile_path)?;
-    smoke_test_ollama_model(bonsai.ollama_name).await.map_err(|e| {
+    smoke_test_ollama_model(bonsai.ollama_name, true).await.map_err(|e| {
         format!(
-            "Bonsai downloaded and registered as `{}`, but Ollama cannot load it yet: {e}. This usually means your installed Ollama build does not support Prism Q2_0 GGUF.",
+            "Bonsai downloaded and registered as `{}`, but Ollama cannot load it: {e}. Restart Ollama/Veyra and retry; this Bonsai path uses the F16 GGUF and Ollama's new runner.",
             bonsai.ollama_name
         )
     })?;
@@ -591,6 +617,7 @@ fn create_ollama_model(bonsai: BonsaiModel, modelfile_path: &Path) -> Result<(),
         .ok_or_else(|| "Ollama executable not found.".to_string())?;
     let output = background_command(executable)
         .env("NO_COLOR", "1")
+        .env("OLLAMA_NEW_ENGINE", "1")
         .arg("create")
         .arg(bonsai.ollama_name)
         .arg("-f")
@@ -605,7 +632,7 @@ fn create_ollama_model(bonsai: BonsaiModel, modelfile_path: &Path) -> Result<(),
         let stderr = String::from_utf8_lossy(&output.stderr);
         let stdout = String::from_utf8_lossy(&output.stdout);
         Err(format!(
-            "Bonsai downloaded, but Ollama could not create `{}`. Your Ollama build may not support Prism Q2_0 GGUF yet. stdout: {} stderr: {}",
+            "Bonsai downloaded, but Ollama could not create `{}`. stdout: {} stderr: {}",
             bonsai.ollama_name,
             compact_command_output(&stdout),
             compact_command_output(&stderr)
@@ -613,7 +640,12 @@ fn create_ollama_model(bonsai: BonsaiModel, modelfile_path: &Path) -> Result<(),
     }
 }
 
-async fn smoke_test_ollama_model(model: &str) -> Result<(), String> {
+async fn smoke_test_ollama_model(model: &str, is_bonsai: bool) -> Result<(), String> {
+    let timeout_duration = if is_bonsai {
+        BONSAI_DRAFT_TIMEOUT
+    } else {
+        OLLAMA_DRAFT_TIMEOUT
+    };
     let request = OllamaGenerateRequest {
         model: model.to_string(),
         system: "Return only the word ok.".to_string(),
@@ -622,18 +654,24 @@ async fn smoke_test_ollama_model(model: &str) -> Result<(), String> {
         options: OllamaOptions {
             temperature: 0.0,
             num_predict: 4,
+            repeat_penalty: 1.1,
         },
     };
-    let client = ollama_client(OLLAMA_DRAFT_TIMEOUT)?;
+    let client = ollama_client(timeout_duration)?;
     let response = timeout(
-        OLLAMA_DRAFT_TIMEOUT,
+        timeout_duration,
         client
             .post("http://localhost:11434/api/generate")
             .json(&request)
             .send(),
     )
     .await
-    .map_err(|_| "load test timed out after 15 seconds".to_string())?
+    .map_err(|_| {
+        format!(
+            "load test timed out after {} seconds",
+            timeout_duration.as_secs()
+        )
+    })?
     .map_err(|e| format!("load test request failed: {e}"))?;
 
     if response.status().is_success() {
@@ -765,6 +803,7 @@ async fn ensure_ollama_running() -> Result<(), String> {
             continue;
         }
         match background_command(&candidate)
+            .env("OLLAMA_NEW_ENGINE", "1")
             .arg("serve")
             .stdin(Stdio::null())
             .stdout(Stdio::null())
@@ -858,6 +897,105 @@ fn system_prompt() -> String {
         "Keep the tone professional, warm, concise, and natural. Do not invent facts not present in the instruction.",
     ]
     .join(" ")
+}
+
+fn ollama_prompt(instruction: &str, is_bonsai: bool) -> String {
+    if !is_bonsai {
+        return instruction.to_string();
+    }
+
+    [
+        "Task: write one finished email draft from the instruction.",
+        "Return only the email text.",
+        "No labels, no explanation, no repeated alternatives.",
+        "Use Portuguese unless the instruction asks for another language.",
+        "",
+        "Instruction:",
+        instruction.trim(),
+        "",
+        "Email draft:",
+    ]
+    .join("\n")
+}
+
+fn clean_model_draft(draft: &str) -> String {
+    draft
+        .trim()
+        .trim_matches('`')
+        .lines()
+        .map(str::trim_end)
+        .filter(|line| {
+            let lower = line.trim().to_lowercase();
+            !matches!(
+                lower.as_str(),
+                "email draft:" | "draft:" | "resposta:" | "greeting:" | "body:" | "closing:"
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+        .trim()
+        .to_string()
+}
+
+fn should_use_local_fallback(draft: &str) -> bool {
+    let cleaned = clean_model_draft(draft);
+    let lower = cleaned.to_lowercase();
+    if cleaned.len() > 1_200 || cleaned.lines().count() > 12 {
+        return true;
+    }
+    let bad_markers = [
+        "return only",
+        "just the",
+        "here is",
+        "aqui est",
+        "posso ajudar",
+        "o que voc",
+        "greeting",
+        "body:",
+        "closing:",
+        "subject:",
+        "instruction:",
+        "email draft:",
+    ];
+    if bad_markers.iter().any(|marker| lower.contains(marker)) {
+        return true;
+    }
+    let mut seen_lines = std::collections::HashSet::new();
+    for line in lower.lines().map(str::trim).filter(|line| line.len() > 12) {
+        if !seen_lines.insert(line) {
+            return true;
+        }
+    }
+
+    has_repeated_ngram(&lower, 3) || has_repeated_ngram(&lower, 4)
+}
+
+fn has_repeated_ngram(text: &str, size: usize) -> bool {
+    let words = text
+        .split_whitespace()
+        .map(|word| word.trim_matches(|c: char| !c.is_alphanumeric()))
+        .filter(|word| !word.is_empty())
+        .collect::<Vec<_>>();
+    if words.len() < size * 2 {
+        return false;
+    }
+
+    let mut previous = String::new();
+    let mut repeats = 0;
+    for window in words.windows(size) {
+        let current = window.join(" ");
+        if current == previous {
+            repeats += 1;
+            if repeats >= 1 {
+                return true;
+            }
+        } else {
+            repeats = 0;
+            previous = current;
+        }
+    }
+
+    false
 }
 
 fn local_email_fallback(instruction: &str) -> String {
@@ -1023,7 +1161,8 @@ mod tests {
     fn accepts_only_known_ollama_draft_models() {
         assert!(normalize_ollama_draft_model("llama3.2").is_ok());
         assert!(normalize_ollama_draft_model("llama3.2:1b").is_ok());
-        assert!(normalize_ollama_draft_model("veyra-bonsai-1.7b").is_err());
+        assert!(normalize_ollama_draft_model("veyra-bonsai-1.7b").is_ok());
+        assert!(normalize_ollama_draft_model("veyra-bonsai-4b").is_err());
         assert!(normalize_ollama_draft_model("../not-a-model").is_err());
     }
 
@@ -1031,18 +1170,34 @@ mod tests {
     fn bonsai_model_metadata_maps_to_ollama_runtime_name() {
         assert_eq!(
             bonsai_model("veyra-bonsai-1.7b").unwrap().ollama_name,
-            "veyra-bonsai:1.7b"
+            "veyra-bonsai:f16-1.7b"
         );
-        assert!(ollama_runtime_model("veyra-bonsai-1.7b").is_err());
+        assert_eq!(
+            ollama_runtime_model("veyra-bonsai-1.7b").unwrap(),
+            "veyra-bonsai:f16-1.7b"
+        );
     }
 
     #[test]
     fn bonsai_download_url_points_to_hugging_face_gguf() {
-        let bonsai = bonsai_model("veyra-bonsai-4b").unwrap();
+        let bonsai = bonsai_model("veyra-bonsai-1.7b").unwrap();
         assert_eq!(
             bonsai_download_url(bonsai),
-            "https://huggingface.co/prism-ml/Ternary-Bonsai-4B-gguf/resolve/main/Ternary-Bonsai-4B-Q2_0.gguf?download=true"
+            "https://huggingface.co/prism-ml/Ternary-Bonsai-1.7B-gguf/resolve/main/Ternary-Bonsai-1.7B-F16.gguf?download=true"
         );
+    }
+
+    #[test]
+    fn detects_low_quality_model_output() {
+        assert!(should_use_local_fallback(
+            "Greeting:\nOla,\nBody:\nO que voce pode fazer hoje? O que voce pode fazer hoje?"
+        ));
+        assert!(should_use_local_fallback(
+            ", que esta em casa.\n\nObrigado, e espero que ele me ajude.\n\nP.S. Se voce nao estiver aqui hoje, por favor, me avise.\n\nP.S. Se voce nao estiver aqui hoje, por favor, me avise."
+        ));
+        assert!(!should_use_local_fallback(
+            "Ola Sr. Bruno Rodrigues,\n\nEscrevo para informar que hoje vou ai estar as 17h.\n\nCumprimentos,"
+        ));
     }
 
     #[test]

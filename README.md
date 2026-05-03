@@ -59,8 +59,9 @@ Other local options:
 - `Llama 3.2 3B`
 - `Qwen3 1.7B`
 - `Qwen3 4B`
+- `Ternary Bonsai 1.7B F16` (experimental)
 
-Ternary Bonsai appears as experimental and disabled in the current Windows release. Real testing showed current Ollama builds can download/register Prism `Q2_0` GGUF models but fail to load them reliably.
+Bonsai note: Veyra uses Prism's `Ternary-Bonsai-1.7B-F16.gguf` through Ollama. The smaller Prism `Q2_0` Bonsai GGUF files are not exposed because this Ollama build fails to load them reliably.
 
 ## Data
 
