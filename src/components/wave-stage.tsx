@@ -33,7 +33,7 @@ export function WaveStage({
     <div className={cn("flex flex-col gap-2", className)}>
       <div
         className={cn(
-          "veyra-wave relative h-16 px-3.5",
+          "veyra-wave relative h-9",
           isSpark && "veyra-wave-spark",
         )}
         data-variant={variant}
