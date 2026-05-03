@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
+import { PageShell, Panel, Toolbar } from "@/components/page-shell";
 import { TranscriptionRow } from "@/components/transcription-row";
 import { Input } from "@/components/ui/input";
 import { ipc } from "@/lib/tauri";
@@ -32,14 +33,12 @@ export function EmailDraftsRoute() {
   }
 
   return (
-    <section className="mx-auto max-w-5xl space-y-4 p-8">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Email Drafter</h1>
-        <p className="text-sm text-muted-foreground">
-          Email drafts generated from the draft hotkey, available to copy if insertion fails.
-        </p>
-      </div>
-      <div className="relative">
+    <PageShell
+      title="Email Drafter"
+      description="Draft emails generated from your voice."
+    >
+      <Toolbar>
+      <div className="relative flex-1">
         <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
           className="pl-9"
@@ -48,17 +47,23 @@ export function EmailDraftsRoute() {
           placeholder="Search email drafts"
         />
       </div>
-      <div className="space-y-3">
+        <select className="veyra-select md:w-36" defaultValue="all" aria-label="Draft filter">
+          <option value="all">All drafts</option>
+        </select>
+      </Toolbar>
+      <Panel className="p-3 md:p-3">
         {filtered.length === 0 ? (
           <EmptyState title="No email drafts yet">
             Use the Email Draft hotkey once and generated drafts appear here.
           </EmptyState>
         ) : (
-          filtered.map((row) => (
-            <TranscriptionRow key={row.id} row={row} query={query} onDelete={deleteRow} />
-          ))
+          <div className="space-y-3">
+            {filtered.map((row) => (
+              <TranscriptionRow key={row.id} row={row} query={query} onDelete={deleteRow} />
+            ))}
+          </div>
         )}
-      </div>
-    </section>
+      </Panel>
+    </PageShell>
   );
 }

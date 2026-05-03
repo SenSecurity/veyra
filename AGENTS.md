@@ -13,11 +13,16 @@ Core product behavior:
 
 ## Working Rules
 
+- Use subagents by default whenever the active environment and policy allow it.
+- Split subagent work by ownership to avoid conflicts: frontend layout, Rust/backend, overlay/audio, icon/assets, docs/release.
+- Tell subagents they are not alone in the codebase and must not revert edits made by others.
+- Keep one clear integrator in the main thread for final review, tests, build, installer, release, and install.
 - Prefer small, direct changes that preserve existing app behavior.
 - Do not reintroduce removed product bloat such as Snippets, Scratchpad, placeholder settings pages, or unused navigation unless explicitly requested.
 - Do not revert user changes or unrelated dirty work.
 - Keep UI text concise and product-focused.
 - For frontend edits, verify text fits and controls remain usable at the current app size.
+- Visual target: Apple-style utility, crisp white-blue surfaces, graphite titlebar, cyan audio accent, restrained shadows, no bloat.
 - For global hotkeys, remember existing defaults:
   - Dictation: `F24`
   - Email Draft: `Pause`

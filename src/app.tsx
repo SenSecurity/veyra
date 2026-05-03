@@ -14,13 +14,13 @@ export function App() {
   useWizardGate();
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground font-sans">
+    <div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
       <WindowTitleBar />
       <div className="flex min-h-0 flex-1 bg-app">
         <Sidebar />
         <div className="flex min-w-0 flex-1 flex-col">
           <TopBar />
-          <main className="flex-1 overflow-auto bg-[linear-gradient(180deg,color-mix(in_oklab,var(--app)_78%,white)_0%,var(--app)_220px)]">
+          <main className="flex-1 overflow-auto bg-[linear-gradient(180deg,oklch(0.992_0.008_245)_0%,oklch(0.972_0.016_245)_46%,var(--app)_100%)]">
             <Outlet />
           </main>
         </div>

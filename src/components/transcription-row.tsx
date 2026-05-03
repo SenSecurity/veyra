@@ -27,10 +27,10 @@ export function TranscriptionRow({
   }
 
   return (
-    <article className="veyra-surface veyra-surface-hover rounded-xl border border-border bg-card p-4">
+    <article className="veyra-surface veyra-surface-hover rounded-xl border border-border bg-white/80 p-4">
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
-          <p className="whitespace-pre-wrap text-[0.95rem] leading-6 text-foreground">
+          <p className="whitespace-pre-wrap text-[0.92rem] font-medium leading-6 text-foreground">
             {parts.map((part, i) =>
               part.match ? (
                 <mark key={`${part.text}-${i}`} className="rounded bg-accent px-0.5 text-accent-foreground">
@@ -41,17 +41,21 @@ export function TranscriptionRow({
               ),
             )}
           </p>
-          <div className="mt-3 flex flex-wrap gap-1.5 text-xs text-muted-foreground">
+          <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
             <span>{formatDateTime(row.createdAt)}</span>
-            <span className="rounded-full bg-muted px-2 py-0.5">{row.wordCount} words</span>
-            <span className="rounded-full bg-muted px-2 py-0.5">{formatDuration(row.durationMs)}</span>
+            <span className="h-1 w-1 rounded-full bg-muted-foreground/35" />
+            <span>{row.wordCount} words</span>
+            <span className="h-1 w-1 rounded-full bg-muted-foreground/35" />
+            <span>{formatDuration(row.durationMs)}</span>
+            <span className="rounded-full bg-accent/80 px-2 py-0.5 font-medium text-accent-foreground">
+              {row.mode === "command" ? "Email" : "Transcription"}
+            </span>
             <span className="rounded-full bg-muted px-2 py-0.5">{row.engine}</span>
-            <span className="rounded-full bg-muted px-2 py-0.5">{row.mode}</span>
           </div>
         </div>
         <button
           type="button"
-          className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+          className="veyra-icon-button"
           onClick={() => void copyText()}
           aria-label="Copy transcription"
           title="Copy"
@@ -61,9 +65,10 @@ export function TranscriptionRow({
         {onDelete && (
           <button
             type="button"
-            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive"
+            className="veyra-icon-button hover:text-destructive"
             onClick={() => onDelete(row.id)}
             aria-label="Delete transcription"
+            title="Delete"
           >
             <Trash2 className="h-4 w-4" />
           </button>

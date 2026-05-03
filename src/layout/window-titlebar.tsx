@@ -4,10 +4,12 @@ import { ipc } from "@/lib/tauri";
 export function WindowTitleBar() {
   return (
     <header
-      className="flex h-8 shrink-0 items-center border-b border-border bg-zinc-950 text-zinc-100"
+      className="flex h-8 shrink-0 items-center border-b border-zinc-700/70 bg-[linear-gradient(180deg,#27303a,#151a20)] text-zinc-100"
     >
       <div data-tauri-drag-region className="flex min-w-0 flex-1 items-center gap-2 px-3">
-        <AudioLines className="h-4 w-4 text-zinc-300" />
+        <span className="flex h-5 w-5 items-center justify-center rounded-md bg-black/45 ring-1 ring-white/10">
+          <AudioLines className="h-3.5 w-3.5 text-sky-300" />
+        </span>
         <span className="text-xs font-medium">Veyra</span>
       </div>
       <div className="flex h-full">

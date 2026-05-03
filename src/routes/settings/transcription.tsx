@@ -200,7 +200,7 @@ export function SettingsTranscriptionRoute() {
       <label className="grid gap-2 text-sm">
         <span className="font-medium">Engine</span>
         <select
-          className="h-9 rounded-md border border-border bg-background px-3"
+          className="veyra-select w-full"
           value={settings.engine}
           onChange={(e) => void update({ engine: e.target.value as "local" | "cloud" })}
         >
@@ -230,7 +230,7 @@ export function SettingsTranscriptionRoute() {
           </span>
         </div>
         <select
-          className="h-9 rounded-md border border-border bg-background px-3"
+          className="veyra-select w-full"
           value={whisperModel}
           onChange={(e) => saveWhisperModel(e.target.value)}
         >
@@ -269,7 +269,7 @@ export function SettingsTranscriptionRoute() {
         </Button>
       </div>
       {downloading && (
-        <div className="space-y-2 rounded-lg border border-border bg-card p-3">
+        <div className="space-y-2 rounded-xl border border-border bg-white/64 p-3 shadow-sm">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>Downloading {whisperModel}</span>
             <span>{Math.round(progress)}%</span>
@@ -283,7 +283,7 @@ export function SettingsTranscriptionRoute() {
       <label className="grid gap-2 text-sm">
         <span className="font-medium">Email draft engine</span>
         <select
-          className="h-9 rounded-md border border-border bg-background px-3"
+          className="veyra-select w-full"
           value={emailDraftEngine}
           onChange={(e) => saveEmailDraftEngine(e.target.value as EmailDraftEngine)}
         >
@@ -325,7 +325,7 @@ export function SettingsTranscriptionRoute() {
           </span>
         </div>
         <select
-          className="h-9 rounded-md border border-border bg-background px-3"
+          className="veyra-select w-full"
           value={emailDraftModel}
           onChange={(e) => {
             setEmailModelReady(false);
@@ -402,7 +402,7 @@ export function SettingsTranscriptionRoute() {
         </Button>
       </div>
       {downloadingEmailModel && (
-        <div className="space-y-2 rounded-lg border border-border bg-card p-3">
+        <div className="space-y-2 rounded-xl border border-border bg-white/64 p-3 shadow-sm">
           <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
             <span className="truncate">{emailDownloadStatus || `Downloading ${emailDraftModel}`}</span>
             <span>{emailProgress > 0 ? `${Math.round(emailProgress)}%` : "Preparing"}</span>

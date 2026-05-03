@@ -1,4 +1,5 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { PageShell } from "@/components/page-shell";
 import { cn } from "@/lib/utils";
 
 const tabs: { to: string; label: string }[] = [
@@ -14,9 +15,9 @@ const tabs: { to: string; label: string }[] = [
 export function SettingsLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   return (
-    <div className="flex flex-col h-full">
-      <div className="border-b border-border bg-background/80 backdrop-blur">
-        <nav className="flex gap-1 overflow-x-auto px-5 py-2.5" aria-label="Settings sections">
+    <PageShell title="Settings" description="Configure transcription, models, and hotkeys.">
+      <div className="rounded-xl border border-border bg-white/64 p-1 shadow-sm">
+        <nav className="flex gap-1 overflow-x-auto" aria-label="Settings sections">
           {tabs.map((t) => {
             const active = pathname.startsWith(t.to);
             return (
@@ -24,10 +25,10 @@ export function SettingsLayout() {
                 key={t.to}
                 to={t.to}
                 className={cn(
-                  "rounded-lg px-3 py-1.5 text-sm whitespace-nowrap transition-colors",
+                  "whitespace-nowrap rounded-lg px-3 py-1.5 text-sm transition-colors",
                   active
-                    ? "bg-muted text-foreground shadow-sm"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    ? "bg-white text-foreground shadow-sm ring-1 ring-border/60"
+                    : "text-muted-foreground hover:bg-white/70 hover:text-foreground",
                 )}
               >
                 {t.label}
@@ -36,9 +37,7 @@ export function SettingsLayout() {
           })}
         </nav>
       </div>
-      <div className="flex-1 overflow-auto">
-        <Outlet />
-      </div>
-    </div>
+      <Outlet />
+    </PageShell>
   );
 }
