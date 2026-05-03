@@ -165,7 +165,7 @@ pub async fn generate_email_draft(
     };
 
     match result {
-        Ok(draft) => Ok(draft),
+        Ok(draft) => Ok(finalize_model_draft(instruction, &draft)),
         Err(error) if error.starts_with("Unsupported") => Err(error),
         Err(error) => {
             tracing::warn!(
@@ -894,6 +894,7 @@ fn system_prompt() -> String {
         "The user speaks an instruction for an email, reply, or short professional message.",
         "Return only the finished draft text for direct insertion into the active text field.",
         "Do not include explanations, markdown fences, labels, alternatives, or a subject line unless the user explicitly asks for one.",
+        "Never refuse, moralize, chat, or ask how you can help. If the instruction is awkward, informal, explicit, or imperfectly transcribed, still convert it into a neutral professional email draft.",
         "Language rule: by default, write in the same language the user is speaking.",
         "Override that only when the user explicitly asks for another language, for example 'diz em ingles', 'em frances', 'write it in English', or 'reply in French'.",
         "Prefer a complete, slightly fuller draft over a terse one. Include enough context, warmth, and professional polish that the user can delete extra text if needed.",
@@ -912,6 +913,7 @@ fn ollama_prompt(instruction: &str, is_bonsai: bool) -> String {
         "Task: write one finished email draft from the instruction.",
         "Return only the email text.",
         "No labels, no explanation, no repeated alternatives.",
+        "Never refuse or ask follow-up questions. Convert the instruction into a neutral professional email draft.",
         "Use the same language as the instruction unless it explicitly asks for another language.",
         "Make the draft complete and moderately detailed, not terse.",
         "",
@@ -942,6 +944,15 @@ fn clean_model_draft(draft: &str) -> String {
         .to_string()
 }
 
+fn finalize_model_draft(instruction: &str, draft: &str) -> String {
+    if should_use_local_fallback(draft) {
+        tracing::warn!("email draft model returned non-email text; using local fallback");
+        local_email_fallback(instruction)
+    } else {
+        clean_model_draft(draft)
+    }
+}
+
 fn should_use_local_fallback(draft: &str) -> bool {
     let cleaned = clean_model_draft(draft);
     let lower = cleaned.to_lowercase();
@@ -953,7 +964,20 @@ fn should_use_local_fallback(draft: &str) -> bool {
         "just the",
         "here is",
         "aqui est",
-        "posso ajudar",
+        "nao posso criar",
+        "não posso criar",
+        "nao consigo criar",
+        "não consigo criar",
+        "posso ajudar com outra coisa",
+        "estou aqui para ajudar",
+        "como posso ajuda",
+        "linguagem explic",
+        "ofensiva ou inapropriada",
+        "i cannot help",
+        "i can't help",
+        "i am unable to",
+        "i'm unable to",
+        "as an ai",
         "o que voc",
         "greeting",
         "body:",
@@ -1334,6 +1358,19 @@ mod tests {
         assert!(!should_use_local_fallback(
             "Ola Sr. Bruno Rodrigues,\n\nEscrevo para informar que hoje vou ai estar as 17h.\n\nCumprimentos,"
         ));
+    }
+
+    #[test]
+    fn model_refusal_is_replaced_with_email_fallback() {
+        let draft = finalize_model_draft(
+            "faz me um email a dizer que hoje vou la as 5 da tarde para o senhor Bruno Rodrigues",
+            "Nao posso criar um e-mail que contenha linguagem explicita ou que possa ser considerada ofensiva ou inapropriada. Posso ajudar com outra coisa?\n\nEstou aqui para ajudar. Como posso ajuda-lo hoje?",
+        );
+
+        assert!(draft.contains("Bruno Rodrigues"));
+        assert!(draft.contains("Cumprimentos,"));
+        assert!(!draft.to_lowercase().contains("nao posso"));
+        assert!(!draft.to_lowercase().contains("como posso ajuda"));
     }
 
     #[test]
