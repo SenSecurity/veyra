@@ -13,17 +13,39 @@ const mockIpc = vi.hoisted(() => ({
 const mockUpdate = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 const mockReload = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 const mockNavigate = vi.hoisted(() => vi.fn());
-const orchestratorMock = vi.hoisted(() => ({
-  whisper: { status: "idle" as const, progress: 0 },
-  ollama: { status: "idle" as const, progress: 0 },
-  drafter: { status: "idle" as const, progress: 0 },
-  allDone: false,
-  anyFailed: false,
-  anyRunning: false,
-  refresh: vi.fn(),
-  runAll: vi.fn(() => Promise.resolve()),
-  retry: vi.fn(() => Promise.resolve()),
-}));
+type StepStatus = "idle" | "running" | "done" | "failed";
+interface MockStepState {
+  status: StepStatus;
+  progress: number;
+  error?: string;
+  detail?: string;
+}
+
+const orchestratorMock = vi.hoisted(() => {
+  type StepStatus = "idle" | "running" | "done" | "failed";
+  const initial = { status: "idle" as StepStatus, progress: 0 };
+  return {
+    whisper: { ...initial },
+    ollama: { ...initial },
+    drafter: { ...initial },
+    allDone: false,
+    anyFailed: false,
+    anyRunning: false,
+    refresh: vi.fn(),
+    runAll: vi.fn(() => Promise.resolve()),
+    retry: vi.fn(() => Promise.resolve()),
+  } as {
+    whisper: MockStepState;
+    ollama: MockStepState;
+    drafter: MockStepState;
+    allDone: boolean;
+    anyFailed: boolean;
+    anyRunning: boolean;
+    refresh: ReturnType<typeof vi.fn>;
+    runAll: ReturnType<typeof vi.fn>;
+    retry: ReturnType<typeof vi.fn>;
+  };
+});
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
