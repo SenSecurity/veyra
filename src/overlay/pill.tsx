@@ -13,7 +13,6 @@ export function OverlayPill({ state, mode }: { state: OverlayState; mode: Overla
   const voiceLevel = state === "recording"
     ? Math.min(1, Math.pow(Math.max(0, (level - 0.008) / 0.16), 0.72))
     : 0;
-  const active = !busy;
 
   return (
     <motion.div
@@ -25,8 +24,8 @@ export function OverlayPill({ state, mode }: { state: OverlayState; mode: Overla
       <div
         className={
           commandMode
-            ? "rounded-full border border-amber-300/30 bg-amber-400/90 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-950"
-            : "rounded-full border border-sky-300/30 bg-sky-400/90 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-950"
+            ? "rounded-full border border-amber-200/40 bg-amber-300 px-2.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-zinc-950 shadow-sm"
+            : "rounded-full border border-sky-200/40 bg-sky-300 px-2.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-zinc-950 shadow-sm"
         }
       >
         {modeLabel}
@@ -44,7 +43,7 @@ export function OverlayPill({ state, mode }: { state: OverlayState; mode: Overla
         >
           <X className="h-3.5 w-3.5" />
         </button>
-        <div className="flex h-4 min-w-20 items-center justify-center gap-0.5" aria-hidden="true">
+        <div className="flex h-5 min-w-20 items-center justify-center gap-0.5 overflow-hidden" aria-hidden="true">
           {busy ? (
             <span className="typr-transcribing-label text-[11px] font-medium leading-none text-zinc-100">
               Transcribing
@@ -53,15 +52,11 @@ export function OverlayPill({ state, mode }: { state: OverlayState; mode: Overla
             bars.map((height, index) => (
               <motion.span
                 key={`${height}-${index}`}
-                className={active ? "typr-wave-bar w-0.5 rounded-full bg-white" : "w-0.5 rounded-full bg-white"}
-                style={{
-                  animationDelay: `${index * -72}ms`,
-                  ["--typr-wave-scale" as string]: `${0.72 + voiceLevel * (index % 2 === 0 ? 2.25 : 1.65)}`,
-                }}
+                className="w-0.5 rounded-full bg-white"
                 animate={{
                   height:
                     state === "recording"
-                      ? Math.max(4, Math.round(height * (0.55 + voiceLevel * 1.9)))
+                      ? Math.min(20, Math.max(4, Math.round(height * (0.42 + voiceLevel * 1.25))))
                       : height,
                   opacity: 1,
                 }}

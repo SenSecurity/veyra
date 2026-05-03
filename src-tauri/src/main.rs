@@ -593,6 +593,12 @@ fn get_recording_level(state: State<AppState>) -> f32 {
 }
 
 #[tauri::command]
+fn get_recording_mode(state: State<AppState>) -> String {
+    let mode = state.active_pipeline_mode.lock().unwrap();
+    pipeline_mode_label(*mode).to_string()
+}
+
+#[tauri::command]
 fn check_model_downloaded(state: State<AppState>, model_size: String) -> Result<bool, String> {
     let model_file = transcribe_local::model_filename(&model_size)?;
     Ok(state.app_dir.join(&model_file).exists())
@@ -1301,6 +1307,7 @@ fn main() {
             list_microphones,
             get_recording_state,
             get_recording_level,
+            get_recording_mode,
             check_model_downloaded,
             download_model,
             cancel_model_download,
