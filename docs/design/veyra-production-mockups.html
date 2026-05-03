@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Veyra Production Mockups</title>
+  <style>
+    :root {
+      --ink: #111827;
+      --muted: #5f6f82;
+      --soft: #eef6ff;
+      --line: #c9d8e8;
+      --panel: rgba(255,255,255,.82);
+      --blue: #1479df;
+      --cyan: #12c4e8;
+      --green: #18b87a;
+      --orange: #ff9f2e;
+      font-family: "Geist", "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      width: 1120px;
+      min-height: 760px;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 24% 4%, rgba(56,164,255,.22), transparent 32%),
+        linear-gradient(180deg, #fbfdff 0%, #edf6ff 58%, #e8f3ff 100%);
+    }
+    .app {
+      width: 1120px;
+      height: 760px;
+      overflow: hidden;
+      border: 1px solid rgba(29, 44, 62, .18);
+      background: rgba(246,251,255,.9);
+    }
+    .titlebar {
+      height: 38px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 12px;
+      color: #f6fbff;
+      background: linear-gradient(180deg, #26313d, #111820);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .mark {
+      width: 23px; height: 23px; border-radius: 9px;
+      display: grid; place-items: center;
+      background: #071018;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), 0 8px 22px rgba(10,20,32,.24);
+    }
+    .mark::before {
+      content: "";
+      width: 14px; height: 14px; border-radius: 50%;
+      background:
+        radial-gradient(circle at 50% 50%, #081018 0 24%, transparent 25%),
+        conic-gradient(from 0deg, var(--cyan) 0 39%, transparent 40% 51%, #ffd257 52% 88%, transparent 89%);
+    }
+    .brand { font-size: 12px; font-weight: 700; letter-spacing: .01em; }
+    .title-spacer { flex: 1; }
+    .command {
+      height: 26px; display: flex; align-items: center; gap: 8px;
+      padding: 0 10px; border-radius: 9px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.13);
+      color: #dce6ef; font-size: 12px; font-weight: 600;
+    }
+    .key { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 10px; padding: 2px 6px; border-radius: 6px; background: rgba(255,255,255,.1); }
+    .status {
+      height: 26px; display: flex; align-items: center; gap: 8px; padding: 0 10px;
+      border-radius: 9px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.13);
+      font-size: 12px; font-weight: 700;
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 4px rgba(24,184,122,.13); }
+    .win { width: 42px; text-align: center; color: rgba(255,255,255,.68); font-size: 14px; }
+    .body { display: grid; grid-template-columns: 182px 1fr; height: 722px; }
+    .side {
+      border-right: 1px solid var(--line);
+      background: rgba(236,247,255,.82);
+      padding: 14px 10px 10px;
+      display: flex; flex-direction: column;
+    }
+    .nav { display: grid; gap: 6px; }
+    .navitem {
+      height: 38px; display: flex; align-items: center; gap: 11px; padding: 0 12px;
+      border-radius: 12px; color: #344456; font-size: 14px; font-weight: 550;
+    }
+    .navitem.active { color: #17314e; background: #d7ebff; box-shadow: inset 0 1px 0 rgba(255,255,255,.68), 0 8px 18px rgba(70,122,180,.08); }
+    .ico { width: 16px; height: 16px; border: 1.8px solid currentColor; border-radius: 5px; opacity: .8; }
+    .sidecard { margin-top: auto; padding: 11px; border-radius: 14px; border: 1px solid rgba(172,195,220,.76); background: rgba(255,255,255,.62); box-shadow: 0 8px 22px rgba(55,93,130,.08); }
+    .sidecard b { display: block; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sidecard span { color: var(--muted); font-size: 11px; }
+    .main { padding: 34px 38px; overflow: hidden; }
+    .head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+    h1 { margin: 0; font-size: 26px; letter-spacing: -.03em; line-height: 1.05; }
+    .sub { margin-top: 7px; color: #48596d; font-size: 14px; }
+    .pill { display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 10px; border-radius: 999px; background: #e8fff6; border: 1px solid #a9efd4; color: #05784d; font-size: 12px; font-weight: 750; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .panel { border: 1px solid var(--line); border-radius: 18px; background: var(--panel); box-shadow: inset 0 1px 0 rgba(255,255,255,.85), 0 18px 44px rgba(44,92,140,.09); padding: 18px; }
+    .panel h2 { margin: 0; font-size: 15px; letter-spacing: -.01em; }
+    .panel p { margin: 6px 0 0; color: #536477; font-size: 13px; line-height: 1.45; }
+    .control {
+      margin-top: 16px; display: flex; align-items: center; gap: 12px;
+      min-height: 64px; border-radius: 16px; border: 1px solid #bed1e4;
+      background: rgba(255,255,255,.84); padding: 12px; box-shadow: 0 8px 22px rgba(40,87,134,.08);
+    }
+    .glyph { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; color: white; background: linear-gradient(180deg, #248df2, #0f62c9); font-weight: 800; }
+    .glyph.alt { background: linear-gradient(180deg, #e9f6ff, #d4edff); color: #1479df; }
+    .wave { margin-top: 18px; height: 58px; display: flex; align-items: center; gap: 5px; padding: 0 14px; border-radius: 17px; background: linear-gradient(180deg, #e3f2ff, #d8ebff); overflow: hidden; }
+    .wave.orange { background: linear-gradient(180deg, #fff5e7, #ffedcf); }
+    .bar { width: 4px; border-radius: 999px; background: #4a96e7; }
+    .orange .bar { background: #ff9f2e; }
+    .list { display: grid; gap: 11px; }
+    .row { display: grid; grid-template-columns: 32px 1fr auto; gap: 12px; align-items: center; padding: 14px 16px; border-radius: 16px; border: 1px solid #c6d7e8; background: rgba(255,255,255,.77); box-shadow: 0 8px 24px rgba(44,92,140,.07); }
+    .row strong { display: block; font-size: 14px; margin-bottom: 5px; }
+    .meta { color: #607286; font-size: 12px; }
+    .actions { display: flex; gap: 8px; color: #425468; }
+    .buttonrow { display: flex; gap: 10px; }
+    .field { height: 42px; display: flex; align-items: center; gap: 10px; border-radius: 13px; border: 1px solid #bfd2e5; background: rgba(255,255,255,.82); padding: 0 13px; color: #425468; font-size: 14px; }
+    .field.grow { flex: 1; }
+    .table { overflow: hidden; border-radius: 16px; border: 1px solid var(--line); background: rgba(255,255,255,.78); }
+    .table .tr { display: grid; grid-template-columns: 1.2fr 1.2fr .7fr .5fr; gap: 12px; padding: 13px 16px; border-bottom: 1px solid #d9e5f1; align-items: center; font-size: 13px; }
+    .table .tr:first-child { color: #63758a; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; background: #edf7ff; font-weight: 800; }
+    .setup { display: grid; place-items: center; height: 722px; padding: 40px; background: radial-gradient(circle at 50% 18%, rgba(40,149,255,.2), transparent 34%), linear-gradient(180deg,#fbfdff,#edf6ff); }
+    .wizard { width: 720px; border-radius: 28px; border: 1px solid rgba(184,207,231,.82); background: rgba(255,255,255,.86); box-shadow: inset 0 1px 0 white, 0 30px 80px rgba(40,84,130,.16); padding: 28px; }
+    .steps { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; margin-bottom: 24px; }
+    .steps i { height: 5px; border-radius: 999px; background: #d5e5f4; }
+    .steps i.on { background: linear-gradient(90deg,#1495ff,#13c7e8); }
+    .choice { margin-top: 12px; padding: 14px; border-radius: 16px; border: 1px solid #bdd2e6; background: rgba(248,252,255,.88); display: flex; justify-content: space-between; align-items: center; }
+    .primary { height: 38px; border-radius: 12px; border: 0; padding: 0 16px; background: #111820; color: white; font-weight: 750; }
+    .ghost { height: 38px; border-radius: 12px; border: 1px solid #bfd2e5; padding: 0 16px; background: rgba(255,255,255,.7); color: #32445a; font-weight: 700; }
+    .stats { display:grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-top: 16px; }
+    .stat { padding: 14px; border: 1px solid #cbdaea; border-radius: 15px; background: rgba(255,255,255,.58); }
+    .stat span { color: var(--muted); font-size: 12px; }
+    .stat b { display:block; margin-top:5px; font-size: 22px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    const screen = new URLSearchParams(location.search).get("screen") || "overview";
+    const nav = ["Home", "History", "Email Drafter", "Dictionary", "Settings"];
+    const bars = (tone = "") => `<div class="wave ${tone}">${Array.from({length: 39}, (_, i) => `<i class="bar" style="height:${18 + ((i * (tone ? 17 : 13)) % 32)}px"></i>`).join("")}</div>`;
+    function shell(active, content) {
+      return `<div class="app"><div class="titlebar"><span class="mark"></span><span class="brand">Veyra</span><div class="title-spacer"></div><div class="command">⌕ Command <span class="key">Ctrl K</span></div><div class="status"><span class="dot"></span>ready</div><span class="win">−</span><span class="win">□</span><span class="win">×</span></div><div class="body"><aside class="side"><nav class="nav">${nav.map(n => `<div class="navitem ${n===active?"active":""}"><span class="ico"></span>${n}</div>`).join("")}</nav><div class="sidecard"><b>All systems operational</b><span>Local services running</span></div></aside><main class="main">${content}</main></div></div>`;
+    }
+    function home() {
+      return shell("Home", `<div class="head"><div><h1>Home</h1><div class="sub">Quick controls, readiness, and recent work.</div></div></div><div class="grid2"><section class="panel"><div class="head" style="margin-bottom:0"><div><h2>Speech to Text</h2><p>Dictate into any text field.</p></div><span class="pill"><span class="dot"></span>Operational</span></div><div class="control"><span class="glyph">µ</span><div><strong>Hold F24 to dictate</strong><p>Local whisper.cpp · turbo</p></div><div style="margin-left:auto">⌨</div></div>${bars()}</section><section class="panel"><div class="head" style="margin-bottom:0"><div><h2>Email Drafter</h2><p>Speak intent, insert polished email.</p></div><span class="pill"><span class="dot"></span>Operational</span></div><div class="control"><span class="glyph alt">✉</span><div><strong>Hold Pause to draft email</strong><p>Ollama · Llama 3.2 1B</p></div><div style="margin-left:auto">→</div></div>${bars("orange")}</section></div><section class="panel" style="margin-top:18px"><div class="head"><div><h2>Recent activity</h2><p>Latest captures and generated drafts.</p></div><b>View all →</b></div><div class="list">${["Confirmo que hoje passo aí às 17h para falar com o Sr. Bruno Rodrigues.","Teste-te-te.","Olá Sr. Luís Rodrigues, escrevo para confirmar a reunião de amanhã."].map((t,i)=>`<div class="row"><span class="glyph ${i===0?"alt":""}" style="width:30px;height:30px;border-radius:10px">${i===0?"✉":"µ"}</span><div><strong>${t}</strong><span class="meta">${i+1} words · local · ${i===0?"Email":"Transcription"}</span></div><span class="actions">□ 🗑</span></div>`).join("")}</div></section><div class="stats"><div class="stat"><span>Total words</span><b>1,224</b></div><div class="stat"><span>Sessions</span><b>61</b></div><div class="stat"><span>Current streak</span><b>3</b></div><div class="stat"><span>Longest streak</span><b>5</b></div></div>`);
+    }
+    function history() {
+      return shell("History", `<div class="head"><div><h1>History</h1><div class="sub">All transcriptions and drafts, cleaned and searchable.</div></div></div><div class="buttonrow"><div class="field grow">⌕ Search transcriptions</div><div class="field">All modes ▾</div></div><section class="panel" style="margin-top:18px"><div class="list">${["E aí","Teste-te-te.","Recovered draft · model returned non-email text, fallback saved a usable version.","Mas eu não quero que tenhas unsupported failed closed."].map((t,i)=>`<div class="row"><span class="glyph ${i===2?"alt":""}" style="width:30px;height:30px;border-radius:10px">${i===2?"!" :"µ"}</span><div><strong>${t}</strong><span class="meta">May 3, 2026 · ${i+1} words · ${i===2?"Recovered":"Transcription"} · local</span></div><span class="actions">□ 🗑</span></div>`).join("")}</div></section>`);
+    }
+    function drafts() {
+      return shell("Email Drafter", `<div class="head"><div><h1>Email Drafter</h1><div class="sub">Draft inbox for every generated email, always copyable.</div></div><span class="pill"><span class="dot"></span>Model operational</span></div><div class="buttonrow"><div class="field grow">⌕ Search email drafts</div><div class="field">Newest first ▾</div></div><section class="panel" style="margin-top:18px"><div class="list">${["Olá Sr. Bruno Rodrigues,\\n\\nEscrevo para informar que hoje passarei aí às 17h. Fico disponível para ajustar caso seja necessário.\\n\\nCumprimentos,","Hello,\\n\\nI am writing to confirm that I will be there today at 5 PM. Please let me know if anything changes.\\n\\nBest regards,","Bonjour,\\n\\nJe vous confirme mon passage aujourd’hui à 17h. N’hésitez pas à me dire si cela vous convient.\\n\\nCordialement,"].map((t,i)=>`<div class="row" style="align-items:start"><span class="glyph alt" style="width:30px;height:30px;border-radius:10px">✉</span><div><strong style="white-space:pre-wrap">${t}</strong><span class="meta">Email draft · local · ${i+14}s</span></div><span class="actions">□ 🗑</span></div>`).join("")}</div></section>`);
+    }
+    function dictionary() {
+      return shell("Dictionary", `<div class="head"><div><h1>Dictionary</h1><div class="sub">Names, product terms, and abbreviations Veyra must preserve.</div></div></div><section class="panel"><h2>Add entry</h2><div class="buttonrow" style="margin-top:14px"><div class="field grow">Word or phrase</div><div class="field grow">Replacement</div><div class="field">Abbrev ○</div><button class="primary">Add entry</button></div></section><div class="buttonrow" style="margin-top:18px"><div class="field grow">⌕ Search dictionary</div></div><section class="panel" style="margin-top:18px;padding:0"><div class="table"><div class="tr"><b>Word/Phrase</b><b>Replacement</b><b>Type</b><b></b></div>${[["Bruno Rodrigues","Bruno Rodrigues","Name"],["Veyra","Veyra","Brand"],["API","API","Abbrev"],["whisper.cpp","whisper.cpp","Term"]].map(r=>`<div class="tr"><span>${r[0]}</span><span>${r[1]}</span><span>${r[2]}</span><span>🗑</span></div>`).join("")}</div></section>`);
+    }
+    function settings() {
+      return shell("Settings", `<div class="head"><div><h1>Settings</h1><div class="sub">Only the controls needed to run Veyra well.</div></div></div><div class="buttonrow"><button class="primary">General</button><button class="ghost">Transcription</button><button class="ghost">Hotkeys</button></div><section class="panel" style="margin-top:18px"><h2>Operational setup</h2><div class="grid2" style="margin-top:14px"><div class="choice"><div><b>Microphone</b><p>System default</p></div><span>▾</span></div><div class="choice"><div><b>Recording mode</b><p>Toggle recording</p></div><span>○</span></div><div class="choice"><div><b>Whisper model</b><p>turbo · Operational</p></div><span class="pill">Ready</span></div><div class="choice"><div><b>Email model</b><p>Llama 3.2 1B · Operational</p></div><span class="pill">Ready</span></div></div></section><section class="panel" style="margin-top:18px"><h2>Hotkeys</h2><div class="grid2" style="margin-top:14px"><div class="choice"><div><b>Dictation</b><p>F24</p></div><span>Record</span></div><div class="choice"><div><b>Email Draft</b><p>Pause</p></div><span>Draft</span></div></div></section>`);
+    }
+    function onboarding() {
+      return `<div class="app"><div class="titlebar"><span class="mark"></span><span class="brand">Veyra</span><div class="title-spacer"></div><div class="status"><span class="dot"></span>first boot</div><span class="win">−</span><span class="win">□</span><span class="win">×</span></div><main class="setup"><section class="wizard"><div class="steps"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div><div style="display:flex;gap:16px;align-items:center;margin-bottom:18px"><span class="mark" style="width:46px;height:46px;border-radius:17px"></span><div><h1>Set up Veyra</h1><div class="sub">Choose the essentials before the app opens.</div></div></div><div class="choice"><div><b>Microphone</b><p>Use Windows system default</p></div><span>Change ▾</span></div><div class="choice"><div><b>Speech to Text</b><p>Local whisper.cpp · turbo recommended</p></div><span class="pill">Operational</span></div><div class="choice"><div><b>Email Drafter</b><p>Local Ollama · Llama 3.2 1B recommended</p></div><span class="pill">Operational</span></div><div class="choice"><div><b>Hotkeys</b><p>F24 for dictation · Pause for email draft</p></div><span>Edit</span></div><div style="display:flex;justify-content:space-between;margin-top:24px"><button class="ghost">Back</button><button class="primary">Start using Veyra</button></div></section></main></div>`;
+    }
+    function overview() {
+      return `<div class="app" style="padding:24px"><div style="display:flex;align-items:center;gap:14px;margin-bottom:18px"><span class="mark" style="width:44px;height:44px;border-radius:16px"></span><div><h1>Veyra Production Design System</h1><div class="sub">Apple-style white-blue utility surfaces, graphite chrome, cyan audio signal.</div></div></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">${["Home","History","Email Drafter","Dictionary","Settings","First Boot"].map((n,i)=>`<section class="panel" style="height:205px"><h2>${n}</h2><p>${["Primary controls and recent work.","Searchable transcript timeline.","Copyable generated email inbox.","Corrections and domain terms.","Only operational settings.","Locked setup before app access."][i]}</p>${i===0||i===2?bars(i===2?"orange":""):`<div class="list" style="margin-top:18px">${[1,2,3].map(x=>`<div class="row" style="padding:10px 12px;grid-template-columns:24px 1fr"><span class="ico"></span><span class="meta">Designed row state ${x}</span></div>`).join("")}</div>`}</section>`).join("")}</div></div>`;
+    }
+    const screens = { overview, home, history, drafts, dictionary, settings, onboarding };
+    document.getElementById("root").innerHTML = (screens[screen] || overview)();
+  </script>
+</body>
+</html>

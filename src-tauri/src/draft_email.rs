@@ -975,8 +975,15 @@ fn should_use_local_fallback(draft: &str) -> bool {
         "ofensiva ou inapropriada",
         "i cannot help",
         "i can't help",
+        "i can’t help",
+        "cannot assist",
+        "can't assist",
+        "can’t assist",
         "i am unable to",
         "i'm unable to",
+        "i’m unable to",
+        "i'm sorry",
+        "i’m sorry",
         "as an ai",
         "o que voc",
         "greeting",
@@ -1371,6 +1378,23 @@ mod tests {
         assert!(draft.contains("Cumprimentos,"));
         assert!(!draft.to_lowercase().contains("nao posso"));
         assert!(!draft.to_lowercase().contains("como posso ajuda"));
+    }
+
+    #[test]
+    fn english_refusal_variants_are_replaced_with_email_fallback() {
+        for refusal in [
+            "I'm sorry, but I can't assist with that request.",
+            "I’m sorry, but I can’t help with that.",
+            "I cannot assist with that request.",
+        ] {
+            let draft = finalize_model_draft(
+                "write an email saying I will be there today at 5 PM for Mr Bruno Rodrigues",
+                refusal,
+            );
+            assert!(draft.contains("Bruno Rodrigues"));
+            assert!(!draft.to_lowercase().contains("sorry"));
+            assert!(!draft.to_lowercase().contains("assist"));
+        }
     }
 
     #[test]

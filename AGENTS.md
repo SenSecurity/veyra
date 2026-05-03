@@ -23,6 +23,9 @@ Core product behavior:
 - Keep UI text concise and product-focused.
 - For frontend edits, verify text fits and controls remain usable at the current app size.
 - Visual target: Apple-style utility, crisp white-blue surfaces, graphite titlebar, cyan audio accent, restrained shadows, no bloat.
+- Treat every Veyra app surface as a premium Apple-style product interface: sophisticated, restrained, precise, airy, and production-ready. Avoid prototype chrome, generic dashboard cards, loud gradients, decorative filler, and unpolished copy.
+- For material UI redesigns, create or update mockup images first, then compare implementation screenshots against the mockups before shipping.
+- First boot must feel as polished as the main app: dedicated setup flow, clear choices, no regular menu access until completed.
 - For global hotkeys, remember existing defaults:
   - Dictation: `F24`
   - Email Draft: `Pause`
@@ -58,7 +61,7 @@ Required release flow:
 
 1. Ensure all validation commands pass.
 2. Build the installer with `npm run tauri build`.
-3. Find the NSIS installer under `src-tauri/target/release/bundle/nsis/`.
+3. Find the exact NSIS installer for the current `tauri.conf.json` version under `src-tauri/target/release/bundle/nsis/`, e.g. `Veyra_<version>_x64-setup.exe`. Never attach stale `Typr_*` or older `Veyra_*` artifacts.
 4. Create a new GitHub Release with:
    - a new tag;
    - concise release notes summarizing the pushed changes;

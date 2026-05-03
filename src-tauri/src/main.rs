@@ -640,6 +640,23 @@ fn cancel_recording(app: tauri::AppHandle, state: State<AppState>) -> Result<(),
     Ok(())
 }
 
+fn wizard_completed(state: &AppState) -> bool {
+    AppMetaRepo::new(&state.db)
+        .get("wizard_completed")
+        .ok()
+        .flatten()
+        .as_deref()
+        == Some("1")
+}
+
+fn ensure_wizard_completed(state: &AppState) -> Result<(), String> {
+    if wizard_completed(state) {
+        Ok(())
+    } else {
+        Err("Finish first boot setup before recording.".to_string())
+    }
+}
+
 #[tauri::command]
 async fn toggle_recording(
     app: tauri::AppHandle,
@@ -729,6 +746,7 @@ async fn do_toggle_recording(
     state: &AppState,
     mode: PipelineMode,
 ) -> Result<String, String> {
+    ensure_wizard_completed(state)?;
     let current = {
         let rs = state.recording_state.lock().map_err(|e| e.to_string())?;
         rs.clone()
@@ -840,6 +858,10 @@ fn handle_recording_hotkey_event(
                         }
                     }
                     "push-to-talk" => {
+                        if let Err(error) = ensure_wizard_completed(state.inner()) {
+                            tracing::warn!(%error, "[Typr] Ignoring hotkey before first boot setup");
+                            return;
+                        }
                         let current = {
                             let rs = state.recording_state.lock().unwrap();
                             rs.clone()

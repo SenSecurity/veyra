@@ -1,10 +1,21 @@
 import { HotkeyInput } from "@/components/hotkey-input";
+import { Button } from "@/components/ui/button";
 import { useSettings } from "@/hooks/use-settings";
 import { SettingsPanel } from "./general";
 
 export function SettingsHotkeysRoute() {
-  const { settings, loading, update } = useSettings();
-  if (loading || !settings) return <SettingsPanel title="Hotkeys" muted="Loading settings." />;
+  const { settings, error, update, reload } = useSettings();
+  if (!settings) {
+    return (
+      <SettingsPanel title="Hotkeys" muted={error ?? "Loading settings."}>
+        {error ? (
+          <Button type="button" variant="outline" onClick={() => void reload()}>
+            Retry settings
+          </Button>
+        ) : null}
+      </SettingsPanel>
+    );
+  }
   return (
     <SettingsPanel title="Hotkeys" muted="Global shortcuts. Restart Veyra after changing them.">
       <label className="grid gap-2 text-sm">

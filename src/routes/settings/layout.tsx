@@ -16,7 +16,7 @@ export function SettingsLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   return (
     <PageShell title="Settings" description="Configure transcription, models, and hotkeys.">
-      <div className="rounded-xl border border-border bg-white/64 p-1 shadow-sm">
+      <div className="rounded-2xl border border-border bg-white/66 p-1 shadow-sm">
         <nav className="flex gap-1 overflow-x-auto" aria-label="Settings sections">
           {tabs.map((t) => {
             const active = pathname.startsWith(t.to);
@@ -25,7 +25,7 @@ export function SettingsLayout() {
                 key={t.to}
                 to={t.to}
                 className={cn(
-                  "whitespace-nowrap rounded-lg px-3 py-1.5 text-sm transition-colors",
+                  "whitespace-nowrap rounded-xl px-3 py-1.5 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring/35",
                   active
                     ? "bg-white text-foreground shadow-sm ring-1 ring-border/60"
                     : "text-muted-foreground hover:bg-white/70 hover:text-foreground",

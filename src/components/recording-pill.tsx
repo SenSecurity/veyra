@@ -29,7 +29,7 @@ export function RecordingPill() {
             : "h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgb(16_185_129_/_0.14)]"
         }
       />
-      {label}
+      <span aria-live="polite">{label}</span>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/empty-state";
 import { PageShell, Panel, Toolbar } from "@/components/page-shell";
 import { Input } from "@/components/ui/input";
 import { TranscriptionRow } from "@/components/transcription-row";
+import { isUsableTranscription } from "@/lib/email-output-quality";
 import { ipc } from "@/lib/tauri";
 import type { Transcription } from "@/types/transcription";
 
@@ -12,6 +13,7 @@ export function HistoryRoute() {
   const [rows, setRows] = useState<Transcription[]>([]);
   const [query, setQuery] = useState("");
   const [engine, setEngine] = useState("all");
+  const [error, setError] = useState<string | null>(null);
   const parentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -19,7 +21,15 @@ export function HistoryRoute() {
       const load = query.trim()
         ? ipc.searchTranscriptions(query, 50)
         : ipc.listTranscriptions(100, 0);
-      void load.then(setRows).catch(() => setRows([]));
+      void load
+        .then((items) => {
+          setError(null);
+          setRows(items.filter(isUsableTranscription));
+        })
+        .catch((loadError) => {
+          setError(String(loadError));
+          setRows([]);
+        });
     }, 250);
     return () => window.clearTimeout(handle);
   }, [query]);
@@ -57,7 +67,9 @@ export function HistoryRoute() {
       </Toolbar>
       <Panel className="p-3 md:p-3">
       <div ref={parentRef} className="h-[calc(100vh-246px)] min-h-80 overflow-auto pr-1">
-        {filtered.length === 0 ? (
+        {error ? (
+          <EmptyState title="Could not load history">{error}</EmptyState>
+        ) : filtered.length === 0 ? (
           <EmptyState title="No matching transcriptions" />
         ) : (
           <div className="relative" style={{ height: virtualizer.getTotalSize() }}>

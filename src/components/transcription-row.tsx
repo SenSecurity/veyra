@@ -27,10 +27,10 @@ export function TranscriptionRow({
   }
 
   return (
-    <article className="veyra-surface veyra-surface-hover rounded-xl border border-border bg-white/80 p-4">
+    <article className="veyra-surface-hover rounded-2xl border border-border bg-white/78 p-4 shadow-[0_10px_28px_rgb(44_92_140_/_0.065)]">
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
-          <p className="whitespace-pre-wrap text-[0.92rem] font-medium leading-6 text-foreground">
+          <p className="whitespace-pre-wrap text-[0.93rem] font-medium leading-6 text-foreground">
             {parts.map((part, i) =>
               part.match ? (
                 <mark key={`${part.text}-${i}`} className="rounded bg-accent px-0.5 text-accent-foreground">
@@ -47,7 +47,7 @@ export function TranscriptionRow({
             <span>{row.wordCount} words</span>
             <span className="h-1 w-1 rounded-full bg-muted-foreground/35" />
             <span>{formatDuration(row.durationMs)}</span>
-            <span className="rounded-full bg-accent/80 px-2 py-0.5 font-medium text-accent-foreground">
+            <span className="rounded-full bg-accent/80 px-2 py-0.5 font-semibold text-accent-foreground">
               {row.mode === "command" ? "Email" : "Transcription"}
             </span>
             <span className="rounded-full bg-muted px-2 py-0.5">{row.engine}</span>
