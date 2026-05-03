@@ -1,13 +1,17 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "@fontsource-variable/inter-tight";
 @import "@fontsource-variable/geist";
+@import "@fontsource/newsreader/300-italic.css";
+@import "@fontsource/newsreader/400-italic.css";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
     --font-heading: var(--font-sans);
-    --font-sans: 'Geist Variable', sans-serif;
+    --font-sans: 'Inter Tight Variable', 'Geist Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', system-ui, sans-serif;
+    --font-display-italic: 'Newsreader', serif;
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -50,6 +54,36 @@
 }
 
 :root {
+    /* ----- Glacier system tokens (visual contract: docs/mockups/08-glacier-veyra.html) ----- */
+    /* Surfaces */
+    --paper: #f6f9fc;
+    --frost: #f1f5fa;
+    --ice-50:  #ecf3fb;
+    --ice-100: #dceaf7;
+    --ice-200: #b9d6ee;
+    --ice-300: #7fb6e0;
+    --ice-400: #4a93cc;
+
+    /* Electric cyan signal (STT) */
+    --cyan:        #2bc7ff;
+    --cyan-2:      #5dd6ff;
+    --cyan-soft:   #a4e6ff;
+    --cyan-deep:   #0a8bc4;
+    --cobalt:      #1f4e8a;
+    --cobalt-deep: #143258;
+
+    /* Spark amber accent (Drafter) */
+    --spark:      #ffb454;
+    --spark-deep: #ff8a1f;
+    --spark-glow: rgba(255, 180, 84, 0.55);
+
+    /* Glow halos & hairlines */
+    --halo:       rgba(43, 199, 255, 0.40);
+    --hairline:   rgba(12, 17, 28, 0.06);
+    --hairline-2: rgba(12, 17, 28, 0.12);
+    --hairline-3: rgba(12, 17, 28, 0.20);
+
+    /* ----- shadcn / app tokens (re-pointed onto Glacier palette) ----- */
     --background: oklch(0.987 0.014 245);
     --foreground: oklch(0.17 0.024 255);
     --app: oklch(0.948 0.032 242);
@@ -57,32 +91,32 @@
     --card-foreground: oklch(0.17 0.018 255);
     --popover: oklch(0.998 0.003 245);
     --popover-foreground: oklch(0.17 0.018 255);
-    --primary: oklch(0.55 0.18 252);
+    --primary: oklch(0.66 0.18 232);          /* Glacier cyan-deep */
     --primary-foreground: oklch(0.99 0 0);
-    --secondary: oklch(0.915 0.035 244);
+    --secondary: oklch(0.94 0.032 240);
     --secondary-foreground: oklch(0.23 0.028 255);
     --muted: oklch(0.908 0.030 245);
     --muted-foreground: oklch(0.44 0.024 255);
-    --accent: oklch(0.900 0.060 247);
-    --accent-foreground: oklch(0.23 0.058 255);
+    --accent: oklch(0.94 0.045 235);          /* ice-50 */
+    --accent-foreground: oklch(0.30 0.10 235);
     --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.800 0.035 245);
-    --input: oklch(0.800 0.035 245);
-    --ring: oklch(0.62 0.12 255);
+    --border: oklch(0.86 0.022 240);
+    --input: oklch(0.86 0.022 240);
+    --ring: oklch(0.66 0.18 232);
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);
     --chart-4: oklch(0.371 0 0);
     --chart-5: oklch(0.269 0 0);
     --radius: 0.75rem;
-    --sidebar: oklch(0.932 0.045 244);
+    --sidebar: oklch(0.962 0.026 235);        /* ice-50 */
     --sidebar-foreground: oklch(0.22 0.024 255);
-    --sidebar-primary: oklch(0.50 0.16 255);
+    --sidebar-primary: oklch(0.66 0.18 232);
     --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.865 0.075 248);
+    --sidebar-accent: oklch(1 0 0);           /* white pill on ice */
     --sidebar-accent-foreground: oklch(0.20 0.044 255);
-    --sidebar-border: oklch(0.86 0.018 245);
-    --sidebar-ring: oklch(0.62 0.12 255);
+    --sidebar-border: oklch(0.90 0.018 235);
+    --sidebar-ring: oklch(0.66 0.18 232);
 }
 
 .dark {
@@ -259,23 +293,36 @@
   }
 
   .veyra-glass {
-    border: 1px solid color-mix(in oklab, var(--border) 84%, white);
+    border: 1px solid var(--hairline);
     background:
-      linear-gradient(180deg, rgb(255 255 255 / 0.84), rgb(237 248 255 / 0.74)),
+      linear-gradient(180deg, rgb(255 255 255 / 0.84), rgb(236 243 251 / 0.74)),
       var(--card);
     box-shadow:
       inset 0 1px 0 rgb(255 255 255 / 0.9),
-      0 12px 30px rgb(24 70 120 / 0.095);
+      0 12px 30px rgb(20 50 88 / 0.07);
   }
 
   .veyra-command-panel {
-    border: 1px solid color-mix(in oklab, var(--border) 78%, white);
+    position: relative;
+    border: 1px solid var(--hairline);
     background:
-      linear-gradient(145deg, rgb(255 255 255 / 0.82), rgb(229 244 255 / 0.68)),
-      radial-gradient(circle at 18% 0%, rgb(59 130 246 / 0.10), transparent 36%);
+      linear-gradient(145deg, rgb(255 255 255 / 0.86), rgb(236 243 251 / 0.7)),
+      radial-gradient(380px 180px at 100% 0%, rgb(43 199 255 / 0.08), transparent 65%);
     box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.82),
-      0 18px 42px rgb(24 70 120 / 0.10);
+      inset 0 1px 0 rgb(255 255 255 / 0.85),
+      0 18px 42px rgb(20 50 88 / 0.08),
+      0 1px 0 rgb(12 17 28 / 0.025);
+  }
+  .veyra-command-panel::before {
+    content: "";
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyan) 50%, transparent);
+    box-shadow: 0 0 8px var(--halo);
+    pointer-events: none;
+  }
+  .veyra-command-panel.veyra-command-panel-spark::before {
+    background: linear-gradient(90deg, transparent, var(--spark) 50%, transparent);
+    box-shadow: 0 0 8px var(--spark-glow);
   }
 
   .veyra-status-ready {
@@ -303,22 +350,134 @@
     gap: 0.275rem;
     overflow: hidden;
     border-radius: calc(var(--radius-xl) + 1px);
-    background: linear-gradient(180deg, color-mix(in oklab, var(--accent) 72%, white), color-mix(in oklab, var(--accent) 56%, white));
+    background: linear-gradient(180deg, var(--ice-50), var(--ice-100));
     padding-inline: 0.85rem;
+    border: 1px solid var(--hairline);
   }
 
   .veyra-wave > i {
     width: 0.25rem;
     border-radius: 999px;
-    background: color-mix(in oklab, var(--primary) 82%, white);
+    background: linear-gradient(180deg, var(--cyan-soft) 0%, var(--cyan) 60%, var(--cyan-deep) 100%);
+    box-shadow: 0 0 6px var(--halo);
   }
 
+  /* spark variant (Drafter). veyra-wave-orange kept as backwards-compat alias. */
+  .veyra-wave-spark,
   .veyra-wave-orange {
-    background: linear-gradient(180deg, #fff5e7, #ffedcf);
+    background: linear-gradient(180deg, #fff5e6, #ffe2c7);
+    border-color: rgba(255, 138, 31, 0.18);
+  }
+  .veyra-wave-spark > i,
+  .veyra-wave-orange > i {
+    background: linear-gradient(180deg, #ffe2b3 0%, var(--spark) 60%, var(--spark-deep) 100%);
+    box-shadow: 0 0 6px var(--spark-glow);
   }
 
-  .veyra-wave-orange > i {
-    background: #ff9f2e;
+  /* ---------- Glacier wave-stage (dark V signal canvas) ---------- */
+  .veyra-wave-stage {
+    position: relative;
+    height: 110px;
+    border-radius: 12px;
+    background:
+      radial-gradient(120% 90% at 50% 100%, #1c2535 0%, #0a0e15 70%, #06080d 100%);
+    overflow: hidden;
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.06),
+      inset 0 -1px 0 rgb(255 255 255 / 0.03),
+      inset 0 0 0 1px rgb(255 255 255 / 0.04);
+  }
+  .veyra-wave-stage::before {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; top: 70%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(164, 230, 255, 0.4), transparent);
+  }
+  .veyra-wave-stage[data-variant="drafter"]::before {
+    background: linear-gradient(90deg, transparent, rgba(255, 180, 84, 0.5), transparent);
+  }
+  .veyra-wave-stage .vsg-spark {
+    position: absolute;
+    left: 50%; top: 70%;
+    width: 8px; height: 38px;
+    transform: translate(-50%, -10%);
+    background: linear-gradient(180deg, transparent 0%, var(--spark) 40%, var(--spark-deep) 100%);
+    border-radius: 2px;
+    filter: blur(0.4px);
+    box-shadow:
+      0 0 14px var(--spark-glow),
+      0 0 30px rgba(255, 138, 31, 0.4);
+    animation: vsg-spark 2.2s ease-in-out infinite;
+  }
+  .veyra-wave-stage .vsg-bars {
+    position: absolute;
+    inset: 8% 6% 30% 6%;
+    display: flex; gap: 3px; align-items: end;
+    justify-content: center;
+  }
+  .veyra-wave-stage .vsg-bars > i {
+    flex: 1;
+    border-radius: 2px;
+    background: linear-gradient(180deg, var(--cyan-soft) 0%, var(--cyan) 50%, var(--cyan-deep) 100%);
+    box-shadow: 0 0 6px var(--halo);
+    transform-origin: bottom;
+    max-height: 100%;
+    animation: vsg-amp 1.8s ease-in-out infinite;
+  }
+  .veyra-wave-stage[data-variant="drafter"] .vsg-bars > i {
+    background: linear-gradient(180deg, #ffe2b3 0%, var(--spark) 50%, var(--spark-deep) 100%);
+    box-shadow: 0 0 6px var(--spark-glow);
+  }
+  .veyra-wave-stage .vsg-bars.vsg-refl {
+    inset: 70% 6% 6% 6%;
+    align-items: start;
+    transform: scaleY(-1);
+    opacity: 0.32;
+    filter: blur(1px);
+  }
+  .veyra-wave-stage .vsg-meta {
+    position: absolute;
+    left: 14px; bottom: 8px; right: 14px;
+    display: flex; justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    letter-spacing: 0.22em;
+    color: rgba(255, 255, 255, 0.55);
+    text-transform: uppercase;
+    z-index: 2;
+  }
+  .veyra-wave-stage .vsg-meta b {
+    color: var(--cyan-soft);
+    font-weight: 500;
+  }
+  .veyra-wave-stage[data-variant="drafter"] .vsg-meta b { color: #ffd9ad; }
+
+  @keyframes vsg-amp {
+    0%, 100% { height: calc(var(--h, 50%) * 0.85); opacity: 0.85; }
+    50%      { height: var(--h, 50%); opacity: 1; }
+  }
+  @keyframes vsg-spark {
+    0%, 100% { opacity: 1; transform: translate(-50%, -10%) scaleY(1); }
+    50%      { opacity: 0.85; transform: translate(-50%, -10%) scaleY(1.08); }
+  }
+
+  /* ---------- Display italic accent (Newsreader, sparing) ---------- */
+  .veyra-italic {
+    font-family: var(--font-display-italic);
+    font-style: italic;
+    font-weight: 300;
+    letter-spacing: -0.005em;
+  }
+
+  /* ---------- Mono eyebrow caption ---------- */
+  .veyra-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--cyan-deep);
+    font-weight: 500;
   }
 }
 
