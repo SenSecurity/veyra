@@ -14,23 +14,25 @@ export function App() {
 
   if (wizardCompleted !== true) {
     return (
-      <div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
+      <div className="flex h-screen overflow-hidden bg-background font-sans text-foreground">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <WindowTitleBar setupMode />
-        <main className="min-h-0 flex-1 overflow-auto bg-[radial-gradient(circle_at_50%_8%,rgb(74_158_255_/_0.18),transparent_34%),linear-gradient(180deg,oklch(0.994_0.006_245),oklch(0.958_0.022_245))]">
+        <main className="min-h-0 flex-1 overflow-hidden bg-[radial-gradient(circle_at_20%_0%,rgb(59_130_246_/_0.16),transparent_34%),radial-gradient(circle_at_86%_22%,rgb(14_165_233_/_0.12),transparent_30%),linear-gradient(135deg,oklch(0.992_0.010_248),oklch(0.953_0.030_245)_58%,oklch(0.928_0.040_238))]">
           <Outlet />
         </main>
+        </div>
         <Toaster />
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
+    <div className="flex h-screen flex-col overflow-hidden bg-background font-sans text-foreground">
       <WindowTitleBar />
-      <div className="flex min-h-0 flex-1 bg-app">
+      <div className="flex min-h-0 flex-1 overflow-hidden bg-app">
         <Sidebar />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <main className="flex-1 overflow-auto bg-[linear-gradient(180deg,oklch(0.992_0.008_245)_0%,oklch(0.972_0.016_245)_46%,var(--app)_100%)]">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <main className="min-h-0 flex-1 overflow-hidden bg-[radial-gradient(circle_at_12%_0%,rgb(59_130_246_/_0.13),transparent_32%),radial-gradient(circle_at_94%_8%,rgb(14_165_233_/_0.10),transparent_28%),linear-gradient(135deg,oklch(0.992_0.010_245)_0%,oklch(0.970_0.024_246)_48%,oklch(0.940_0.035_238)_100%)]">
             <Outlet />
           </main>
         </div>

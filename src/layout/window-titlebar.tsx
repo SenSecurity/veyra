@@ -6,7 +6,7 @@ import { ipc } from "@/lib/tauri";
 export function WindowTitleBar({ setupMode = false }: { setupMode?: boolean }) {
   return (
     <header
-      className="flex h-9 shrink-0 items-center border-b border-zinc-700/70 bg-[linear-gradient(180deg,#24313d,#111820)] text-zinc-100"
+      className="flex h-9 shrink-0 items-center border-b border-slate-900/80 bg-[linear-gradient(180deg,#263645,#111922)] text-zinc-100 shadow-[0_1px_0_rgb(255_255_255_/_0.06)_inset]"
     >
       <div data-tauri-drag-region className="flex min-w-0 flex-1 items-center gap-2 px-3">
         <BrandMark className="h-5 w-5 rounded-md" />
@@ -16,7 +16,7 @@ export function WindowTitleBar({ setupMode = false }: { setupMode?: boolean }) {
         <>
           <button
             type="button"
-            className="mr-2 hidden h-6 items-center gap-1.5 rounded-md border border-white/10 bg-white/8 px-2 text-[0.7rem] text-zinc-300 transition-colors hover:bg-white/12 hover:text-white focus-visible:ring-2 focus-visible:ring-sky-300/60 sm:inline-flex"
+            className="mr-2 hidden h-6 items-center gap-1.5 rounded-lg border border-white/12 bg-white/9 px-2 text-[0.7rem] text-zinc-200 shadow-[0_8px_18px_rgb(0_0_0_/_0.16)] transition-colors hover:bg-white/14 hover:text-white focus-visible:ring-2 focus-visible:ring-sky-300/60 sm:inline-flex"
             onClick={() => {
               window.dispatchEvent(
                 new KeyboardEvent("keydown", {
@@ -30,7 +30,7 @@ export function WindowTitleBar({ setupMode = false }: { setupMode?: boolean }) {
           >
             <Search className="h-3 w-3" />
             <span>Command</span>
-            <span className="rounded bg-white/10 px-1 font-mono text-[0.65rem]">Ctrl K</span>
+            <span className="rounded-md bg-white/12 px-1 font-mono text-[0.65rem]">Ctrl K</span>
           </button>
           <div className="mr-2 hidden sm:block">
             <RecordingPill />

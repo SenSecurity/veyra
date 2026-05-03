@@ -179,7 +179,7 @@ export function WizardRoute() {
 
 function OnboardingShell({ step, children }: { step: number; children: ReactNode }) {
   return (
-    <section className="flex min-h-full items-center justify-center p-8">
+    <section className="flex h-full min-h-0 items-center justify-center overflow-auto p-8">
       <div className="veyra-glass w-full max-w-3xl rounded-[1.75rem] p-7">
         <div className="mb-7 grid grid-cols-5 gap-2">
           {steps.map((name, index) => (

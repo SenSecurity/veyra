@@ -16,7 +16,7 @@ export function PageShell({
 }) {
   return (
     <section className={cn("veyra-page", className)}>
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <header className="shrink-0 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h1 className="text-[1.6rem] font-semibold leading-tight tracking-[-0.03em] text-foreground">
             {title}

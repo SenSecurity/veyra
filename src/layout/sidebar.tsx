@@ -11,6 +11,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { BrandMark } from "@/components/brand-mark";
+import { useSettings } from "@/hooks/use-settings";
 import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "typr.sidebar.collapsed";
@@ -31,6 +32,7 @@ const items: NavItem[] = [
 
 export function Sidebar() {
   const [version, setVersion] = useState("");
+  const { settings } = useSettings();
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(STORAGE_KEY) === "1";
@@ -60,13 +62,13 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "flex shrink-0 flex-col border-r border-sidebar-border/90 bg-sidebar/90 text-sidebar-foreground shadow-[inset_-1px_0_0_rgb(255_255_255_/_0.62)] backdrop-blur transition-[width] duration-150",
+        "flex shrink-0 flex-col border-r border-sidebar-border/90 bg-[linear-gradient(180deg,color-mix(in_oklab,var(--sidebar)_92%,white),color-mix(in_oklab,var(--sidebar)_78%,#d8efff))] text-sidebar-foreground shadow-[inset_-1px_0_0_rgb(255_255_255_/_0.68)] backdrop-blur transition-[width] duration-150",
         collapsed ? "w-14" : "w-[182px]",
       )}
       style={{ width: collapsed ? 56 : 182 }}
       aria-label="Primary navigation"
     >
-      <nav className="flex-1 space-y-1 overflow-y-auto p-2.5 pt-4">
+      <nav className="min-h-0 flex-1 space-y-1 overflow-auto p-2.5 pt-4">
         {items.map((it) => {
           const Icon = it.icon;
           return (
@@ -90,13 +92,18 @@ export function Sidebar() {
           );
         })}
       </nav>
-      <div className={cn("mx-2.5 mb-2 rounded-2xl border border-sidebar-border/80 bg-white/62 p-2.5 shadow-sm", collapsed && "hidden")}>
+      <div className={cn("mx-2.5 mb-2 rounded-2xl border border-sidebar-border/80 bg-white/64 p-2.5 shadow-sm", collapsed && "hidden")}>
         <div className="flex items-center gap-2">
           <BrandMark className="h-7 w-7 rounded-xl" />
           <div className="min-w-0">
             <p className="truncate text-[0.72rem] font-semibold text-sidebar-foreground">Veyra ready</p>
             <p className="truncate text-[0.68rem] text-sidebar-foreground/55">Local services running</p>
           </div>
+        </div>
+        <div className="mt-2 space-y-1.5 border-t border-sidebar-border/70 pt-2">
+          <StatusLine label="Speech" value={settings?.hotkey ?? "F24"} tone="blue" />
+          <StatusLine label="Email" value={settings?.commandHotkey ?? "Pause"} tone="orange" />
+          <StatusLine label="Models" value={settings?.emailDraftEngine === "ollama" ? "Local" : "Cloud"} tone="green" />
         </div>
       </div>
       <button
@@ -119,5 +126,33 @@ export function Sidebar() {
         )}
       </button>
     </aside>
+  );
+}
+
+function StatusLine({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: "blue" | "orange" | "green";
+}) {
+  const dot = {
+    blue: "bg-sky-500 shadow-[0_0_0_3px_rgb(14_165_233_/_0.13)]",
+    orange: "bg-orange-400 shadow-[0_0_0_3px_rgb(251_146_60_/_0.13)]",
+    green: "bg-emerald-500 shadow-[0_0_0_3px_rgb(16_185_129_/_0.13)]",
+  }[tone];
+
+  return (
+    <div className="flex items-center justify-between gap-2 text-[0.68rem] leading-4">
+      <span className="flex min-w-0 items-center gap-1.5 text-sidebar-foreground/68">
+        <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", dot)} />
+        <span className="truncate">{label}</span>
+      </span>
+      <span className="max-w-[5.5rem] truncate rounded-md bg-white/58 px-1.5 py-0.5 font-medium text-sidebar-foreground/78 ring-1 ring-sidebar-border/70">
+        {value}
+      </span>
+    </div>
   );
 }

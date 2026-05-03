@@ -51,8 +51,8 @@ export function DictionaryRoute() {
   });
 
   return (
-    <PageShell title="Dictionary" description="Custom words and replacements.">
-      <Panel title="Add entry" description="Keep names, product terms, and abbreviations consistent.">
+    <PageShell title="Dictionary" description="Custom words and replacements." className="max-w-[1080px]">
+      <Panel className="shrink-0" title="Add entry" description="Keep names, product terms, and abbreviations consistent.">
         <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto_auto]">
           <Input value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Word or phrase" />
           <Input value={replacement} onChange={(e) => setReplacement(e.target.value)} placeholder="Replacement" />
@@ -66,13 +66,13 @@ export function DictionaryRoute() {
           </Button>
         </div>
       </Panel>
-      <Toolbar>
+      <Toolbar className="shrink-0">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input className="pl-9" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search dictionary" />
         </div>
       </Toolbar>
-      <Panel className="p-0 md:p-0">
+      <Panel className="min-h-0 flex-1 p-0 md:p-0">
         {error ? (
           <div className="p-4">
             <EmptyState title="Could not load dictionary">{error}</EmptyState>
@@ -82,7 +82,8 @@ export function DictionaryRoute() {
             <EmptyState title="No dictionary entries" />
           </div>
         ) : (
-          <DataTable
+          <div className="h-full min-h-0 overflow-auto">
+            <DataTable
             rows={filteredRows.map((row) => ({
               id: row.id,
               cells: [row.term, row.replacement ?? "", row.isAbbreviation ? "Yes" : "No", row.enabled ? "Enabled" : "Off"],
@@ -93,6 +94,7 @@ export function DictionaryRoute() {
               await reload();
             }}
           />
+          </div>
         )}
       </Panel>
     </PageShell>
@@ -109,7 +111,7 @@ export function DataTable({
   onDelete: (id: number) => Promise<void>;
 }) {
   return (
-    <div className="overflow-hidden rounded-xl bg-white/58">
+    <div className="min-w-[680px] overflow-hidden rounded-xl bg-white/58">
       <table className="w-full text-left text-sm">
         <thead className="border-b border-border bg-accent/45 text-[0.68rem] uppercase tracking-[0.08em] text-muted-foreground">
           <tr>

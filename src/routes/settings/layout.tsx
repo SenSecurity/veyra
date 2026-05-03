@@ -15,8 +15,8 @@ const tabs: { to: string; label: string }[] = [
 export function SettingsLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   return (
-    <PageShell title="Settings" description="Configure transcription, models, and hotkeys.">
-      <div className="rounded-2xl border border-border bg-white/66 p-1 shadow-sm">
+    <PageShell title="Settings" description="Configure transcription, models, and hotkeys." className="max-w-[1080px]">
+      <div className="shrink-0 rounded-2xl border border-border bg-white/66 p-1 shadow-sm">
         <nav className="flex gap-1 overflow-x-auto" aria-label="Settings sections">
           {tabs.map((t) => {
             const active = pathname.startsWith(t.to);
@@ -37,7 +37,9 @@ export function SettingsLayout() {
           })}
         </nav>
       </div>
-      <Outlet />
+      <div className="min-h-0 flex-1 overflow-auto pr-1">
+        <Outlet />
+      </div>
     </PageShell>
   );
 }

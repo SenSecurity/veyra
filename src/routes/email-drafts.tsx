@@ -47,22 +47,23 @@ export function EmailDraftsRoute() {
     <PageShell
       title="Email Drafter"
       description="Draft emails generated from your voice."
+      className="max-w-[1080px]"
     >
-      <Toolbar>
-      <div className="relative flex-1">
-        <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input
-          className="pl-9"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search email drafts"
-        />
-      </div>
+      <Toolbar className="shrink-0">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            className="pl-9"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search email drafts"
+          />
+        </div>
         <select className="veyra-select md:w-36" defaultValue="all" aria-label="Draft filter">
           <option value="all">All drafts</option>
         </select>
       </Toolbar>
-      <Panel className="p-3 md:p-3">
+      <Panel className="min-h-0 flex-1 p-3 md:p-3">
         {error ? (
           <EmptyState title="Could not load email drafts">{error}</EmptyState>
         ) : filtered.length === 0 ? (
@@ -70,7 +71,7 @@ export function EmailDraftsRoute() {
             Use the Email Draft hotkey once and generated drafts appear here.
           </EmptyState>
         ) : (
-          <div className="space-y-3">
+          <div className="h-full min-h-0 space-y-3 overflow-auto pr-1">
             {filtered.map((row) => (
               <TranscriptionRow key={row.id} row={row} query={query} onDelete={deleteRow} />
             ))}

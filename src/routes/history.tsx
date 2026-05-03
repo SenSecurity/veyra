@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useVirtualizer } from "@tanstack/react-virtual";
+import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { PageShell, Panel, Toolbar } from "@/components/page-shell";
@@ -14,7 +13,6 @@ export function HistoryRoute() {
   const [query, setQuery] = useState("");
   const [engine, setEngine] = useState("all");
   const [error, setError] = useState<string | null>(null);
-  const parentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
@@ -38,12 +36,6 @@ export function HistoryRoute() {
     () => rows.filter((row) => engine === "all" || row.engine === engine),
     [rows, engine],
   );
-  const virtualizer = useVirtualizer({
-    count: filtered.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 124,
-    overscan: 8,
-  });
 
   async function deleteRow(id: number) {
     if (!window.confirm("Delete this transcription?")) return;
@@ -52,8 +44,8 @@ export function HistoryRoute() {
   }
 
   return (
-    <PageShell title="History" description="All your transcriptions and drafts.">
-      <Toolbar>
+    <PageShell title="History" description="All your transcriptions and drafts." className="max-w-[1080px]">
+      <Toolbar className="shrink-0">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input className="pl-9" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search transcriptions" />
@@ -65,27 +57,16 @@ export function HistoryRoute() {
           <option value="cloud">Cloud</option>
         </select>
       </Toolbar>
-      <Panel className="p-3 md:p-3">
-      <div ref={parentRef} className="h-[calc(100vh-246px)] min-h-80 overflow-auto pr-1">
+      <Panel className="min-h-0 flex-1 p-3 md:p-3">
+      <div className="h-full min-h-0 space-y-3 overflow-auto pr-1">
         {error ? (
           <EmptyState title="Could not load history">{error}</EmptyState>
         ) : filtered.length === 0 ? (
           <EmptyState title="No matching transcriptions" />
         ) : (
-          <div className="relative" style={{ height: virtualizer.getTotalSize() }}>
-            {virtualizer.getVirtualItems().map((item) => {
-              const row = filtered[item.index];
-              return (
-                <div
-                  key={row.id}
-                  className="absolute left-0 top-0 w-full pb-3"
-                  style={{ transform: `translateY(${item.start}px)` }}
-                >
-                  <TranscriptionRow row={row} query={query} onDelete={deleteRow} />
-                </div>
-              );
-            })}
-          </div>
+          filtered.map((row) => (
+            <TranscriptionRow key={row.id} row={row} query={query} onDelete={deleteRow} />
+          ))
         )}
       </div>
       </Panel>
