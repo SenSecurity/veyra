@@ -1,5 +1,7 @@
+import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Panel } from "@/components/page-shell";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { ipc } from "@/lib/tauri";
@@ -21,7 +23,7 @@ export function SettingsGeneralRoute() {
       <label className="grid gap-2 text-sm">
         <span className="font-medium">Microphone</span>
         <select
-          className="h-9 rounded-md border border-border bg-background px-3"
+          className="veyra-select w-full"
           value={settings.microphone}
           onChange={(e) => void update({ microphone: e.target.value })}
         >
@@ -33,7 +35,7 @@ export function SettingsGeneralRoute() {
           ))}
         </select>
       </label>
-      <div className="flex items-center justify-between rounded-lg border border-border bg-card p-3">
+      <div className="flex items-center justify-between rounded-xl border border-border bg-white/64 p-3 shadow-sm">
         <div>
           <p className="text-sm font-medium">Push to talk</p>
           <p className="text-xs text-muted-foreground">Hold hotkey while recording.</p>
@@ -65,15 +67,13 @@ export function SettingsPanel({
 }: {
   title: string;
   muted?: string;
-  children?: React.ReactNode;
+  children?: ReactNode;
 }) {
   return (
-    <section className="mx-auto flex w-full max-w-3xl flex-col gap-5 p-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        {muted && <p className="mt-1 text-sm text-muted-foreground">{muted}</p>}
+    <Panel title={title} description={muted} className="max-w-3xl">
+      <div className="flex flex-col gap-4">
+        {children}
       </div>
-      {children}
-    </section>
+    </Panel>
   );
 }

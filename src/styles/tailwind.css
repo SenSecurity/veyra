@@ -50,39 +50,39 @@
 }
 
 :root {
-    --background: oklch(0.99 0.004 250);
-    --foreground: oklch(0.17 0.018 255);
-    --app: oklch(0.956 0.014 250);
-    --card: oklch(1 0 0);
+    --background: oklch(0.992 0.006 245);
+    --foreground: oklch(0.18 0.022 255);
+    --app: oklch(0.965 0.014 245);
+    --card: oklch(0.998 0.003 245);
     --card-foreground: oklch(0.17 0.018 255);
-    --popover: oklch(1 0 0);
+    --popover: oklch(0.998 0.003 245);
     --popover-foreground: oklch(0.17 0.018 255);
-    --primary: oklch(0.23 0.028 255);
+    --primary: oklch(0.55 0.17 255);
     --primary-foreground: oklch(0.99 0 0);
-    --secondary: oklch(0.935 0.014 250);
+    --secondary: oklch(0.935 0.018 245);
     --secondary-foreground: oklch(0.23 0.028 255);
-    --muted: oklch(0.925 0.014 250);
-    --muted-foreground: oklch(0.43 0.022 255);
-    --accent: oklch(0.90 0.04 245);
-    --accent-foreground: oklch(0.19 0.026 255);
+    --muted: oklch(0.93 0.017 245);
+    --muted-foreground: oklch(0.44 0.024 255);
+    --accent: oklch(0.91 0.038 248);
+    --accent-foreground: oklch(0.23 0.058 255);
     --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.835 0.016 250);
-    --input: oklch(0.835 0.016 250);
-    --ring: oklch(0.54 0.095 250);
+    --border: oklch(0.86 0.018 245);
+    --input: oklch(0.86 0.018 245);
+    --ring: oklch(0.62 0.12 255);
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);
     --chart-4: oklch(0.371 0 0);
     --chart-5: oklch(0.269 0 0);
     --radius: 0.625rem;
-    --sidebar: oklch(0.982 0.007 250);
-    --sidebar-foreground: oklch(0.20 0.022 255);
-    --sidebar-primary: oklch(0.23 0.028 255);
+    --sidebar: oklch(0.978 0.012 245);
+    --sidebar-foreground: oklch(0.22 0.024 255);
+    --sidebar-primary: oklch(0.50 0.16 255);
     --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.91 0.032 250);
-    --sidebar-accent-foreground: oklch(0.18 0.028 255);
-    --sidebar-border: oklch(0.835 0.016 250);
-    --sidebar-ring: oklch(0.54 0.095 250);
+    --sidebar-accent: oklch(0.925 0.032 248);
+    --sidebar-accent-foreground: oklch(0.20 0.044 255);
+    --sidebar-border: oklch(0.86 0.018 245);
+    --sidebar-ring: oklch(0.62 0.12 255);
 }
 
 .dark {
@@ -133,8 +133,107 @@
 }
 
 @layer utilities {
+  .veyra-page {
+    margin-inline: auto;
+    width: min(100%, 1120px);
+    padding: 1.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  @media (min-width: 768px) {
+    .veyra-page {
+      padding: 2rem 2.25rem;
+      gap: 1.125rem;
+    }
+  }
+
+  .veyra-panel {
+    border: 1px solid color-mix(in oklab, var(--border) 88%, white);
+    border-radius: var(--radius-xl);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.88), rgb(248 251 255 / 0.84)),
+      var(--card);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.82),
+      0 1px 1px rgb(15 23 42 / 0.035),
+      0 10px 28px rgb(35 80 140 / 0.055);
+    padding: 1rem;
+  }
+
+  @media (min-width: 768px) {
+    .veyra-panel {
+      padding: 1.125rem;
+    }
+  }
+
+  .veyra-panel-muted {
+    background:
+      linear-gradient(180deg, rgb(248 251 255 / 0.88), rgb(242 247 253 / 0.8)),
+      var(--secondary);
+  }
+
+  .veyra-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    border: 1px solid color-mix(in oklab, var(--border) 90%, white);
+    border-radius: var(--radius-xl);
+    background: rgb(255 255 255 / 0.7);
+    padding: 0.625rem;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.76);
+  }
+
+  @media (min-width: 768px) {
+    .veyra-toolbar {
+      flex-direction: row;
+      align-items: center;
+    }
+  }
+
+  .veyra-select {
+    height: 2.25rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    background: rgb(255 255 255 / 0.82);
+    padding-inline: 0.75rem;
+    font-size: 0.875rem;
+    color: var(--foreground);
+    box-shadow: 0 1px 1px rgb(15 23 42 / 0.035);
+    outline: none;
+  }
+
+  .veyra-select:focus-visible {
+    border-color: var(--ring);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 28%, transparent);
+  }
+
+  .veyra-icon-button {
+    display: inline-flex;
+    height: 2rem;
+    width: 2rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-lg);
+    color: var(--muted-foreground);
+    transition: background-color 140ms ease, color 140ms ease, transform 140ms ease;
+  }
+
+  .veyra-icon-button:hover {
+    background: var(--muted);
+    color: var(--foreground);
+  }
+
+  .veyra-icon-button:active {
+    transform: translateY(1px);
+  }
+
   .veyra-surface {
-    box-shadow: 0 1px 1px rgb(15 23 42 / 0.04), 0 8px 24px rgb(15 23 42 / 0.06);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.78),
+      0 1px 1px rgb(15 23 42 / 0.035),
+      0 10px 24px rgb(35 80 140 / 0.052);
   }
 
   .veyra-surface-hover {
@@ -143,7 +242,10 @@
 
   .veyra-surface-hover:hover {
     border-color: color-mix(in oklab, var(--ring) 34%, var(--border));
-    box-shadow: 0 1px 1px rgb(15 23 42 / 0.04), 0 12px 30px rgb(15 23 42 / 0.08);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.86),
+      0 1px 1px rgb(15 23 42 / 0.035),
+      0 14px 32px rgb(35 80 140 / 0.075);
     transform: translateY(-1px);
   }
 }

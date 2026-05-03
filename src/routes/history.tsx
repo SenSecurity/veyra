@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Search } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
+import { PageShell, Panel, Toolbar } from "@/components/page-shell";
 import { Input } from "@/components/ui/input";
 import { TranscriptionRow } from "@/components/transcription-row";
 import { ipc } from "@/lib/tauri";
@@ -41,24 +42,21 @@ export function HistoryRoute() {
   }
 
   return (
-    <section className="mx-auto max-w-5xl space-y-4 p-8">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">History</h1>
-        <p className="text-sm text-muted-foreground">Search, filter, and delete dictation captures.</p>
-      </div>
-      <div className="flex flex-col gap-2 md:flex-row">
+    <PageShell title="History" description="All your transcriptions and drafts.">
+      <Toolbar>
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input className="pl-9" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search transcriptions" />
         </div>
-        <select className="h-9 rounded-lg border border-border bg-card px-3 text-sm shadow-sm" value={engine} onChange={(e) => setEngine(e.target.value)}>
+        <select className="veyra-select md:w-40" value={engine} onChange={(e) => setEngine(e.target.value)}>
           <option value="all">All engines</option>
           <option value="local">Local</option>
           <option value="groq">Groq</option>
           <option value="cloud">Cloud</option>
         </select>
-      </div>
-      <div ref={parentRef} className="h-[calc(100vh-220px)] min-h-80 overflow-auto">
+      </Toolbar>
+      <Panel className="p-3 md:p-3">
+      <div ref={parentRef} className="h-[calc(100vh-246px)] min-h-80 overflow-auto pr-1">
         {filtered.length === 0 ? (
           <EmptyState title="No matching transcriptions" />
         ) : (
@@ -78,6 +76,7 @@ export function HistoryRoute() {
           </div>
         )}
       </div>
-    </section>
+      </Panel>
+    </PageShell>
   );
 }

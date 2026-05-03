@@ -1,6 +1,7 @@
 import { listen } from "@tauri-apps/api/event";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { OverlayPill } from "./pill";
+import { INITIAL_VOICE_ACTIVITY, nextVoiceActivity } from "./voice-activity";
 import { ipc } from "@/lib/tauri";
 import { useOverlayStore, type OverlayMode, type OverlayState } from "@/stores/overlay-store";
 import type { RecordingState } from "@/types/ipc";
@@ -17,6 +18,8 @@ export function OverlayApp() {
   const setState = useOverlayStore((s) => s.setState);
   const setMode = useOverlayStore((s) => s.setMode);
   const setLevel = useOverlayStore((s) => s.setLevel);
+  const voiceActivity = useRef(INITIAL_VOICE_ACTIVITY);
+  const lastLevelAt = useRef<number | null>(null);
 
   useEffect(() => {
     void ipc.getRecordingState().then((recordingState) => {
@@ -46,25 +49,22 @@ export function OverlayApp() {
   }, [setMode, setState]);
 
   useEffect(() => {
-    const un = listen<{ level: number }>("overlay:level", (e) => setLevel(e.payload.level));
+    const un = listen<{ level: number }>("overlay:level", (e) => {
+      if (state !== "recording") return;
+      const now = performance.now();
+      const delta = lastLevelAt.current === null ? 50 : now - lastLevelAt.current;
+      lastLevelAt.current = now;
+      voiceActivity.current = nextVoiceActivity(voiceActivity.current, e.payload.level, delta);
+      setLevel(voiceActivity.current.energy);
+    });
     return () => void un.then((fn) => fn()).catch(() => {});
-  }, [setLevel]);
+  }, [setLevel, state]);
 
   useEffect(() => {
-    if (state !== "recording") {
-      setLevel(0);
-      return;
-    }
-    let cancelled = false;
-    const timer = window.setInterval(() => {
-      void ipc.getRecordingLevel().then((level) => {
-        if (!cancelled) setLevel(level);
-      }).catch(() => {});
-    }, 50);
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
+    if (state === "recording") return;
+    voiceActivity.current = INITIAL_VOICE_ACTIVITY;
+    lastLevelAt.current = null;
+    setLevel(0);
   }, [setLevel, state]);
 
   return (

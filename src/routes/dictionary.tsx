@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Search, Trash2 } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
+import { PageShell, Panel, Toolbar } from "@/components/page-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -10,6 +12,7 @@ export function DictionaryRoute() {
   const [rows, setRows] = useState<DictionaryTerm[]>([]);
   const [term, setTerm] = useState("");
   const [replacement, setReplacement] = useState("");
+  const [query, setQuery] = useState("");
   const [abbr, setAbbr] = useState(false);
 
   const reload = () => ipc.listDictionaryTerms().then(setRows).catch(() => setRows([]));
@@ -30,27 +33,54 @@ export function DictionaryRoute() {
     await reload();
   }
 
+  const filteredRows = rows.filter((row) => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return true;
+    return [row.term, row.replacement ?? ""].join(" ").toLowerCase().includes(needle);
+  });
+
   return (
-    <section className="space-y-4 p-6">
-      <h1 className="text-2xl font-semibold">Dictionary</h1>
-      <div className="grid gap-2 rounded-lg border border-border bg-card p-4 md:grid-cols-[1fr_1fr_auto_auto]">
-        <Input value={term} onChange={(e) => setTerm(e.target.value)} placeholder="term" />
-        <Input value={replacement} onChange={(e) => setReplacement(e.target.value)} placeholder="replacement" />
-        <label className="flex items-center gap-2 text-sm"><Switch checked={abbr} onCheckedChange={setAbbr} /> Abbrev</label>
-        <Button type="button" onClick={save}><Plus className="h-4 w-4" /> Add</Button>
-      </div>
-      <DataTable
-        rows={rows.map((row) => ({
-          id: row.id,
-          cells: [row.term, row.replacement ?? "", row.isAbbreviation ? "yes" : "no", row.enabled ? "enabled" : "off"],
-        }))}
-        headers={["Term", "Replacement", "Abbrev", "State"]}
-        onDelete={async (id) => {
-          await ipc.deleteDictionaryTerm(id);
-          await reload();
-        }}
-      />
-    </section>
+    <PageShell title="Dictionary" description="Custom words and replacements.">
+      <Panel title="Add entry" description="Keep names, product terms, and abbreviations consistent.">
+        <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto_auto]">
+          <Input value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Word or phrase" />
+          <Input value={replacement} onChange={(e) => setReplacement(e.target.value)} placeholder="Replacement" />
+          <label className="flex h-9 items-center gap-2 rounded-lg border border-border bg-white/64 px-3 text-sm text-muted-foreground">
+            <Switch checked={abbr} onCheckedChange={setAbbr} />
+            Abbrev
+          </label>
+          <Button type="button" onClick={save}>
+            <Plus className="h-4 w-4" />
+            Add entry
+          </Button>
+        </div>
+      </Panel>
+      <Toolbar>
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input className="pl-9" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search dictionary" />
+        </div>
+      </Toolbar>
+      <Panel className="p-0 md:p-0">
+        {filteredRows.length === 0 ? (
+          <div className="p-4">
+            <EmptyState title="No dictionary entries" />
+          </div>
+        ) : (
+          <DataTable
+            rows={filteredRows.map((row) => ({
+              id: row.id,
+              cells: [row.term, row.replacement ?? "", row.isAbbreviation ? "Yes" : "No", row.enabled ? "Enabled" : "Off"],
+            }))}
+            headers={["Word/Phrase", "Replacement", "Abbrev", "State"]}
+            onDelete={async (id) => {
+              await ipc.deleteDictionaryTerm(id);
+              await reload();
+            }}
+          />
+        )}
+      </Panel>
+    </PageShell>
   );
 }
 
@@ -64,28 +94,25 @@ export function DataTable({
   onDelete: (id: number) => Promise<void>;
 }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-card">
+    <div className="overflow-hidden rounded-xl bg-white/58">
       <table className="w-full text-left text-sm">
-        <thead className="bg-muted text-xs uppercase text-muted-foreground">
+        <thead className="border-b border-border bg-accent/45 text-[0.68rem] uppercase tracking-[0.08em] text-muted-foreground">
           <tr>
-            {headers.map((h) => <th key={h} className="px-3 py-2">{h}</th>)}
-            <th className="w-10 px-3 py-2" />
+            {headers.map((h) => <th key={h} className="px-4 py-3 font-semibold">{h}</th>)}
+            <th className="w-12 px-4 py-3" />
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.id} className="border-t border-border">
-              {row.cells.map((cell, i) => <td key={`${row.id}-${i}`} className="px-3 py-2">{cell}</td>)}
-              <td className="px-3 py-2">
-                <button type="button" onClick={() => void onDelete(row.id)} className="text-muted-foreground hover:text-danger" aria-label="Delete">
+            <tr key={row.id} className="border-b border-border/70 last:border-b-0 hover:bg-white/62">
+              {row.cells.map((cell, i) => <td key={`${row.id}-${i}`} className="px-4 py-3">{cell}</td>)}
+              <td className="px-4 py-3">
+                <button type="button" onClick={() => void onDelete(row.id)} className="veyra-icon-button hover:text-destructive" aria-label="Delete" title="Delete">
                   <Trash2 className="h-4 w-4" />
                 </button>
               </td>
             </tr>
           ))}
-          {rows.length === 0 && (
-            <tr><td className="px-3 py-8 text-center text-muted-foreground" colSpan={headers.length + 1}>No rows</td></tr>
-          )}
         </tbody>
       </table>
     </div>

@@ -6,7 +6,7 @@ import { useOverlayStore } from "@/stores/overlay-store";
 import type { OverlayMode, OverlayState } from "@/stores/overlay-store";
 
 const WAVE_BARS = [5, 8, 11, 7, 14, 9, 6, 12, 8, 5];
-const SPEAKING_THRESHOLD = 0.035;
+const SPEAKING_THRESHOLD = 0.02;
 
 export function calculateWaveBarHeights({
   state,
@@ -34,9 +34,7 @@ export function OverlayPill({ state, mode }: { state: OverlayState; mode: Overla
   const commandMode = mode === "command";
   const modeLabel = commandMode ? "Email Drafter" : "Speech to Text";
   const level = useOverlayStore((s) => s.level);
-  const voiceLevel = state === "recording"
-    ? Math.min(1, Math.pow(Math.max(0, level - 0.001) / 0.055, 0.55))
-    : 0;
+  const voiceLevel = state === "recording" ? Math.max(0, Math.min(1, level)) : 0;
   const speaking = voiceLevel > SPEAKING_THRESHOLD;
   const [phase, setPhase] = useState(0);
 

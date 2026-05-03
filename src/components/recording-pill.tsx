@@ -19,8 +19,16 @@ export function RecordingPill() {
   }, []);
 
   const label = state.toLowerCase();
+  const live = state !== "Ready";
   return (
-    <div className="rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground">
+    <div className="inline-flex h-8 items-center gap-2 rounded-lg border border-border bg-white/76 px-2.5 text-xs font-medium text-foreground shadow-sm">
+      <span
+        className={
+          live
+            ? "h-1.5 w-1.5 rounded-full bg-sky-500 shadow-[0_0_0_3px_rgb(14_165_233_/_0.14)]"
+            : "h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgb(16_185_129_/_0.14)]"
+        }
+      />
       {label}
     </div>
   );
