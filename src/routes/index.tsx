@@ -48,9 +48,9 @@ export function HomeRoute() {
   }, []);
 
   return (
-    <PageShell title="Home" description="Quick controls, readiness, and recent work.">
-      <div className="grid gap-4 md:grid-cols-2">
-        <Panel title="Speech to Text" description="Dictate and transcribe anywhere." action={operational}>
+    <PageShell title="Home" description="Quick controls, readiness, and recent work." className="max-w-[1080px]">
+      <div className="grid shrink-0 gap-4 md:grid-cols-2">
+        <Panel className="veyra-command-panel" title="Speech to Text" description="Dictate and transcribe anywhere." action={operational}>
           <button
             type="button"
             className="veyra-glass flex w-full items-center justify-between gap-3 rounded-2xl p-3 text-left transition-colors hover:bg-white focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/35"
@@ -76,7 +76,7 @@ export function HomeRoute() {
             ))}
           </div>
         </Panel>
-        <Panel title="Email Drafter" description="Draft emails from your voice." action={operational}>
+        <Panel className="veyra-command-panel" title="Email Drafter" description="Draft emails from your voice." action={operational}>
           <Link
             to="/email-drafts"
             className="veyra-glass flex w-full items-center justify-between gap-3 rounded-2xl p-3 text-left transition-colors hover:bg-white focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/35"
@@ -102,7 +102,14 @@ export function HomeRoute() {
           </div>
         </Panel>
       </div>
+      <div className="grid shrink-0 gap-3 text-sm md:grid-cols-4">
+        <div className="veyra-glass rounded-2xl p-2.5"><span className="text-muted-foreground">Total words</span><strong className="mt-0.5 block text-lg">{totals?.wordCount ?? 0}</strong></div>
+        <div className="veyra-glass rounded-2xl p-2.5"><span className="text-muted-foreground">Sessions</span><strong className="mt-0.5 block text-lg">{totals?.sessionCount ?? 0}</strong></div>
+        <div className="veyra-glass rounded-2xl p-2.5"><span className="text-muted-foreground">Current streak</span><strong className="mt-0.5 block text-lg">{streak?.current ?? 0}</strong></div>
+        <div className="veyra-glass rounded-2xl p-2.5"><span className="text-muted-foreground">Longest streak</span><strong className="mt-0.5 block text-lg">{streak?.longest ?? 0}</strong></div>
+      </div>
       <Panel
+        className="min-h-0 flex-1"
         title="Recent activity"
         action={
           <Button variant="ghost" size="sm" asChild>
@@ -116,7 +123,7 @@ export function HomeRoute() {
         {recent.length === 0 ? (
           <EmptyState title="No transcriptions yet">Record once and the last captures appear here.</EmptyState>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-border/80 bg-white/62">
+          <div className="h-full overflow-auto rounded-2xl border border-border/80 bg-white/62">
             {recent.map((row) => (
               <div key={row.id} className="flex items-center gap-3 border-b border-border/70 px-3.5 py-3 last:border-b-0">
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-primary">
@@ -142,12 +149,6 @@ export function HomeRoute() {
           </div>
         )}
       </Panel>
-      <div className="grid gap-3 text-sm md:grid-cols-4">
-        <div className="veyra-glass rounded-2xl p-3"><span className="text-muted-foreground">Total words</span><strong className="mt-1 block text-xl">{totals?.wordCount ?? 0}</strong></div>
-        <div className="veyra-glass rounded-2xl p-3"><span className="text-muted-foreground">Sessions</span><strong className="mt-1 block text-xl">{totals?.sessionCount ?? 0}</strong></div>
-        <div className="veyra-glass rounded-2xl p-3"><span className="text-muted-foreground">Current streak</span><strong className="mt-1 block text-xl">{streak?.current ?? 0}</strong></div>
-        <div className="veyra-glass rounded-2xl p-3"><span className="text-muted-foreground">Longest streak</span><strong className="mt-1 block text-xl">{streak?.longest ?? 0}</strong></div>
-      </div>
     </PageShell>
   );
 }
