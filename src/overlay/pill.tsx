@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Square, X } from "lucide-react";
 import { useSettings } from "@/hooks/use-settings";
@@ -75,6 +75,12 @@ export function OverlayPill({ state, mode }: { state: OverlayState; mode: Overla
 
   const elapsedLabel = useElapsedLabel(recordingStartedAt, state);
 
+  const dictationHotkey = settings?.hotkey || "F24";
+  const commandHotkey = settings?.commandHotkey || "Pause";
+  const hotkey = commandMode ? commandHotkey : dictationHotkey;
+  const hintVerb = commandMode ? "draft" : "stop";
+  const showHint = useHintVisibility(recordingStartedAt, state);
+
   const primaryAction = busy
     ? () => void ipc.cancelRecording().catch(() => {})
     : () => void ipc.toggleRecording().catch(() => {});
@@ -140,8 +146,52 @@ export function OverlayPill({ state, mode }: { state: OverlayState; mode: Overla
           )}
         </button>
       </div>
+
+      <AnimatePresence>
+        {showHint ? (
+          <motion.div
+            key="hotkey-hint"
+            initial={{ opacity: 0, y: -2 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="veyra-capsule-hint"
+          >
+            tap <kbd>{hotkey}</kbd> to {hintVerb}
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </motion.div>
   );
+}
+
+const HINT_DURATION_MS = 600;
+
+function useHintVisibility(
+  startedAt: number | null,
+  state: OverlayState,
+): boolean {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (state !== "recording" || startedAt == null) {
+      setVisible(false);
+      return;
+    }
+    const elapsed = Date.now() - startedAt;
+    if (elapsed >= HINT_DURATION_MS) {
+      setVisible(false);
+      return;
+    }
+    setVisible(true);
+    const id = window.setTimeout(
+      () => setVisible(false),
+      HINT_DURATION_MS - elapsed,
+    );
+    return () => window.clearTimeout(id);
+  }, [startedAt, state]);
+
+  return visible;
 }
 
 function useElapsedLabel(

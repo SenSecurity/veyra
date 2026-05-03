@@ -120,6 +120,52 @@ describe("OverlayPill capsule", () => {
   });
 });
 
+describe("OverlayPill hotkey hint", () => {
+  it("renders the F24 hint shortly after recording starts in dictation mode", () => {
+    useOverlayStore.setState({
+      state: "recording",
+      mode: "dictation",
+      recordingStartedAt: Date.now(),
+    });
+    const { container } = render(<OverlayPill state="recording" mode="dictation" />);
+    const text = container.textContent ?? "";
+    expect(text).toMatch(/F24/);
+    expect(text).toMatch(/stop/i);
+  });
+
+  it("renders the Pause hint in command mode and reads 'draft'", () => {
+    useOverlayStore.setState({
+      state: "recording",
+      mode: "command",
+      recordingStartedAt: Date.now(),
+    });
+    const { container } = render(<OverlayPill state="recording" mode="command" />);
+    const text = container.textContent ?? "";
+    expect(text).toMatch(/Pause/);
+    expect(text).toMatch(/draft/i);
+  });
+
+  it("does not render the hint in transcribing state regardless of recordingStartedAt", () => {
+    useOverlayStore.setState({
+      state: "transcribing",
+      mode: "dictation",
+      recordingStartedAt: Date.now(),
+    });
+    const { container } = render(<OverlayPill state="transcribing" mode="dictation" />);
+    expect(container.querySelector(".veyra-capsule-hint")).toBeNull();
+  });
+
+  it("does not render the hint when recording started more than 600 ms ago", () => {
+    useOverlayStore.setState({
+      state: "recording",
+      mode: "dictation",
+      recordingStartedAt: Date.now() - 1_500,
+    });
+    const { container } = render(<OverlayPill state="recording" mode="dictation" />);
+    expect(container.querySelector(".veyra-capsule-hint")).toBeNull();
+  });
+});
+
 describe("formatElapsed", () => {
   it("renders 0 ms as 00:00.0", () => {
     expect(formatElapsed(0)).toBe("00:00.0");
