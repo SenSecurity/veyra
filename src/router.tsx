@@ -13,6 +13,7 @@ import { SettingsLayout } from "@/routes/settings/layout";
 import { SettingsGeneralRoute } from "@/routes/settings/general";
 import { SettingsTranscriptionRoute } from "@/routes/settings/transcription";
 import { SettingsHotkeysRoute } from "@/routes/settings/hotkeys";
+import { SettingsOverlayRoute } from "@/routes/settings/overlay";
 
 // Root + chrome
 const rootRoute = createRootRoute({ component: App });
@@ -73,6 +74,12 @@ const settingsHotkeysRoute = createRoute({
   component: SettingsHotkeysRoute,
 });
 
+const settingsOverlayRoute = createRoute({
+  getParentRoute: () => settingsRoute,
+  path: "/overlay",
+  component: SettingsOverlayRoute,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   historyRoute,
@@ -83,6 +90,7 @@ const routeTree = rootRoute.addChildren([
     settingsGeneralRoute,
     settingsTranscriptionRoute,
     settingsHotkeysRoute,
+    settingsOverlayRoute,
   ]),
 ]);
 
