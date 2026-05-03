@@ -19,6 +19,10 @@ pub struct Settings {
     pub hotkey: String,
     #[serde(rename = "commandHotkey", default = "default_command_hotkey")]
     pub command_hotkey: String,
+    #[serde(rename = "overlayStyle", default = "default_overlay_style")]
+    pub overlay_style: String,
+    #[serde(rename = "overlaySize", default = "default_overlay_size")]
+    pub overlay_size: String,
 }
 
 fn default_command_hotkey() -> String {
@@ -33,6 +37,14 @@ fn default_email_draft_engine() -> String {
     "ollama".to_string()
 }
 
+fn default_overlay_style() -> String {
+    "capsule".to_string()
+}
+
+fn default_overlay_size() -> String {
+    "medium".to_string()
+}
+
 impl Default for Settings {
     fn default() -> Self {
         Self {
@@ -45,6 +57,8 @@ impl Default for Settings {
             recording_mode: "toggle".to_string(),
             hotkey: "F24".to_string(),
             command_hotkey: default_command_hotkey(),
+            overlay_style: default_overlay_style(),
+            overlay_size: default_overlay_size(),
         }
     }
 }
@@ -87,6 +101,39 @@ mod tests {
         assert_eq!(settings.recording_mode, "toggle");
         assert_eq!(settings.hotkey, "F24");
         assert_eq!(settings.command_hotkey, "Pause");
+        assert_eq!(settings.overlay_style, "capsule");
+        assert_eq!(settings.overlay_size, "medium");
+    }
+
+    #[test]
+    fn test_legacy_config_without_overlay_fields_loads_with_defaults() {
+        // Legacy config.json files written before the overlay fields existed
+        // must keep loading; missing fields fall back to capsule + medium.
+        let legacy_json = r#"{
+            "microphone": "default",
+            "engine": "local",
+            "whisperModel": "turbo",
+            "emailDraftEngine": "ollama",
+            "emailDraftModel": "llama3.2:1b",
+            "groqApiKey": "",
+            "recordingMode": "toggle",
+            "hotkey": "F24",
+            "commandHotkey": "Pause"
+        }"#;
+        let parsed: Settings = serde_json::from_str(legacy_json).expect("legacy parse");
+        assert_eq!(parsed.overlay_style, "capsule");
+        assert_eq!(parsed.overlay_size, "medium");
+    }
+
+    #[test]
+    fn test_overlay_fields_round_trip() {
+        let mut settings = Settings::default();
+        settings.overlay_style = "orb".to_string();
+        settings.overlay_size = "large".to_string();
+        let json = serde_json::to_string(&settings).expect("serialize");
+        let restored: Settings = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(restored.overlay_style, "orb");
+        assert_eq!(restored.overlay_size, "large");
     }
 
     #[test]
