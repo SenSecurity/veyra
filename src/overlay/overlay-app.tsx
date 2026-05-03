@@ -1,10 +1,13 @@
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useRef } from "react";
+import { HaloOrb } from "./halo-orb";
 import { OverlayPill } from "./pill";
 import { INITIAL_VOICE_ACTIVITY, nextVoiceActivity } from "./voice-activity";
+import { useSettings } from "@/hooks/use-settings";
 import { ipc } from "@/lib/tauri";
 import { useOverlayStore, type OverlayMode, type OverlayState } from "@/stores/overlay-store";
 import type { RecordingState } from "@/types/ipc";
+import type { OverlaySize, OverlayStyle } from "@/types/settings";
 
 function mapState(state: RecordingState): OverlayState {
   if (state === "Recording") return "recording";
@@ -18,6 +21,9 @@ export function OverlayApp() {
   const setState = useOverlayStore((s) => s.setState);
   const setMode = useOverlayStore((s) => s.setMode);
   const setLevel = useOverlayStore((s) => s.setLevel);
+  const { settings } = useSettings();
+  const overlayStyle: OverlayStyle = settings?.overlayStyle ?? "capsule";
+  const overlaySize: OverlaySize = settings?.overlaySize ?? "medium";
   const voiceActivity = useRef(INITIAL_VOICE_ACTIVITY);
   const lastLevelAt = useRef<number | null>(null);
 
@@ -69,7 +75,11 @@ export function OverlayApp() {
 
   return (
     <main className="flex h-screen w-screen items-center justify-center overflow-hidden bg-transparent">
-      <OverlayPill state={state} mode={mode} />
+      {overlayStyle === "orb" ? (
+        <HaloOrb state={state} mode={mode} size={overlaySize} />
+      ) : (
+        <OverlayPill state={state} mode={mode} size={overlaySize} />
+      )}
     </main>
   );
 }

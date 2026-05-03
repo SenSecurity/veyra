@@ -30,6 +30,16 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     set({ settings: next, error: null });
     try {
       await ipc.saveSettings(next);
+      // If overlay layout fields changed, ping the OS window to resize
+      // immediately rather than waiting for the next dictation cycle.
+      const layoutChanged =
+        current.overlayStyle !== next.overlayStyle ||
+        current.overlaySize !== next.overlaySize;
+      if (layoutChanged) {
+        ipc
+          .setOverlayLayout(next.overlayStyle, next.overlaySize)
+          .catch(() => {});
+      }
     } catch (error) {
       set({ settings: current, error: String(error) });
       throw error;

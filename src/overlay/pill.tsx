@@ -6,6 +6,7 @@ import { formatDrafterName, formatWhisperName } from "@/lib/engine-format";
 import { ipc } from "@/lib/tauri";
 import { useOverlayStore } from "@/stores/overlay-store";
 import type { OverlayMode, OverlayState } from "@/stores/overlay-store";
+import type { OverlaySize } from "@/types/settings";
 import { formatElapsed, useElapsedLabel } from "./use-elapsed-label";
 
 export { formatElapsed };
@@ -42,7 +43,21 @@ export function calculateWaveBarHeights({
   });
 }
 
-export function OverlayPill({ state, mode }: { state: OverlayState; mode: OverlayMode }) {
+const CAPSULE_WIDTHS: Record<OverlaySize, number> = {
+  small: 420,
+  medium: 520,
+  large: 640,
+};
+
+export function OverlayPill({
+  state,
+  mode,
+  size = "medium",
+}: {
+  state: OverlayState;
+  mode: OverlayMode;
+  size?: OverlaySize;
+}) {
   const busy = state === "transcribing";
   const recording = state === "recording";
   const commandMode = mode === "command";
@@ -84,7 +99,8 @@ export function OverlayPill({ state, mode }: { state: OverlayState; mode: Overla
       initial={{ opacity: 0, y: 6, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.16 }}
-      className="flex w-[520px] flex-col items-center gap-1.5"
+      className="flex flex-col items-center gap-1.5"
+      style={{ width: CAPSULE_WIDTHS[size] }}
     >
       <div
         className="veyra-capsule grid w-full items-center gap-3.5 px-2.5 pl-3.5"

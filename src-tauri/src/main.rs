@@ -29,14 +29,40 @@ use typr_lib::storage::Db;
 use typr_lib::telemetry;
 use typr_lib::transcribe_local;
 
-// Glacier overlay capsule (docs/mockups/overlay-01-capsule.html):
-// 520 px capsule body + soft-shadow halo on each side, 56 px capsule
-// height + ~24 px hotkey-hint area + ~16 px shadow halo. The visible
-// chrome is rendered by CSS; the OS window is transparent + frameless
-// + always-on-top, so these constants only define the bounding box.
-const OVERLAY_WIDTH: i32 = 560;
-const OVERLAY_HEIGHT: i32 = 96;
+// Glacier overlay bounding-box table. The visible chrome is rendered
+// by CSS; the OS window is transparent + frameless + always-on-top,
+// so these constants only define the size and bottom-margin of the
+// transparent webview that hosts the React overlay tree.
+//
+// Capsule (docs/mockups/overlay-01-capsule.html): horizontal pill,
+// 520 px body + ~40 px shadow halo, 56 px capsule body + ~24 px
+// hotkey-hint area + ~16 px shadow halo.
+//
+// Halo Orb (docs/mockups/overlay-03-halo-orb.html): square box sized
+// to the largest concentric ring + chip + hint clearance.
 const OVERLAY_BOTTOM_MARGIN: i32 = 12;
+
+/// Returns (width, height) for the (style, size) pair, falling back to
+/// capsule + medium for unknown values. Mirrors SIZE_SPECS in
+/// `src/overlay/halo-orb.tsx` and the capsule width ladder in
+/// `src/overlay/pill.tsx`. Keep these in lock-step.
+pub fn overlay_dims(style: &str, size: &str) -> (i32, i32) {
+    match (style, size) {
+        ("capsule", "small") => (460, 92),
+        ("capsule", "medium") => (560, 96),
+        ("capsule", "large") => (680, 104),
+        ("orb", "small") => (200, 168),
+        ("orb", "medium") => (240, 200),
+        ("orb", "large") => (300, 248),
+        // Fallback: capsule + medium.
+        _ => (560, 96),
+    }
+}
+
+/// Default overlay dimensions used at startup before settings load.
+fn default_overlay_dims() -> (i32, i32) {
+    overlay_dims("capsule", "medium")
+}
 const TRAY_SHOW_ID: &str = "tray_show";
 const TRAY_HIDE_ID: &str = "tray_hide";
 const TRAY_EXIT_ID: &str = "tray_exit";
@@ -63,7 +89,7 @@ fn play_transition_sound(state: &RecordingState) {
 fn play_transition_sound(_state: &RecordingState) {}
 
 #[cfg(target_os = "windows")]
-fn active_monitor_bottom_position() -> Option<tauri::PhysicalPosition<i32>> {
+fn active_monitor_bottom_position(width: i32, height: i32) -> Option<tauri::PhysicalPosition<i32>> {
     use windows_sys::Win32::Foundation::POINT;
     use windows_sys::Win32::Graphics::Gdi::{
         ClientToScreen, GetMonitorInfoW, MonitorFromPoint, MONITORINFO, MONITOR_DEFAULTTONEAREST,
@@ -107,7 +133,11 @@ fn active_monitor_bottom_position() -> Option<tauri::PhysicalPosition<i32>> {
         Some(point)
     }
 
-    unsafe fn bottom_center_for_screen_point(point: POINT) -> Option<tauri::PhysicalPosition<i32>> {
+    unsafe fn bottom_center_for_screen_point(
+        point: POINT,
+        width: i32,
+        height: i32,
+    ) -> Option<tauri::PhysicalPosition<i32>> {
         let monitor = MonitorFromPoint(point, MONITOR_DEFAULTTONEAREST);
         if monitor.is_null() {
             return None;
@@ -124,8 +154,8 @@ fn active_monitor_bottom_position() -> Option<tauri::PhysicalPosition<i32>> {
         }
 
         let work = info.rcWork;
-        let x = work.left + ((work.right - work.left - OVERLAY_WIDTH) / 2);
-        let y = work.bottom - OVERLAY_BOTTOM_MARGIN - OVERLAY_HEIGHT;
+        let x = work.left + ((work.right - work.left - width) / 2);
+        let y = work.bottom - OVERLAY_BOTTOM_MARGIN - height;
         Some(tauri::PhysicalPosition::new(x, y))
     }
 
@@ -138,12 +168,12 @@ fn active_monitor_bottom_position() -> Option<tauri::PhysicalPosition<i32>> {
                 None
             }
         })?;
-        bottom_center_for_screen_point(point)
+        bottom_center_for_screen_point(point, width, height)
     }
 }
 
 #[cfg(not(target_os = "windows"))]
-fn active_monitor_bottom_position() -> Option<tauri::PhysicalPosition<i32>> {
+fn active_monitor_bottom_position(_width: i32, _height: i32) -> Option<tauri::PhysicalPosition<i32>> {
     None
 }
 
@@ -473,7 +503,8 @@ fn update_overlay(app: &tauri::AppHandle, state: &RecordingState) {
             }
             RecordingState::Recording | RecordingState::Transcribing => {
                 if *state == RecordingState::Recording {
-                    if let Some(position) = active_monitor_bottom_position() {
+                    let (w, h) = current_overlay_dims(app);
+                    if let Some(position) = active_monitor_bottom_position(w, h) {
                         let _ = overlay.set_position(position);
                     }
                 }
@@ -488,6 +519,13 @@ fn update_overlay(app: &tauri::AppHandle, state: &RecordingState) {
             }
         }
     }
+}
+
+/// Look up current overlay dimensions from the AppState's settings snapshot.
+fn current_overlay_dims(app: &tauri::AppHandle) -> (i32, i32) {
+    let state: tauri::State<AppState> = app.state::<AppState>();
+    let s = state.settings.lock().unwrap();
+    overlay_dims(&s.overlay.style, &s.overlay.size)
 }
 
 fn spawn_level_emitter(app: tauri::AppHandle) {
@@ -558,18 +596,32 @@ fn window_close(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn save_settings(state: State<AppState>, settings: V1Settings) -> Result<(), String> {
-    let mut v2 = state.settings.lock().unwrap();
-    let snapshot = v2.clone();
+fn save_settings(
+    app: tauri::AppHandle,
+    state: State<AppState>,
+    settings: V1Settings,
+) -> Result<(), String> {
+    let layout_changed: bool;
+    let new_style: String;
+    let new_size: String;
+    {
+        let mut v2 = state.settings.lock().unwrap();
+        let snapshot = v2.clone();
 
-    // Step 1: mutate v2 in-memory only — keyring untouched.
-    apply_v1_v2_fields(&mut v2, &settings);
+        layout_changed = snapshot.overlay.style != settings.overlay_style
+            || snapshot.overlay.size != settings.overlay_size;
+        new_style = settings.overlay_style.clone();
+        new_size = settings.overlay_size.clone();
 
-    // Step 2: write JSON. On failure, roll back the in-memory tree so we
-    // don't drift from disk. No OS-side state has moved yet.
-    if let Err(e) = settings::save(&state.app_dir, &v2) {
-        *v2 = snapshot;
-        return Err(format!("settings save failed: {e}"));
+        // Step 1: mutate v2 in-memory only — keyring untouched.
+        apply_v1_v2_fields(&mut v2, &settings);
+
+        // Step 2: write JSON. On failure, roll back the in-memory tree so we
+        // don't drift from disk. No OS-side state has moved yet.
+        if let Err(e) = settings::save(&state.app_dir, &v2) {
+            *v2 = snapshot;
+            return Err(format!("settings save failed: {e}"));
+        }
     }
 
     // Step 3: write keyring. If this fails, JSON + in-memory already reflect
@@ -579,6 +631,31 @@ fn save_settings(state: State<AppState>, settings: V1Settings) -> Result<(), Str
     // sentinel back through save).
     write_v1_keyring(&settings, state.keyring.as_ref())
         .map_err(|e| format!("keyring write failed: {e}"))?;
+
+    // Step 4: if the overlay layout changed, resize the OS window now so the
+    // user sees the new dimensions on the next dictation without restarting.
+    if layout_changed {
+        apply_overlay_layout(&app, &new_style, &new_size);
+    }
+    Ok(())
+}
+
+/// Apply the configured overlay (style, size) to the live overlay window:
+/// resize via `set_size` and re-center against the work-area bottom margin.
+/// No-op when the overlay window does not exist yet.
+fn apply_overlay_layout(app: &tauri::AppHandle, style: &str, size: &str) {
+    let (w, h) = overlay_dims(style, size);
+    if let Some(overlay) = app.get_webview_window("overlay") {
+        let _ = overlay.set_size(tauri::LogicalSize::new(w as f64, h as f64));
+        if let Some(position) = active_monitor_bottom_position(w, h) {
+            let _ = overlay.set_position(position);
+        }
+    }
+}
+
+#[tauri::command]
+fn set_overlay_layout(app: tauri::AppHandle, style: String, size: String) -> Result<(), String> {
+    apply_overlay_layout(&app, &style, &size);
     Ok(())
 }
 
@@ -1340,6 +1417,7 @@ fn main() {
             cancel_model_download,
             cancel_recording,
             toggle_recording,
+            set_overlay_layout,
             // Phase 3: transcriptions
             list_transcriptions,
             list_email_drafts,
@@ -1437,7 +1515,10 @@ fn main() {
             }
 
             // Create the overlay window hidden by default. It appears only while
-            // recording/transcribing, Wispr Flow style.
+            // recording/transcribing, Wispr Flow style. Dimensions come from
+            // the persisted overlay style/size and may be resized later via
+            // the `set_overlay_layout` Tauri command.
+            let (overlay_w, overlay_h) = default_overlay_dims();
             let monitor = app.primary_monitor().ok().flatten();
             let (x, y) = if let Some(m) = monitor {
                 let size = m.size();
@@ -1445,7 +1526,7 @@ fn main() {
                 let logical_w = size.width as f64 / scale;
                 let logical_h = size.height as f64 / scale;
                 (
-                    (logical_w / 2.0 - (OVERLAY_WIDTH as f64 / 2.0)) as i32,
+                    (logical_w / 2.0 - (overlay_w as f64 / 2.0)) as i32,
                     (logical_h - 110.0) as i32,
                 )
             } else {
@@ -1458,7 +1539,7 @@ fn main() {
                 WebviewUrl::App("src/overlay.html".into()),
             )
             .title("")
-            .inner_size(OVERLAY_WIDTH as f64, OVERLAY_HEIGHT as f64)
+            .inner_size(overlay_w as f64, overlay_h as f64)
             .position(x as f64, y as f64)
             .resizable(false)
             .decorations(false)
