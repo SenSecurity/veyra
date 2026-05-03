@@ -43,7 +43,7 @@
 | 🎙️ **Dictation** | Local `whisper.cpp`, sub-second latency, paste straight at the cursor |
 | 📧 **Email Drafter** | Speak the intent, local Llama writes the draft, saved automatically |
 | 🛡️ **Private** | Audio never leaves the machine. No cloud, no telemetry |
-| ⚡ **One-click setup** | First boot installs Whisper, Ollama, and the email model in parallel |
+| ⚡ **One-click setup** | First boot installs Ollama, pulls the email model, then downloads Whisper |
 | 🌊 **Glacier UI** | Light-glass shell, rounded window, two-tone engine duality (cyan + spark) |
 | 🪟 **Floating overlay** | Pick **Capsule** or **Halo Orb**. Three sizes. Lives only while recording |
 
@@ -59,11 +59,11 @@ The wizard installs everything in **one click**:
 
 | Step | What it does |
 |------|--------------|
-| ① **Whisper** | Downloads the speech model (~1.5 GB, default `turbo`) |
-| ② **Ollama** | Detects the runtime; if missing, the first-boot wizard downloads and starts the official Ollama installer |
-| ③ **Email model** | Pulls the local LLM (`Llama 3.2 1B` by default) via Ollama |
+| ① **Ollama** | Detects the runtime; if missing, the first-boot wizard downloads the official Ollama installer and tries silent install first |
+| ② **Email model** | Pulls the local LLM (`Llama 3.2 1B` by default) via Ollama |
+| ③ **Whisper** | Downloads the speech model (~1.5 GB, default `turbo`) |
 
-All three run in parallel where independent. Per-step retry. You can keep going through Microphone + Hotkeys while installs finish in the background.
+Install runs in dependency order so the local LLM chain is verified before the Whisper download starts. Per-step retry is available if anything fails.
 
 ---
 

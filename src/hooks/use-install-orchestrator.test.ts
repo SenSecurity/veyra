@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   checkModelDownloaded: vi.fn(),
   isOllamaInstalled: vi.fn(),
   checkEmailDraftModel: vi.fn(),
+  downloadEmailDraftModel: vi.fn(),
   downloadModel: vi.fn(),
   installOllamaRuntime: vi.fn(),
   listen: vi.fn(),
@@ -17,6 +18,7 @@ vi.mock("@/lib/tauri", () => ({
     checkModelDownloaded: mocks.checkModelDownloaded,
     isOllamaInstalled: mocks.isOllamaInstalled,
     checkEmailDraftModel: mocks.checkEmailDraftModel,
+    downloadEmailDraftModel: mocks.downloadEmailDraftModel,
     downloadModel: mocks.downloadModel,
     installOllamaRuntime: mocks.installOllamaRuntime,
   },
@@ -77,6 +79,7 @@ describe("useInstallOrchestrator", () => {
     mocks.checkModelDownloaded.mockResolvedValue(false);
     mocks.isOllamaInstalled.mockResolvedValue(true);
     mocks.checkEmailDraftModel.mockResolvedValue(undefined);
+    mocks.downloadEmailDraftModel.mockResolvedValue(undefined);
     mocks.downloadModel.mockResolvedValue(undefined);
 
     const { result } = renderHook(() => useInstallOrchestrator(INPUT));
@@ -90,10 +93,33 @@ describe("useInstallOrchestrator", () => {
     expect(mocks.downloadModel).toHaveBeenCalledTimes(1);
   });
 
+  it("runs first boot in order: Ollama, email model, then Whisper", async () => {
+    mocks.checkModelDownloaded.mockResolvedValue(false);
+    mocks.isOllamaInstalled.mockResolvedValue(true);
+    mocks.checkEmailDraftModel.mockRejectedValue(new Error("not downloaded"));
+    mocks.downloadEmailDraftModel.mockResolvedValue(undefined);
+    mocks.downloadModel.mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useInstallOrchestrator(INPUT));
+    await waitFor(() => expect(result.current.drafter.status).toBe("idle"));
+
+    await act(async () => {
+      await result.current.runAll();
+    });
+
+    expect(mocks.installOllamaRuntime).not.toHaveBeenCalled();
+    expect(mocks.downloadEmailDraftModel).toHaveBeenCalledTimes(1);
+    expect(mocks.downloadModel).toHaveBeenCalledTimes(1);
+    expect(mocks.downloadEmailDraftModel.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.downloadModel.mock.invocationCallOrder[0],
+    );
+  });
+
   it("flips whisper to 'failed' when downloadModel rejects, and retry re-invokes it", async () => {
     mocks.checkModelDownloaded.mockResolvedValue(false);
     mocks.isOllamaInstalled.mockResolvedValue(true);
     mocks.checkEmailDraftModel.mockResolvedValue(undefined);
+    mocks.downloadEmailDraftModel.mockResolvedValue(undefined);
     mocks.downloadModel.mockRejectedValueOnce(new Error("network"));
 
     const { result } = renderHook(() => useInstallOrchestrator(INPUT));
@@ -130,6 +156,7 @@ describe("useInstallOrchestrator", () => {
     mocks.checkModelDownloaded.mockResolvedValue(false);
     mocks.isOllamaInstalled.mockResolvedValue(true);
     mocks.checkEmailDraftModel.mockResolvedValue(undefined);
+    mocks.downloadEmailDraftModel.mockResolvedValue(undefined);
 
     let resolveDownload: (() => void) | null = null;
     mocks.downloadModel.mockImplementation(
@@ -162,6 +189,7 @@ describe("useInstallOrchestrator", () => {
       .mockResolvedValueOnce(false)
       .mockResolvedValueOnce(true);
     mocks.checkEmailDraftModel.mockResolvedValue(undefined);
+    mocks.downloadEmailDraftModel.mockResolvedValue(undefined);
     mocks.installOllamaRuntime.mockResolvedValue(undefined);
 
     const { result } = renderHook(() => useInstallOrchestrator(INPUT));

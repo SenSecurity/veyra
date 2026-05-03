@@ -26,7 +26,7 @@ export interface InstallOrchestratorState {
 export interface InstallOrchestratorApi extends InstallOrchestratorState {
   /** Probe each install's current state from Rust without starting work. */
   refresh: () => Promise<void>;
-  /** Run all three installs (parallel where independent). */
+  /** Run installs in dependency order: Ollama, email model, then Whisper. */
   runAll: () => Promise<void>;
   /** Re-run a specific step; safe to call regardless of current status. */
   retry: (step: "whisper" | "ollama" | "drafter") => Promise<void>;
@@ -159,13 +159,15 @@ export function useInstallOrchestrator(
     setWhisper(whisperRef.current);
     try {
       await ipc.downloadModel(inputRef.current.whisperModel);
-      setWhisper({ status: "done", progress: 100, detail: "Ready" });
+      whisperRef.current = { status: "done", progress: 100, detail: "Ready" };
+      setWhisper(whisperRef.current);
     } catch (e) {
-      setWhisper({
+      whisperRef.current = {
         status: "failed",
         progress: 0,
         error: String(e),
-      });
+      };
+      setWhisper(whisperRef.current);
     }
   }, []);
 
@@ -180,13 +182,14 @@ export function useInstallOrchestrator(
     try {
       const alreadyInstalled = await ipc.isOllamaInstalled();
       if (alreadyInstalled) {
-        setOllama({ status: "done", progress: 100, detail: "Installed" });
+        ollamaRef.current = { status: "done", progress: 100, detail: "Installed" };
+        setOllama(ollamaRef.current);
         return;
       }
       await ipc.installOllamaRuntime();
       setOllama((s) =>
         s.status === "running"
-          ? { ...s, progress: 25, detail: "Complete the Ollama installer" }
+          ? { ...s, progress: 40, detail: "Checking Ollama" }
           : s,
       );
 
@@ -196,60 +199,65 @@ export function useInstallOrchestrator(
         try {
           const ok = await ipc.isOllamaInstalled();
           if (ok) {
-            setOllama({ status: "done", progress: 100, detail: "Installed" });
+            ollamaRef.current = {
+              status: "done",
+              progress: 100,
+              detail: "Installed",
+            };
+            setOllama(ollamaRef.current);
             return;
           }
         } catch {
           /* keep polling */
         }
       }
-      setOllama({
+      ollamaRef.current = {
         status: "failed",
         progress: 0,
         error:
           "Ollama installation didn't complete within 5 minutes. Install manually then click Retry.",
-      });
+      };
+      setOllama(ollamaRef.current);
     } catch (e) {
-      setOllama({ status: "failed", progress: 0, error: String(e) });
+      ollamaRef.current = { status: "failed", progress: 0, error: String(e) };
+      setOllama(ollamaRef.current);
     }
   }, []);
 
   const runDrafter = useCallback(async () => {
     if (drafterRef.current.status === "running") return;
     if (ollamaRef.current.status !== "done") {
-      setDrafter({
+      drafterRef.current = {
         status: "failed",
         progress: 0,
         error: "Install Ollama first.",
-      });
+      };
+      setDrafter(drafterRef.current);
       return;
     }
     drafterRef.current = { status: "running", progress: 0, detail: "Pulling model" };
     setDrafter(drafterRef.current);
     try {
-      await ipc.checkEmailDraftModel(
-        inputRef.current.groqApiKey,
+      await ipc.downloadEmailDraftModel(
         inputRef.current.emailDraftEngine,
         inputRef.current.emailDraftModel,
       );
-      setDrafter({ status: "done", progress: 100, detail: "Ready" });
+      drafterRef.current = { status: "done", progress: 100, detail: "Ready" };
+      setDrafter(drafterRef.current);
     } catch (e) {
-      setDrafter({ status: "failed", progress: 0, error: String(e) });
+      drafterRef.current = { status: "failed", progress: 0, error: String(e) };
+      setDrafter(drafterRef.current);
     }
   }, []);
 
   const runAll = useCallback(async () => {
-    // Whisper and Ollama are independent — run in parallel. Drafter waits
-    // for Ollama, then runs.
-    await Promise.allSettled([
-      whisperRef.current.status === "done" ? Promise.resolve() : runWhisper(),
-      (async () => {
-        if (ollamaRef.current.status !== "done") await runOllama();
-        if (ollamaRef.current.status === "done" && drafterRef.current.status !== "done") {
-          await runDrafter();
-        }
-      })(),
-    ]);
+    if (ollamaRef.current.status !== "done") await runOllama();
+    if (ollamaRef.current.status !== "done") return;
+
+    if (drafterRef.current.status !== "done") await runDrafter();
+    if (drafterRef.current.status !== "done") return;
+
+    if (whisperRef.current.status !== "done") await runWhisper();
   }, [runWhisper, runOllama, runDrafter]);
 
   const retry = useCallback(

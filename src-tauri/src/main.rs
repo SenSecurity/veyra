@@ -1406,35 +1406,74 @@ async fn install_ollama_runtime() -> Result<(), String> {
 #[cfg(target_os = "windows")]
 async fn install_ollama_runtime_windows() -> Result<(), String> {
     let installer_path = std::env::temp_dir().join("Veyra-OllamaSetup.exe");
-    let url = "https://ollama.com/download/OllamaSetup.exe";
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(120))
-        .build()
-        .map_err(|e| format!("Failed to prepare Ollama installer download: {e}"))?;
-    let response = client
-        .get(url)
-        .send()
-        .await
-        .map_err(|e| format!("Failed to download Ollama installer: {e}"))?;
-    if !response.status().is_success() {
-        return Err(format!(
-            "Failed to download Ollama installer: HTTP {}",
-            response.status()
-        ));
+    let has_cached_installer = installer_path
+        .metadata()
+        .map(|m| m.len() > 1_000_000)
+        .unwrap_or(false);
+
+    if !has_cached_installer {
+        let url = "https://ollama.com/download/OllamaSetup.exe";
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(120))
+            .build()
+            .map_err(|e| format!("Failed to prepare Ollama installer download: {e}"))?;
+        let response = client
+            .get(url)
+            .send()
+            .await
+            .map_err(|e| format!("Failed to download Ollama installer: {e}"))?;
+        if !response.status().is_success() {
+            return Err(format!(
+                "Failed to download Ollama installer: HTTP {}",
+                response.status()
+            ));
+        }
+        let bytes = response
+            .bytes()
+            .await
+            .map_err(|e| format!("Failed to read Ollama installer download: {e}"))?;
+        if bytes.len() < 1_000_000 {
+            return Err("Downloaded Ollama installer is unexpectedly small".to_string());
+        }
+        std::fs::write(&installer_path, &bytes)
+            .map_err(|e| format!("Failed to save Ollama installer: {e}"))?;
     }
-    let bytes = response
-        .bytes()
-        .await
-        .map_err(|e| format!("Failed to read Ollama installer download: {e}"))?;
-    if bytes.len() < 1_000_000 {
-        return Err("Downloaded Ollama installer is unexpectedly small".to_string());
+
+    let mut child = tokio::process::Command::new(&installer_path)
+        .args(["/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-"])
+        .spawn()
+        .map_err(|e| format!("Failed to start silent Ollama installer: {e}"))?;
+
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5 * 60);
+    loop {
+        if is_ollama_installed() {
+            return Ok(());
+        }
+
+        match child
+            .try_wait()
+            .map_err(|e| format!("Failed to poll silent Ollama installer: {e}"))?
+        {
+            Some(status) => {
+                if is_ollama_installed() {
+                    return Ok(());
+                }
+                tracing::warn!(%status, "silent Ollama installer exited without installed runtime");
+                break;
+            }
+            None if std::time::Instant::now() >= deadline => {
+                tracing::warn!("silent Ollama installer is still running; wizard will keep polling");
+                return Ok(());
+            }
+            None => {
+                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            }
+        }
     }
-    std::fs::write(&installer_path, &bytes)
-        .map_err(|e| format!("Failed to save Ollama installer: {e}"))?;
 
     std::process::Command::new(&installer_path)
         .spawn()
-        .map_err(|e| format!("Failed to launch Ollama installer: {e}"))?;
+        .map_err(|e| format!("Failed to launch Ollama installer fallback: {e}"))?;
     Ok(())
 }
 

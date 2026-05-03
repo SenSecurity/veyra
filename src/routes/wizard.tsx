@@ -105,19 +105,11 @@ export function WizardRoute() {
           <SetupHero
             eyebrow={`Step 02 · ${steps[1]}`}
             title="Install everything"
-            accent="— Whisper, Ollama, Llama"
-            description="One click downloads the speech model, installs Ollama if missing, and pulls the local email-draft model. You can keep going through the wizard while these finish in the background."
+            accent="- Ollama, Llama, Whisper"
+            description="One click installs Ollama if missing, pulls the local email-draft model, then downloads the speech model. This order keeps the local LLM chain verified before dictation setup finishes."
           />
 
           <div className="grid gap-3 md:grid-cols-3">
-            <InstallCard
-              icon={<Mic className="h-4 w-4" />}
-              tone="stt"
-              title="Whisper"
-              subtitle={`${settings.whisperModel} · 1.5 GB`}
-              state={orchestrator.whisper}
-              onRetry={() => void orchestrator.retry("whisper")}
-            />
             <InstallCard
               icon={<Download className="h-4 w-4" />}
               tone="stt"
@@ -133,6 +125,15 @@ export function WizardRoute() {
               subtitle={settings.emailDraftModel}
               state={orchestrator.drafter}
               onRetry={() => void orchestrator.retry("drafter")}
+            />
+
+            <InstallCard
+              icon={<Mic className="h-4 w-4" />}
+              tone="stt"
+              title="Whisper"
+              subtitle={`${settings.whisperModel} · 1.5 GB`}
+              state={orchestrator.whisper}
+              onRetry={() => void orchestrator.retry("whisper")}
             />
           </div>
 
