@@ -82,7 +82,8 @@ pub fn load(
     }
 
     let raw = std::fs::read_to_string(&cfg_path)?;
-    let value: serde_json::Value = serde_json::from_str(&raw)?;
+    let parse_raw = raw.strip_prefix('\u{feff}').unwrap_or(&raw);
+    let value: serde_json::Value = serde_json::from_str(parse_raw)?;
     let version = detect_version(&value);
 
     match version {
@@ -323,6 +324,21 @@ mod tests {
         let db = test_db();
         let kr = MockBackend::new();
         let out = load(dir.path(), &db, &kr).unwrap();
+        assert_eq!(out.settings, s);
+        assert!(out.events.is_empty());
+    }
+
+    #[test]
+    fn v3_file_with_utf8_bom_loads_without_events() {
+        let dir = TempDir::new().unwrap();
+        let s = SettingsV2::default();
+        let mut raw = vec![0xef, 0xbb, 0xbf];
+        raw.extend(serde_json::to_vec(&s).unwrap());
+        std::fs::write(dir.path().join("config.json"), raw).unwrap();
+        let db = test_db();
+        let kr = MockBackend::new();
+        let out = load(dir.path(), &db, &kr).unwrap();
+
         assert_eq!(out.settings, s);
         assert!(out.events.is_empty());
     }

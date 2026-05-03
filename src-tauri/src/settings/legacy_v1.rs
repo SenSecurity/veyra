@@ -26,7 +26,7 @@ fn default_command_hotkey() -> String {
 }
 
 fn default_email_draft_model() -> String {
-    "llama3.2".to_string()
+    "llama3.2:1b".to_string()
 }
 
 fn default_email_draft_engine() -> String {
@@ -82,7 +82,7 @@ mod tests {
         assert_eq!(settings.engine, "local");
         assert_eq!(settings.whisper_model, "small");
         assert_eq!(settings.email_draft_engine, "ollama");
-        assert_eq!(settings.email_draft_model, "llama3.2");
+        assert_eq!(settings.email_draft_model, "llama3.2:1b");
         assert_eq!(settings.groq_api_key, "");
         assert_eq!(settings.recording_mode, "toggle");
         assert_eq!(settings.hotkey, "F24");

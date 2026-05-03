@@ -6,6 +6,7 @@
 use std::path::Path;
 use std::time::{Duration, Instant};
 use tauri::AppHandle;
+use tauri::Manager;
 use tauri_plugin_shell::ShellExt;
 use tokio::time::timeout;
 
@@ -67,11 +68,18 @@ async fn run_whisper_cli(
     wav_path: &Path,
     output_stem: &Path,
 ) -> Result<String, String> {
+    let mut command = app
+        .shell()
+        .sidecar("whisper-cpp")
+        .map_err(|e| format!("Failed to create sidecar command: {}", e))?;
+
+    if let Some(path) = whisper_runtime_path(app) {
+        command = command.env("PATH", path);
+    }
+
     let output = timeout(
         Duration::from_secs(180),
-        app.shell()
-            .sidecar("whisper-cpp")
-            .map_err(|e| format!("Failed to create sidecar command: {}", e))?
+        command
             .args([
                 "-m",
                 model_path.to_str().ok_or("model path not utf-8")?,
@@ -100,6 +108,26 @@ async fn run_whisper_cli(
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
     Ok(format!("{stdout}\n{stderr}"))
+}
+
+fn whisper_runtime_path(app: &AppHandle) -> Option<std::ffi::OsString> {
+    let resource_dir = app.path().resource_dir().ok()?;
+    let dll_dir = resource_dir.join("binaries");
+    if !dll_dir.exists() {
+        return None;
+    }
+    Some(prepend_path_dir(dll_dir, std::env::var_os("PATH")))
+}
+
+fn prepend_path_dir(
+    dir: std::path::PathBuf,
+    existing: Option<std::ffi::OsString>,
+) -> std::ffi::OsString {
+    let mut paths = vec![dir];
+    if let Some(existing) = existing {
+        paths.extend(std::env::split_paths(&existing));
+    }
+    std::env::join_paths(paths).unwrap_or_default()
 }
 
 fn scrape_stdout(stdout: &str) -> String {
@@ -230,5 +258,16 @@ mod tests {
     fn model_filename_to_label_handles_bare_name() {
         let p = Path::new("C:\\foo\\custom.bin");
         assert_eq!(model_filename_to_label(p), "custom");
+    }
+
+    #[test]
+    fn prepend_path_dir_puts_runtime_dll_dir_first() {
+        let joined = prepend_path_dir(
+            Path::new("C:/Veyra/binaries").to_path_buf(),
+            Some(std::ffi::OsString::from("C:/Windows/System32")),
+        );
+        let paths = std::env::split_paths(&joined).collect::<Vec<_>>();
+
+        assert_eq!(paths.first().unwrap(), Path::new("C:/Veyra/binaries"));
     }
 }

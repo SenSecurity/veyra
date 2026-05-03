@@ -10,7 +10,7 @@ import { SettingsPanel } from "./general";
 
 type EmailDraftEngine = "ollama" | "groq";
 
-const OLLAMA_RECOMMENDED_MODEL = "llama3.2";
+const OLLAMA_RECOMMENDED_MODEL = "llama3.2:1b";
 const GROQ_RECOMMENDED_MODEL = "llama-3.3-70b-versatile";
 
 function isOllamaMissingError(error: unknown) {
@@ -335,13 +335,21 @@ export function SettingsTranscriptionRoute() {
         >
           {emailDraftEngine === "ollama" ? (
             <>
-              <option value="llama3.2">Llama 3.2 3B - Recommended</option>
-              <option value="llama3.2:1b">Llama 3.2 1B - lightest</option>
+              <option value="llama3.2:1b">Llama 3.2 1B - Recommended</option>
+              <option value="llama3.2">Llama 3.2 3B - stronger</option>
               <option value="qwen3:1.7b">Qwen3 1.7B - fast</option>
               <option value="qwen3:4b">Qwen3 4B - stronger</option>
-              <option value="veyra-bonsai-1.7b">Ternary Bonsai 1.7B - experimental</option>
-              <option value="veyra-bonsai-4b">Ternary Bonsai 4B - experimental</option>
-              <option value="veyra-bonsai-8b">Ternary Bonsai 8B - experimental</option>
+              <optgroup label="Experimental - disabled until Ollama can load it reliably">
+                <option value="veyra-bonsai-1.7b" disabled>
+                  Ternary Bonsai 1.7B - unavailable
+                </option>
+                <option value="veyra-bonsai-4b" disabled>
+                  Ternary Bonsai 4B - unavailable
+                </option>
+                <option value="veyra-bonsai-8b" disabled>
+                  Ternary Bonsai 8B - unavailable
+                </option>
+              </optgroup>
             </>
           ) : (
             <>
