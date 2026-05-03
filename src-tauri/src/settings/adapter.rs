@@ -48,6 +48,8 @@ pub fn to_v1_view(v2: &Settings, backend: &dyn KeyringBackend) -> legacy_v1::Set
         recording_mode: v2.hotkeys.recording_mode.clone(),
         hotkey: v2.hotkeys.dictation.clone(),
         command_hotkey: v2.hotkeys.command_mode.clone(),
+        overlay_style: v2.overlay.style.clone(),
+        overlay_size: v2.overlay.size.clone(),
     }
 }
 
@@ -63,6 +65,8 @@ pub fn apply_v1_v2_fields(target: &mut Settings, payload: &legacy_v1::Settings) 
     target.hotkeys.recording_mode = payload.recording_mode.clone();
     target.hotkeys.dictation = payload.hotkey.clone();
     target.hotkeys.command_mode = payload.command_hotkey.clone();
+    target.overlay.style = payload.overlay_style.clone();
+    target.overlay.size = payload.overlay_size.clone();
 }
 
 /// Write the keyring half of a v1 payload. Empty `groq_api_key` ⇒ `delete`;
@@ -137,6 +141,8 @@ mod tests {
             recording_mode: "toggle".to_string(),
             hotkey: "F9".to_string(),
             command_hotkey: "F12".to_string(),
+            overlay_style: "capsule".to_string(),
+            overlay_size: "medium".to_string(),
         };
         apply_v1_payload(&mut v2, payload, &kr).unwrap();
         assert_eq!(v2.microphone, "Built-in");
@@ -164,6 +170,8 @@ mod tests {
             recording_mode: v2.hotkeys.recording_mode.clone(),
             hotkey: v2.hotkeys.dictation.clone(),
             command_hotkey: v2.hotkeys.command_mode.clone(),
+            overlay_style: v2.overlay.style.clone(),
+            overlay_size: v2.overlay.size.clone(),
         };
         apply_v1_payload(&mut v2, payload, &kr).unwrap();
         assert_eq!(kr.peek(), None);
@@ -207,6 +215,8 @@ mod tests {
             recording_mode: "push-to-talk".to_string(),
             hotkey: "Shift+F12".to_string(),
             command_hotkey: "F12".to_string(),
+            overlay_style: "orb".to_string(),
+            overlay_size: "large".to_string(),
         };
         apply_v1_payload(&mut v2, original.clone(), &kr).unwrap();
 

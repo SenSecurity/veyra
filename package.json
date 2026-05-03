@@ -13,6 +13,8 @@
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.8",
+    "@fontsource-variable/inter-tight": "^5.2.7",
+    "@fontsource/newsreader": "^5.2.10",
     "@hookform/resolvers": "^3.10.0",
     "@tanstack/react-router": "^1.169.1",
     "@tanstack/react-virtual": "^3.13.24",

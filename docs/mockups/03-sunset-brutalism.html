@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Veyra · Sunset Brutalism</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #f3ead8;
+    --cream-2: #ebe0c6;
+    --ink: #141414;
+    --vermillion: #e84a1f;
+    --lemon: #f4d54a;
+    --pine: #1f3d2e;
+    --plum: #4a1d3e;
+    --shadow: #141414;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background:
+      radial-gradient(900px 600px at 110% -10%, var(--lemon) 0%, transparent 55%),
+      radial-gradient(700px 500px at -10% 110%, #f7b27a 0%, transparent 55%),
+      var(--cream);
+    color: var(--ink);
+    font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+    font-weight: 500;
+    line-height: 1.4;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    background-image: radial-gradient(rgba(20,20,20,.18) 1px, transparent 1px);
+    background-size: 4px 4px;
+    pointer-events: none;
+    mix-blend-mode: multiply;
+    opacity: .35;
+    z-index: 100;
+  }
+
+  .frame {
+    max-width: 1320px;
+    margin: 24px auto;
+    padding: 0 28px 80px;
+  }
+
+  /* topbar */
+  .top {
+    border: 3px solid var(--ink);
+    background: var(--cream);
+    box-shadow: 10px 10px 0 var(--shadow);
+    padding: 14px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 22px;
+  }
+  .logo {
+    display: flex; align-items: center; gap: 14px;
+  }
+  .logo-mark {
+    width: 44px; height: 44px;
+    background: var(--vermillion);
+    border: 3px solid var(--ink);
+    display: grid; place-items: center;
+    color: var(--cream);
+    font-weight: 800;
+    transform: rotate(-6deg);
+    box-shadow: 4px 4px 0 var(--ink);
+    font-family: 'Bricolage Grotesque';
+    font-size: 22px;
+  }
+  .logo b {
+    font-family: 'Bricolage Grotesque';
+    font-weight: 800;
+    font-size: 26px;
+    letter-spacing: -0.03em;
+  }
+  .logo small {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: var(--ink);
+    opacity: .6;
+    margin-left: 6px;
+  }
+  .nav-pill {
+    display: flex; gap: 4px;
+    border: 3px solid var(--ink);
+    background: var(--cream-2);
+    padding: 4px;
+  }
+  .nav-pill a {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: var(--ink);
+    padding: 8px 14px;
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+  .nav-pill a.on { background: var(--ink); color: var(--lemon); }
+  .actions { display: flex; gap: 10px; }
+  .chip {
+    border: 3px solid var(--ink);
+    padding: 8px 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    background: var(--cream);
+    box-shadow: 3px 3px 0 var(--ink);
+    text-transform: uppercase;
+  }
+  .chip.live { background: var(--vermillion); color: var(--cream); }
+  .chip.live::before { content: "● "; }
+
+  /* main grid */
+  .grid {
+    margin-top: 28px;
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 28px;
+  }
+  @media (max-width: 1100px) { .grid { grid-template-columns: 1fr; } }
+
+  /* HERO CARD */
+  .hero {
+    border: 3px solid var(--ink);
+    background: var(--vermillion);
+    color: var(--cream);
+    padding: 40px 40px 30px;
+    box-shadow: 12px 12px 0 var(--shadow);
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::after {
+    content: "";
+    position: absolute;
+    right: -120px; top: -120px;
+    width: 380px; height: 380px;
+    background: var(--lemon);
+    border-radius: 50%;
+    border: 3px solid var(--ink);
+    z-index: 0;
+  }
+  .hero::before {
+    content: "";
+    position: absolute;
+    right: 60px; bottom: -90px;
+    width: 220px; height: 220px;
+    background: var(--plum);
+    border: 3px solid var(--ink);
+    transform: rotate(18deg);
+    z-index: 0;
+  }
+  .hero > * { position: relative; z-index: 1; }
+  .hero .kicker {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    background: var(--ink);
+    color: var(--lemon);
+    display: inline-block;
+    padding: 5px 10px;
+  }
+  .hero h1 {
+    font-family: 'Bricolage Grotesque';
+    font-weight: 800;
+    font-size: 88px;
+    line-height: 0.92;
+    letter-spacing: -0.04em;
+    margin: 0 0 18px;
+    font-variation-settings: "opsz" 96;
+  }
+  .hero h1 em {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    font-weight: 400;
+    color: var(--lemon);
+    letter-spacing: -0.02em;
+  }
+  .hero p.lede {
+    font-size: 18px;
+    line-height: 1.5;
+    max-width: 560px;
+    color: var(--cream);
+    opacity: .94;
+    margin: 0 0 30px;
+  }
+
+  /* big record button */
+  .recwrap {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 26px;
+    align-items: center;
+    margin-bottom: 18px;
+  }
+  .recbtn {
+    width: 156px; height: 156px;
+    border-radius: 50%;
+    background: var(--lemon);
+    border: 4px solid var(--ink);
+    color: var(--ink);
+    box-shadow: 6px 6px 0 var(--ink);
+    display: grid; place-items: center;
+    cursor: pointer;
+    font-family: 'Bricolage Grotesque';
+    font-weight: 800;
+    font-size: 19px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    position: relative;
+    animation: rotwobble 6s ease-in-out infinite;
+  }
+  .recbtn::before {
+    content: "";
+    position: absolute; inset: -16px;
+    border: 3px dashed var(--cream);
+    border-radius: 50%;
+    animation: spin 18s linear infinite;
+    opacity: .8;
+  }
+  .recbtn .dot {
+    width: 16px; height: 16px;
+    background: var(--vermillion);
+    border-radius: 50%;
+    border: 2px solid var(--ink);
+    margin-bottom: 6px;
+    animation: pulseDot 1.2s ease-in-out infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes rotwobble { 0%,100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
+  @keyframes pulseDot { 0%,100% { transform: scale(1); } 50% { transform: scale(1.35); box-shadow: 0 0 0 6px rgba(232,74,31,.4); } }
+
+  .timer {
+    font-family: 'Bricolage Grotesque';
+    font-weight: 800;
+    font-size: 76px;
+    line-height: 0.9;
+    letter-spacing: -0.04em;
+    color: var(--cream);
+    font-variant-numeric: tabular-nums;
+  }
+  .timer small {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    letter-spacing: 0.24em;
+    color: var(--lemon);
+    display: block;
+    margin-top: 6px;
+  }
+
+  /* waveform strip */
+  .wave-strip {
+    margin-top: 20px;
+    background: var(--ink);
+    border: 3px solid var(--ink);
+    padding: 14px 18px;
+    box-shadow: inset 0 0 0 3px var(--vermillion);
+    display: flex; gap: 4px; align-items: end;
+    height: 88px;
+  }
+  .wave-strip i {
+    flex: 1;
+    background: var(--lemon);
+    animation: amp 1.4s ease-in-out infinite;
+  }
+  .wave-strip i:nth-child(2n)  { background: var(--cream); }
+  .wave-strip i:nth-child(5n)  { background: var(--vermillion); animation-duration: 0.9s; }
+  .wave-strip i:nth-child(7n)  { background: var(--plum); animation-duration: 1.8s; }
+  @keyframes amp { 0%,100% { height: 16%; } 50% { height: 92%; } }
+
+  /* TRANSCRIPT */
+  .transcript {
+    margin-top: 28px;
+    border: 3px solid var(--ink);
+    background: var(--cream);
+    color: var(--ink);
+    box-shadow: 12px 12px 0 var(--shadow);
+    padding: 28px 30px 26px;
+    position: relative;
+  }
+  .transcript .stamp {
+    position: absolute;
+    top: -16px; left: 24px;
+    background: var(--lemon);
+    border: 3px solid var(--ink);
+    padding: 4px 12px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.24em;
+    box-shadow: 4px 4px 0 var(--ink);
+    text-transform: uppercase;
+  }
+  .transcript .row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    border-bottom: 3px dashed var(--ink);
+    padding-bottom: 12px;
+    margin-bottom: 16px;
+  }
+  .transcript .row h3 {
+    font-family: 'Bricolage Grotesque';
+    font-weight: 700;
+    font-size: 22px;
+    margin: 0;
+    letter-spacing: -0.02em;
+  }
+  .transcript .row .meta {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink);
+    opacity: .65;
+  }
+  .transcript p {
+    font-family: 'Instrument Serif', serif;
+    font-size: 30px;
+    line-height: 1.32;
+    margin: 0;
+    color: var(--ink);
+  }
+  .transcript p .partial { color: #555; font-style: italic; }
+  .transcript .caret {
+    display: inline-block;
+    width: 14px; height: 1em;
+    background: var(--vermillion);
+    margin-left: 4px;
+    vertical-align: -3px;
+    animation: blink 1s steps(2,end) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .quick-actions {
+    margin-top: 22px;
+    display: flex; gap: 12px; flex-wrap: wrap;
+  }
+  .qa {
+    border: 3px solid var(--ink);
+    background: var(--cream);
+    padding: 12px 18px;
+    box-shadow: 4px 4px 0 var(--ink);
+    cursor: pointer;
+    font-family: 'Bricolage Grotesque';
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: -0.005em;
+  }
+  .qa:hover { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--ink); }
+  .qa.lemon  { background: var(--lemon); }
+  .qa.dark   { background: var(--ink); color: var(--lemon); }
+  .qa.warn   { background: var(--vermillion); color: var(--cream); }
+
+  /* RIGHT COLUMN */
+  .stack { display: grid; gap: 28px; align-content: start; }
+
+  .card {
+    border: 3px solid var(--ink);
+    background: var(--cream);
+    padding: 22px 24px;
+    box-shadow: 10px 10px 0 var(--shadow);
+    position: relative;
+  }
+  .card.lemon { background: var(--lemon); }
+  .card.pine  { background: var(--pine); color: var(--cream); }
+  .card h2 {
+    margin: 0 0 16px;
+    font-family: 'Bricolage Grotesque';
+    font-weight: 800;
+    font-size: 24px;
+    letter-spacing: -0.025em;
+  }
+  .card.pine h2 { color: var(--lemon); }
+
+  /* hotkeys */
+  .keys { display: grid; gap: 10px; }
+  .keyrow {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 14px;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 2px dashed var(--ink);
+  }
+  .keyrow:last-child { border: none; }
+  .keyrow .label {
+    font-family: 'Bricolage Grotesque';
+    font-weight: 600;
+    font-size: 16px;
+  }
+  .keyrow .label em {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    color: var(--vermillion);
+    font-weight: 400;
+    font-size: 14px;
+    margin-left: 4px;
+  }
+  .keyrow kbd {
+    font-family: 'DM Mono', monospace;
+    background: var(--ink);
+    color: var(--lemon);
+    padding: 6px 12px;
+    border: 3px solid var(--ink);
+    box-shadow: 3px 3px 0 var(--vermillion);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  .keyrow .icon {
+    width: 28px; height: 28px;
+    border: 2px solid var(--ink);
+    background: var(--vermillion);
+    border-radius: 50%;
+  }
+  .keyrow:nth-child(2) .icon { background: var(--lemon); }
+  .keyrow:nth-child(3) .icon { background: var(--cream-2); }
+  .keyrow:nth-child(4) .icon { background: var(--plum); }
+
+  /* drafter */
+  .draft {
+    border: 3px solid var(--ink);
+    background: var(--cream-2);
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    position: relative;
+  }
+  .draft .tag {
+    position: absolute; top: -12px; left: 12px;
+    background: var(--vermillion); color: var(--cream);
+    border: 2px solid var(--ink);
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    padding: 3px 8px;
+    text-transform: uppercase;
+  }
+  .draft .who {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink);
+    margin: 6px 0 6px;
+    opacity: .65;
+  }
+  .draft p {
+    margin: 0;
+    font-family: 'Instrument Serif', serif;
+    font-size: 17px;
+    line-height: 1.4;
+  }
+
+  /* models bars */
+  .model {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    align-items: baseline;
+    margin-bottom: 14px;
+  }
+  .model .name {
+    font-family: 'Bricolage Grotesque';
+    font-weight: 700;
+    font-size: 16px;
+  }
+  .model .name small {
+    display: block;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    color: var(--cream); opacity: .7;
+    margin-top: 2px;
+    text-transform: uppercase;
+  }
+  .model .pill {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    background: var(--lemon);
+    color: var(--ink);
+    padding: 4px 10px;
+    border: 2px solid var(--ink);
+    text-transform: uppercase;
+  }
+  .model .pill.idle { background: transparent; color: var(--cream); border-color: var(--cream); }
+  .bar {
+    grid-column: 1/3;
+    height: 8px;
+    background: rgba(255,255,255,.18);
+    border: 2px solid var(--ink);
+  }
+  .bar > i { display: block; height: 100%; background: var(--lemon); }
+
+  /* footer ribbon */
+  .ribbon {
+    margin-top: 32px;
+    border: 3px solid var(--ink);
+    background: var(--ink);
+    color: var(--lemon);
+    padding: 16px 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 10px 10px 0 var(--vermillion);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+  .ribbon .glow { color: var(--cream); }
+  .ribbon b { color: var(--vermillion); font-weight: 500; }
+</style>
+</head>
+<body>
+  <div class="frame">
+
+    <!-- TOP -->
+    <header class="top">
+      <div class="logo">
+        <div class="logo-mark">V</div>
+        <div>
+          <b>Veyra</b><small>0.9.4 · LOCAL</small>
+        </div>
+      </div>
+
+      <nav class="nav-pill">
+        <a href="#" class="on">Capture</a>
+        <a href="#">Drafter</a>
+        <a href="#">History</a>
+        <a href="#">Models</a>
+        <a href="#">Settings</a>
+      </nav>
+
+      <div class="actions">
+        <span class="chip live">Recording</span>
+        <span class="chip">Ctrl + K</span>
+      </div>
+    </header>
+
+    <!-- MAIN -->
+    <section class="grid">
+
+      <!-- LEFT: HERO + TRANSCRIPT -->
+      <div>
+        <div class="hero">
+          <span class="kicker">Speak it · F24</span>
+          <h1>Talk loud,<br>type <em>nothing.</em></h1>
+          <p class="lede">
+            Veyra listens on the desktop, transcribes through Whisper, and — when you press
+            Pause — turns a spoken instruction into a finished email draft. All offline.
+          </p>
+
+          <div class="recwrap">
+            <button class="recbtn" aria-label="Stop recording">
+              <span class="dot"></span>
+              STOP · F24
+            </button>
+            <div class="timer">
+              00:14<span style="color:var(--lemon);">.823</span>
+              <small>SAMPLE 16 kHz · LANG pt-PT · TURBO</small>
+            </div>
+          </div>
+
+          <div class="wave-strip">
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          </div>
+        </div>
+
+        <!-- TRANSCRIPT -->
+        <div class="transcript">
+          <span class="stamp">▌ live transcript</span>
+          <div class="row">
+            <h3>What you just said</h3>
+            <span class="meta">streaming · 23 wps</span>
+          </div>
+          <p>
+            faz-me um email a dizer que hoje vou lá às cinco da tarde para o senhor Bruno Rodrigues<span class="partial"> e que levo os documentos do escritório</span><span class="caret"></span>
+          </p>
+
+          <div class="quick-actions">
+            <button class="qa lemon">⌘ Send to Drafter</button>
+            <button class="qa">⏎ Paste at cursor</button>
+            <button class="qa dark">↺ Retry transcription</button>
+            <button class="qa warn">■ Stop · F24</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT STACK -->
+      <aside class="stack">
+
+        <!-- Hotkeys -->
+        <div class="card">
+          <h2>Hotkeys</h2>
+          <div class="keys">
+            <div class="keyrow">
+              <span class="icon"></span>
+              <span class="label">Dictation <em>(toggle)</em></span>
+              <kbd>F24</kbd>
+            </div>
+            <div class="keyrow">
+              <span class="icon"></span>
+              <span class="label">Email Draft <em>(speak instruction)</em></span>
+              <kbd>Pause</kbd>
+            </div>
+            <div class="keyrow">
+              <span class="icon"></span>
+              <span class="label">Command Palette</span>
+              <kbd>Ctrl K</kbd>
+            </div>
+            <div class="keyrow">
+              <span class="icon"></span>
+              <span class="label">Collapse Sidebar</span>
+              <kbd>Ctrl \</kbd>
+            </div>
+          </div>
+        </div>
+
+        <!-- Drafter -->
+        <div class="card lemon">
+          <h2>Email Drafter</h2>
+
+          <div class="draft">
+            <span class="tag">▌ today · 14:22</span>
+            <div class="who">to · bruno.rodrigues@…</div>
+            <p>Olá Bruno, hoje passo aí pelas <em>17h</em> para entregar os documentos do escritório.</p>
+          </div>
+
+          <div class="draft">
+            <span class="tag">▌ today · 11:08</span>
+            <div class="who">to · sara@…</div>
+            <p>Sara, confirmo a marcação de quinta-feira no veterinário às 18h.</p>
+          </div>
+
+          <div class="draft">
+            <span class="tag">▌ yesterday · 19:40</span>
+            <div class="who">to · contact@arhs-spikeseed.com</div>
+            <p>Following up on the offensive security position discussed last week — happy to share availability.</p>
+          </div>
+        </div>
+
+        <!-- Models -->
+        <div class="card pine">
+          <h2>Local Models</h2>
+
+          <div class="model">
+            <div class="name">whisper · turbo<small>1.5 GB · ON DISK</small></div>
+            <span class="pill">ACTIVE</span>
+            <div class="bar"><i style="width:100%; background: var(--lemon);"></i></div>
+          </div>
+          <div class="model">
+            <div class="name">llama-3.2-1b<small>OLLAMA · DRAFTER</small></div>
+            <span class="pill">DRAFTER</span>
+            <div class="bar"><i style="width:78%; background: var(--vermillion);"></i></div>
+          </div>
+          <div class="model">
+            <div class="name">qwen3-1.7b<small>OLLAMA · LOCAL</small></div>
+            <span class="pill idle">IDLE</span>
+            <div class="bar"><i style="width:32%; background: var(--cream);"></i></div>
+          </div>
+          <div class="model">
+            <div class="name">bonsai-1.7b-f16<small>EXPERIMENTAL</small></div>
+            <span class="pill idle">IDLE</span>
+            <div class="bar"><i style="width:14%; background: var(--cream-2);"></i></div>
+          </div>
+        </div>
+
+      </aside>
+    </section>
+
+    <!-- RIBBON -->
+    <footer class="ribbon">
+      <span class="glow">Veyra · <b>100% LOCAL</b></span>
+      <span>%APPDATA%\com.typr.app\</span>
+      <span>Whisper · <b>Turbo</b></span>
+      <span>Ollama · <b>Llama 3.2 1B</b></span>
+      <span>Session · 02:14:08</span>
+    </footer>
+
+  </div>
+</body>
+</html>

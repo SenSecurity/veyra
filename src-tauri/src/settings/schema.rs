@@ -55,9 +55,15 @@ pub struct Hotkeys {
 #[serde(rename_all = "camelCase")]
 pub struct Overlay {
     pub style: String,
+    #[serde(default = "default_overlay_size")]
+    pub size: String,
     pub position: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub custom_pos: Option<OverlayPos>,
+}
+
+pub fn default_overlay_size() -> String {
+    "medium".to_string()
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -133,7 +139,8 @@ impl Default for Settings {
                 recording_mode: "push-to-talk".to_string(),
             },
             overlay: Overlay {
-                style: "pill".to_string(),
+                style: "capsule".to_string(),
+                size: default_overlay_size(),
                 position: "near-cursor".to_string(),
                 custom_pos: None,
             },
@@ -193,7 +200,8 @@ mod tests {
         assert_eq!(s.hotkeys.dictation, "F24");
         assert_eq!(s.hotkeys.command_mode, "Pause");
         assert_eq!(s.hotkeys.recording_mode, "push-to-talk");
-        assert_eq!(s.overlay.style, "pill");
+        assert_eq!(s.overlay.style, "capsule");
+        assert_eq!(s.overlay.size, "medium");
         assert_eq!(s.data.word_count_cap, 500_000);
         assert!(s.data.purge_on_exceed);
         assert_eq!(s.ui.theme, "system");

@@ -1,10 +1,13 @@
 import { listen } from "@tauri-apps/api/event";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { HaloOrb } from "./halo-orb";
 import { OverlayPill } from "./pill";
 import { INITIAL_VOICE_ACTIVITY, nextVoiceActivity } from "./voice-activity";
+import { useSettings } from "@/hooks/use-settings";
 import { ipc } from "@/lib/tauri";
 import { useOverlayStore, type OverlayMode, type OverlayState } from "@/stores/overlay-store";
 import type { RecordingState } from "@/types/ipc";
+import type { OverlaySize, OverlayStyle } from "@/types/settings";
 
 function mapState(state: RecordingState): OverlayState {
   if (state === "Recording") return "recording";
@@ -18,6 +21,39 @@ export function OverlayApp() {
   const setState = useOverlayStore((s) => s.setState);
   const setMode = useOverlayStore((s) => s.setMode);
   const setLevel = useOverlayStore((s) => s.setLevel);
+  // The overlay webview lives in its own zustand context, so the main
+  // window's `useSettings()` updates do not propagate here. Seed from
+  // `useSettings()` on first load and then react to the `overlay:layout`
+  // event (emitted by `apply_overlay_layout` in src-tauri/src/main.rs)
+  // for live updates whenever the user changes the choice in Settings.
+  const { settings } = useSettings();
+  const [overlayStyle, setOverlayStyle] = useState<OverlayStyle>("capsule");
+  const [overlaySize, setOverlaySize] = useState<OverlaySize>("medium");
+
+  useEffect(() => {
+    if (settings?.overlayStyle) setOverlayStyle(settings.overlayStyle);
+    if (settings?.overlaySize) setOverlaySize(settings.overlaySize);
+  }, [settings?.overlayStyle, settings?.overlaySize]);
+
+  useEffect(() => {
+    const un = listen<{ style: OverlayStyle; size: OverlaySize }>(
+      "overlay:layout",
+      (e) => {
+        if (e.payload.style === "capsule" || e.payload.style === "orb") {
+          setOverlayStyle(e.payload.style);
+        }
+        if (
+          e.payload.size === "small" ||
+          e.payload.size === "medium" ||
+          e.payload.size === "large"
+        ) {
+          setOverlaySize(e.payload.size);
+        }
+      },
+    );
+    return () => void un.then((fn) => fn()).catch(() => {});
+  }, []);
+
   const voiceActivity = useRef(INITIAL_VOICE_ACTIVITY);
   const lastLevelAt = useRef<number | null>(null);
 
@@ -69,7 +105,11 @@ export function OverlayApp() {
 
   return (
     <main className="flex h-screen w-screen items-center justify-center overflow-hidden bg-transparent">
-      <OverlayPill state={state} mode={mode} />
+      {overlayStyle === "orb" ? (
+        <HaloOrb state={state} mode={mode} size={overlaySize} />
+      ) : (
+        <OverlayPill state={state} mode={mode} size={overlaySize} />
+      )}
     </main>
   );
 }

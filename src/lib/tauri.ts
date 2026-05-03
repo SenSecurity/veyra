@@ -37,6 +37,8 @@ export const ipc = {
   cancelModelDownload: () => invoke<void>("cancel_model_download"),
   cancelRecording: () => invoke<void>("cancel_recording"),
   toggleRecording: () => invoke<string>("toggle_recording"),
+  setOverlayLayout: (style: string, size: string) =>
+    invoke<void>("set_overlay_layout", { style, size }),
 
   // transcriptions
   listTranscriptions: (limit: number, offset: number) =>

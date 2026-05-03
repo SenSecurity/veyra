@@ -1,0 +1,1245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Veyra · Glacier Light</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;450;500;600;700&family=Newsreader:ital,opsz,wght@1,6..72,300;1,6..72,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink:           #0d1320;
+    --slate-900:     #14202f;
+    --slate-800:     #1f2c3e;
+    --slate-700:     #324054;
+    --slate-600:     #4a5a72;
+    --slate-500:     #6b7a8e;
+    --slate-400:     #8d99ab;
+    --slate-300:     #b1bbcb;
+    --slate-200:     #cdd5e1;
+    --slate-100:     #e0e6ee;
+
+    --frost:         #f0f4f9;
+    --paper:         #f6f9fc;
+    --white:         #ffffff;
+
+    --ice-50:        #eef4fb;
+    --ice-100:       #e1ebf6;
+    --ice-200:       #c9dceb;
+    --ice-300:       #a7c2dc;
+    --ice-400:       #7aa3c8;
+
+    --cobalt:        #1d4ed8;
+    --cobalt-deep:   #163a8e;
+    --cobalt-soft:   #4a73c1;
+    --cobalt-tint:   #e9efff;
+    --halo:          rgba(29, 78, 216, 0.32);
+
+    --hairline:      rgba(13, 19, 32, 0.06);
+    --hairline-2:    rgba(13, 19, 32, 0.12);
+    --hairline-3:    rgba(13, 19, 32, 0.20);
+
+    --titlebar-h:    40px;
+    --sidebar-w:     244px;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body {
+    font-family: 'Inter Tight', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    color: var(--ink);
+    background: #c4d4e6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    letter-spacing: -0.005em;
+    overflow: hidden;
+    font-feature-settings: "ss01","cv11","tnum";
+  }
+
+  .window {
+    position: relative;
+    width: min(1240px, 96vw);
+    height: min(820px, 92vh);
+    margin: 24px auto;
+    border-radius: 14px;
+    overflow: hidden;
+    background:
+      radial-gradient(900px 600px at 100% -10%, var(--ice-100) 0%, transparent 55%),
+      radial-gradient(700px 500px at 0% 110%, var(--ice-50) 0%, transparent 55%),
+      var(--white);
+    box-shadow:
+      0 0 0 1px rgba(13,19,32,0.06),
+      0 60px 120px -40px rgba(13,19,32,0.35),
+      0 30px 60px -20px rgba(13,19,32,0.22);
+  }
+
+  /* ---------- TITLE BAR (light glass) ---------- */
+  .titlebar {
+    height: var(--titlebar-h);
+    display: grid;
+    grid-template-columns: var(--sidebar-w) 1fr auto;
+    align-items: center;
+    background: linear-gradient(180deg, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.65) 100%);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border-bottom: 1px solid var(--hairline);
+  }
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    padding-left: 16px;
+  }
+  .brand-mark {
+    width: 22px; height: 22px;
+    border-radius: 7px;
+    background:
+      radial-gradient(120% 120% at 30% 25%, #ffffff 0%, #d8e8f7 30%, #6c98c5 70%, #1f4e8a 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.95),
+      inset 0 -2px 4px rgba(13,19,32,0.18),
+      0 4px 10px -4px rgba(31,78,138,0.45);
+    position: relative;
+  }
+  .brand-mark::after {
+    content: "";
+    position: absolute; inset: 2px 2px auto 2px; height: 7px;
+    border-radius: 5px 5px 9px 9px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0));
+  }
+  .brand-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .brand-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--slate-400);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  /* engines twin chip in titlebar */
+  .center {
+    justify-self: center;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .engines {
+    display: flex;
+    border-radius: 8px;
+    border: 1px solid var(--hairline-2);
+    background: var(--white);
+    overflow: hidden;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.9) inset,
+      0 1px 2px rgba(13,19,32,0.04);
+  }
+  .eng {
+    display: flex; align-items: center; gap: 7px;
+    padding: 5px 11px;
+    font-size: 11.5px;
+    color: var(--slate-700);
+    font-weight: 500;
+  }
+  .eng + .eng { border-left: 1px solid var(--hairline); }
+  .eng .led {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #16a34a;
+    box-shadow: 0 0 5px rgba(22,163,74,0.55);
+    animation: ledPulse 2.4s ease-in-out infinite;
+  }
+  .eng .k {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--slate-400);
+  }
+  @keyframes ledPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
+
+  .palette {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 11px;
+    border-radius: 8px;
+    background: var(--white);
+    border: 1px solid var(--hairline-2);
+    font-size: 12px;
+    color: var(--slate-500);
+    font-weight: 450;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.9) inset;
+  }
+  .palette .magnifier {
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    border: 1.4px solid var(--slate-500);
+    position: relative;
+  }
+  .palette .magnifier::after {
+    content: ""; position: absolute;
+    width: 1.3px; height: 5px;
+    background: var(--slate-500);
+    right: -2px; bottom: -3px;
+    transform: rotate(-45deg);
+  }
+  .keycap-mini {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    padding: 1.5px 5px;
+    border-radius: 4px;
+    background: var(--frost);
+    border: 1px solid var(--hairline-2);
+    color: var(--slate-700);
+  }
+
+  .win-controls { display: flex; height: 100%; }
+  .win-controls button {
+    width: 44px; height: 100%;
+    border: none; background: transparent;
+    color: var(--slate-500);
+    cursor: pointer;
+    display: grid; place-items: center;
+  }
+  .win-controls button:hover { background: rgba(13,19,32,0.05); color: var(--ink); }
+  .win-controls .close:hover { background: #c8262d; color: #fff; }
+  .win-controls svg { width: 11px; height: 11px; stroke: currentColor; fill: none; stroke-width: 1.4; }
+
+  /* ---------- BODY ---------- */
+  .body {
+    height: calc(100% - var(--titlebar-h));
+    display: grid;
+    grid-template-columns: var(--sidebar-w) 1fr;
+  }
+
+  /* ---------- SIDEBAR (light ice) ---------- */
+  .sidebar {
+    background:
+      linear-gradient(180deg, var(--ice-50) 0%, var(--white) 100%);
+    color: var(--slate-700);
+    padding: 16px 12px 14px;
+    overflow-y: auto;
+    border-right: 1px solid var(--hairline);
+    display: flex; flex-direction: column;
+  }
+
+  .side-label {
+    padding: 8px 10px 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--slate-400);
+  }
+
+  .nav { list-style: none; padding: 0; margin: 0; display: grid; gap: 1px; }
+  .nav li a {
+    position: relative;
+    display: grid;
+    grid-template-columns: 18px 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--slate-600);
+    font-size: 13.5px;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+    transition: background .15s ease, color .15s ease;
+  }
+  .nav li a:hover { background: var(--white); color: var(--ink); box-shadow: 0 1px 0 rgba(13,19,32,0.04); }
+  .nav li.on a {
+    background: var(--white);
+    color: var(--ink);
+    box-shadow:
+      0 1px 0 rgba(13,19,32,0.04),
+      inset 0 0 0 1px var(--hairline);
+  }
+  .nav li.on a::before {
+    content: "";
+    position: absolute;
+    left: -1px; top: 8px; bottom: 8px;
+    width: 2px;
+    background: var(--cobalt);
+    border-radius: 2px;
+  }
+  .nav li a .badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    padding: 1.5px 5px;
+    border-radius: 4px;
+    background: var(--frost);
+    color: var(--slate-500);
+    border: 1px solid var(--hairline);
+  }
+  .nav svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* dual engines panel in sidebar */
+  .engines-panel {
+    margin: 8px 4px 0;
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    background: var(--white);
+    overflow: hidden;
+  }
+  .engine-card {
+    padding: 12px 12px 10px;
+  }
+  .engine-card + .engine-card { border-top: 1px solid var(--hairline); }
+  .engine-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .engine-head .role {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--slate-400);
+  }
+  .engine-head .led {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 10.5px;
+    color: var(--slate-500);
+    font-weight: 500;
+  }
+  .engine-head .led::before {
+    content: ""; width: 5px; height: 5px; border-radius: 50%;
+    background: #16a34a; box-shadow: 0 0 4px rgba(22,163,74,0.5);
+  }
+  .engine-name {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .engine-name em {
+    font-family: 'Newsreader', serif;
+    font-style: italic;
+    font-weight: 300;
+    color: var(--cobalt);
+    margin-left: 2px;
+    font-size: 13px;
+  }
+  .engine-meta {
+    margin-top: 4px;
+    display: flex; gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--slate-400);
+  }
+  .engine-meta b { color: var(--slate-600); font-weight: 500; }
+
+  .foot-mini {
+    margin-top: auto;
+    padding: 14px 10px 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.18em;
+    color: var(--slate-400);
+    text-transform: uppercase;
+  }
+  .foot-mini b { color: var(--slate-600); font-weight: 500; }
+
+  /* ---------- MAIN ---------- */
+  .main {
+    overflow-y: auto;
+    background:
+      radial-gradient(800px 500px at 100% 0%, var(--ice-50) 0%, transparent 55%),
+      radial-gradient(600px 400px at 0% 100%, var(--ice-50) 0%, transparent 55%),
+      var(--white);
+  }
+  .main-inner {
+    padding: 32px 40px 44px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  /* HERO */
+  .hero {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 28px;
+    padding-bottom: 22px;
+    border-bottom: 1px solid var(--hairline);
+    margin-bottom: 24px;
+    align-items: end;
+  }
+  .hero .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    color: var(--cobalt);
+    margin-bottom: 10px;
+  }
+  .hero h1 {
+    margin: 0;
+    font-size: 32px;
+    font-weight: 500;
+    letter-spacing: -0.028em;
+    color: var(--ink);
+    line-height: 1.08;
+  }
+  .hero h1 em {
+    font-family: 'Newsreader', serif;
+    font-style: italic;
+    font-weight: 300;
+    color: var(--cobalt);
+    letter-spacing: -0.025em;
+  }
+  .hero .sub {
+    margin-top: 6px;
+    font-size: 14px;
+    color: var(--slate-500);
+    max-width: 560px;
+  }
+
+  .head-actions { display: flex; gap: 8px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 13px;
+    border-radius: 9px;
+    border: 1px solid var(--hairline-2);
+    background: var(--white);
+    color: var(--slate-700);
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+    cursor: pointer;
+    box-shadow: 0 1px 0 rgba(13,19,32,0.03);
+  }
+  .btn:hover { border-color: var(--slate-300); color: var(--ink); }
+  .btn.primary {
+    background: linear-gradient(180deg, #2660e3 0%, #1d4ed8 60%, #163a8e 100%);
+    color: #fff;
+    border-color: var(--cobalt-deep);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.3),
+      inset 0 -6px 14px rgba(13,19,32,0.18),
+      0 6px 14px -8px rgba(29,78,216,0.55);
+  }
+  .btn.primary:hover { filter: brightness(1.04); }
+  .btn .kbd {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    padding: 1.5px 5px;
+    border-radius: 4px;
+    background: var(--frost);
+    color: var(--slate-500);
+    border: 1px solid var(--hairline-2);
+  }
+  .btn.primary .kbd {
+    background: rgba(255,255,255,0.15);
+    color: #e6efff;
+    border-color: rgba(255,255,255,0.25);
+  }
+  .btn svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* KPI strip */
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    border: 1px solid var(--hairline);
+    border-radius: 12px;
+    background: var(--white);
+    margin-bottom: 22px;
+    overflow: hidden;
+  }
+  .kpi {
+    padding: 14px 18px;
+    border-right: 1px solid var(--hairline);
+  }
+  .kpi:last-child { border-right: none; }
+  .kpi .lab {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--slate-400);
+    margin-bottom: 6px;
+  }
+  .kpi .val {
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: -0.025em;
+    color: var(--ink);
+    line-height: 1;
+    font-feature-settings: "tnum","lnum";
+  }
+  .kpi .val small {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--slate-400);
+    margin-left: 4px;
+    letter-spacing: 0;
+  }
+  .kpi .delta {
+    margin-top: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: #16a34a;
+  }
+  .kpi .delta.flat { color: var(--slate-400); }
+  .kpi .delta.warn { color: #b45309; }
+
+  /* ---------- ENGINE CARDS ---------- */
+  .row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 22px;
+  }
+
+  .card {
+    border: 1px solid var(--hairline);
+    border-radius: 14px;
+    background: var(--white);
+    padding: 22px 24px 20px;
+    position: relative;
+    overflow: hidden;
+    box-shadow:
+      0 1px 0 rgba(13,19,32,0.025),
+      0 0 0 1px rgba(13,19,32,0.015);
+  }
+  .card::before {
+    content: "";
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(360px 180px at 100% 0%, var(--ice-50) 0%, transparent 65%);
+    pointer-events: none;
+  }
+  .card > * { position: relative; }
+
+  .card-head {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: start;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .card-head .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--cobalt-soft);
+    margin-bottom: 6px;
+  }
+  .card-head h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.018em;
+  }
+  .card-head h2 em {
+    font-family: 'Newsreader', serif;
+    font-style: italic;
+    font-weight: 300;
+    color: var(--cobalt);
+    margin-left: 2px;
+  }
+  .card-head .desc {
+    margin: 5px 0 0;
+    font-size: 13px;
+    color: var(--slate-500);
+    max-width: 360px;
+  }
+  .status {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: #e9f7ee;
+    border: 1px solid rgba(22,163,74,0.25);
+    color: #15803d;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .status .led {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: #16a34a;
+    box-shadow: 0 0 4px rgba(22,163,74,0.55);
+  }
+
+  .action {
+    display: grid;
+    grid-template-columns: 38px 1fr auto;
+    gap: 14px;
+    align-items: center;
+    padding: 12px 14px;
+    border: 1px solid var(--hairline);
+    border-radius: 11px;
+    background: var(--paper);
+    margin-bottom: 14px;
+  }
+  .action .ic {
+    width: 32px; height: 32px;
+    border-radius: 9px;
+    background:
+      radial-gradient(120% 120% at 30% 25%, #ffffff 0%, #d8e8f7 30%, #6c98c5 70%, #1f4e8a 100%);
+    color: #fff;
+    display: grid; place-items: center;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.85),
+      inset 0 -2px 4px rgba(13,19,32,0.18),
+      0 4px 8px -4px rgba(31,78,138,0.4);
+  }
+  .action .ic svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .action .label .t {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .action .label .d {
+    margin-top: 1px;
+    font-size: 12px;
+    color: var(--slate-500);
+  }
+  .action .keys {
+    display: flex; gap: 4px;
+  }
+  .kbd {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    padding: 4px 9px;
+    border-radius: 7px;
+    background: var(--white);
+    border: 1px solid var(--hairline-2);
+    color: var(--slate-700);
+    box-shadow:
+      0 1px 0 rgba(13,19,32,0.06),
+      inset 0 1px 0 rgba(255,255,255,0.9);
+  }
+
+  /* engine spec line */
+  .spec {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+    margin-top: 10px;
+    border-top: 1px solid var(--hairline);
+    padding-top: 12px;
+  }
+  .spec .cell {
+    border-right: 1px solid var(--hairline);
+    padding-right: 12px;
+  }
+  .spec .cell:last-child { border-right: none; padding-right: 0; padding-left: 12px; }
+  .spec .cell + .cell { padding-left: 12px; }
+  .spec .lab {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--slate-400);
+    margin-bottom: 4px;
+  }
+  .spec .val {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+    font-feature-settings: "tnum","lnum";
+  }
+  .spec .val small {
+    font-weight: 400;
+    color: var(--slate-400);
+    margin-left: 3px;
+    font-size: 11px;
+  }
+
+  /* waveform */
+  .wave {
+    height: 60px;
+    display: flex; gap: 2px; align-items: center;
+    padding: 8px 4px;
+    border-radius: 10px;
+    background:
+      linear-gradient(180deg, var(--ice-50) 0%, var(--white) 100%);
+    border: 1px solid var(--hairline);
+  }
+  .wave i {
+    flex: 1;
+    border-radius: 1.5px;
+    background: var(--slate-200);
+    animation: amp 1.6s ease-in-out infinite;
+  }
+  .wave i:nth-child(odd)   { animation-duration: 1.1s; }
+  .wave i:nth-child(7n)    { background: var(--cobalt); animation-duration: 1.4s; }
+  .wave i:nth-child(11n)   { background: var(--cobalt-soft); }
+  .wave i:nth-child(13n)   { background: var(--ice-300); animation-duration: 2.0s; }
+  @keyframes amp {
+    0%, 100% { height: 12%; opacity: 0.55; }
+    50%      { height: 86%; opacity: 1; }
+  }
+
+  /* ---------- RECENT ACTIVITY ---------- */
+  .panel {
+    border: 1px solid var(--hairline);
+    border-radius: 14px;
+    background: var(--white);
+    overflow: hidden;
+    box-shadow: 0 1px 0 rgba(13,19,32,0.025);
+  }
+  .panel-head {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    padding: 16px 22px;
+    border-bottom: 1px solid var(--hairline);
+    background:
+      linear-gradient(180deg, var(--paper) 0%, var(--white) 100%);
+  }
+  .panel-head h2 {
+    margin: 0;
+    font-size: 14.5px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .panel-head h2 em {
+    font-family: 'Newsreader', serif;
+    font-style: italic;
+    font-weight: 300;
+    color: var(--cobalt);
+    margin-left: 2px;
+    font-size: 14px;
+  }
+  .panel-head h2 small {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 400;
+    color: var(--slate-400);
+    margin-left: 8px;
+    font-size: 10.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+  .panel-head .controls {
+    display: flex; gap: 6px;
+  }
+  .ghost {
+    border: 1px solid transparent;
+    background: transparent;
+    border-radius: 7px;
+    padding: 5px 10px;
+    font-size: 12px;
+    color: var(--slate-500);
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 500;
+  }
+  .ghost:hover { color: var(--ink); background: var(--frost); }
+  .ghost.on    { color: var(--cobalt); background: var(--cobalt-tint); border-color: rgba(29,78,216,0.18); }
+
+  .activity {
+    display: grid;
+  }
+  .a-row {
+    display: grid;
+    grid-template-columns: 26px 1fr 92px 76px 60px 30px;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 22px;
+    border-bottom: 1px solid var(--hairline);
+    font-size: 13px;
+    color: var(--slate-700);
+  }
+  .a-row:last-child { border-bottom: none; }
+  .a-row:hover { background: var(--paper); }
+  .a-row .ic {
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    background: var(--ice-50);
+    color: var(--cobalt-soft);
+    display: grid; place-items: center;
+    border: 1px solid var(--hairline);
+  }
+  .a-row .ic svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .a-row .text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .a-row .text .pre { color: var(--slate-400); margin-right: 4px; }
+  .a-row .meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    color: var(--slate-400);
+    text-transform: uppercase;
+  }
+  .a-row .meta.right { text-align: right; }
+  .tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 5px;
+    background: var(--frost);
+    color: var(--slate-600);
+    border: 1px solid var(--hairline);
+    justify-self: start;
+  }
+  .tag.dict { background: var(--cobalt-tint); color: var(--cobalt-deep); border-color: rgba(29,78,216,0.18); }
+  .a-row .copy {
+    width: 26px; height: 26px;
+    border: 1px solid var(--hairline);
+    border-radius: 7px;
+    background: var(--white);
+    color: var(--slate-500);
+    cursor: pointer;
+    display: grid; place-items: center;
+    justify-self: end;
+  }
+  .a-row .copy:hover { color: var(--ink); border-color: var(--hairline-2); }
+  .a-row .copy svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* 24h pulse strip */
+  .pulse {
+    padding: 14px 22px 18px;
+    border-top: 1px solid var(--hairline);
+    background: linear-gradient(180deg, var(--white) 0%, var(--paper) 100%);
+  }
+  .pulse-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 8px;
+  }
+  .pulse-head .lab {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--slate-400);
+  }
+  .pulse-head .lab b { color: var(--slate-700); font-weight: 500; }
+  .pulse-bars {
+    display: flex; gap: 2px; align-items: end;
+    height: 32px;
+  }
+  .pulse-bars i {
+    flex: 1;
+    background: var(--ice-200);
+    border-radius: 2px;
+    min-height: 4px;
+  }
+  .pulse-bars i.tall  { background: var(--cobalt); }
+  .pulse-bars i.med   { background: var(--cobalt-soft); }
+  .pulse-bars i.low   { background: var(--ice-300); }
+  .pulse-axis {
+    margin-top: 6px;
+    display: flex; justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.16em;
+    color: var(--slate-400);
+    text-transform: uppercase;
+  }
+
+  /* scrollbars */
+  .main::-webkit-scrollbar, .sidebar::-webkit-scrollbar { width: 8px; }
+  .main::-webkit-scrollbar-thumb { background: var(--slate-200); border-radius: 4px; }
+  .main::-webkit-scrollbar-thumb:hover { background: var(--slate-300); }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--slate-200); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<div class="window">
+
+  <!-- TITLE BAR -->
+  <header class="titlebar">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div class="brand-name">Veyra</div>
+      <span class="brand-tag">0.9.4</span>
+    </div>
+
+    <div class="center">
+      <div class="engines">
+        <div class="eng">
+          <span class="led"></span>
+          <span class="k">STT</span>
+          <span>Whisper · Turbo</span>
+        </div>
+        <div class="eng">
+          <span class="led"></span>
+          <span class="k">Drafter</span>
+          <span>Llama 3.2 · 1B</span>
+        </div>
+      </div>
+      <div class="palette">
+        <span class="magnifier"></span>
+        Command
+        <span class="keycap-mini">Ctrl</span>
+        <span class="keycap-mini">K</span>
+      </div>
+    </div>
+
+    <div class="win-controls">
+      <button aria-label="Minimize">
+        <svg viewBox="0 0 24 24"><path d="M6 12h12"/></svg>
+      </button>
+      <button aria-label="Maximize">
+        <svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"/></svg>
+      </button>
+      <button class="close" aria-label="Close">
+        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- BODY -->
+  <div class="body">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="side-label">Workspace</div>
+      <ul class="nav">
+        <li class="on">
+          <a href="#">
+            <svg viewBox="0 0 24 24"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9"/></svg>
+            <span>Home</span>
+            <span class="badge">⌘1</span>
+          </a>
+        </li>
+        <li>
+          <a href="#">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+            <span>History</span>
+            <span class="badge">⌘2</span>
+          </a>
+        </li>
+        <li>
+          <a href="#">
+            <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.2"/><path d="M3.5 6.5l8.5 6 8.5-6"/></svg>
+            <span>Email Drafter</span>
+            <span class="badge">⌘3</span>
+          </a>
+        </li>
+        <li>
+          <a href="#">
+            <svg viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3V4z"/><path d="M5 17h11"/><path d="M9 8h6"/></svg>
+            <span>Dictionary</span>
+            <span class="badge">⌘4</span>
+          </a>
+        </li>
+        <li>
+          <a href="#">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .35 1.86l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.86-.35 1.7 1.7 0 0 0-1.05 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.05-1.55 1.7 1.7 0 0 0-1.86.35l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1.05H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 9 1.7 1.7 0 0 0 4.27 7.14l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.86.35h.02A1.7 1.7 0 0 0 10 3.09V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.05 1.55h.02a1.7 1.7 0 0 0 1.86-.35l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9v.02a1.7 1.7 0 0 0 1.55 1.05H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1.05z"/></svg>
+            <span>Settings</span>
+            <span class="badge">⌘,</span>
+          </a>
+        </li>
+      </ul>
+
+      <div class="side-label" style="margin-top:18px;">Engines</div>
+      <div class="engines-panel">
+        <!-- STT -->
+        <div class="engine-card">
+          <div class="engine-head">
+            <span class="role">STT · 01</span>
+            <span class="led">Ready</span>
+          </div>
+          <div class="engine-name">Whisper <em>turbo</em></div>
+          <div class="engine-meta">
+            <span><b>1.5</b> GB</span>
+            <span>·</span>
+            <span><b>112</b> ms</span>
+            <span>·</span>
+            <span>16 kHz</span>
+          </div>
+        </div>
+        <!-- Drafter -->
+        <div class="engine-card">
+          <div class="engine-head">
+            <span class="role">Drafter · 02</span>
+            <span class="led">Ready</span>
+          </div>
+          <div class="engine-name">Llama <em>3.2 · 1B</em></div>
+          <div class="engine-meta">
+            <span>Ollama</span>
+            <span>·</span>
+            <span><b>Q4</b>_K_M</span>
+            <span>·</span>
+            <span><b>0.8</b> GB</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="foot-mini">100% local · <b>%appdata%\com.typr.app</b></div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+      <div class="main-inner">
+
+        <!-- HERO -->
+        <header class="hero">
+          <div>
+            <div class="eyebrow">Workspace · Home · Saturday 03 May</div>
+            <h1>Boa tarde, Bruno. <em>— quiet desk, ready when you are.</em></h1>
+            <p class="sub">Two engines awake on this machine. Press F24 to dictate, Pause to draft an email — both run locally and never leave your disk.</p>
+          </div>
+          <div class="head-actions">
+            <button class="btn">
+              <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+              New
+              <span class="kbd">⌘N</span>
+            </button>
+            <button class="btn primary">
+              <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>
+              Start dictation
+              <span class="kbd">F24</span>
+            </button>
+          </div>
+        </header>
+
+        <!-- KPI -->
+        <section class="kpis">
+          <div class="kpi">
+            <div class="lab">Sessions today</div>
+            <div class="val">12</div>
+            <div class="delta">↑ 4 vs yesterday</div>
+          </div>
+          <div class="kpi">
+            <div class="lab">Words transcribed</div>
+            <div class="val">3 482<small>w</small></div>
+            <div class="delta">↑ 12.4%</div>
+          </div>
+          <div class="kpi">
+            <div class="lab">Drafts composed</div>
+            <div class="val">7</div>
+            <div class="delta flat">— same</div>
+          </div>
+          <div class="kpi">
+            <div class="lab">STT latency · p50</div>
+            <div class="val">112<small>ms</small></div>
+            <div class="delta">↓ 8 ms</div>
+          </div>
+        </section>
+
+        <!-- TWO ENGINE CARDS -->
+        <section class="row-2">
+
+          <article class="card">
+            <header class="card-head">
+              <div>
+                <div class="eyebrow">01 · Capture · STT</div>
+                <h2>Speech to Text <em>— Whisper</em></h2>
+                <p class="desc">Dictate into any focused field. Whisper transcribes locally and pastes at the cursor.</p>
+              </div>
+              <span class="status"><span class="led"></span> Operational</span>
+            </header>
+
+            <div class="action">
+              <span class="ic">
+                <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>
+              </span>
+              <div class="label">
+                <div class="t">Hold F24 to dictate</div>
+                <div class="d">Press once to start, again to stop.</div>
+              </div>
+              <span class="keys"><span class="kbd">F24</span></span>
+            </div>
+
+            <div class="wave">
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+
+            <div class="spec">
+              <div class="cell">
+                <div class="lab">Model</div>
+                <div class="val">Turbo<small>1.5 GB</small></div>
+              </div>
+              <div class="cell">
+                <div class="lab">Latency</div>
+                <div class="val">112<small>ms</small></div>
+              </div>
+              <div class="cell">
+                <div class="lab">Language</div>
+                <div class="val">pt-PT<small>auto</small></div>
+              </div>
+            </div>
+          </article>
+
+          <article class="card">
+            <header class="card-head">
+              <div>
+                <div class="eyebrow">02 · Compose · LLM</div>
+                <h2>Email Drafter <em>— Llama</em></h2>
+                <p class="desc">Speak an instruction. The local LLM drafts a polished message, kept on your machine.</p>
+              </div>
+              <span class="status"><span class="led"></span> Operational</span>
+            </header>
+
+            <div class="action">
+              <span class="ic">
+                <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.2"/><path d="M3.5 6.5l8.5 6 8.5-6"/></svg>
+              </span>
+              <div class="label">
+                <div class="t">Hold Pause to draft</div>
+                <div class="d">Voice instruction → finished draft.</div>
+              </div>
+              <span class="keys"><span class="kbd">Pause</span></span>
+            </div>
+
+            <div class="wave">
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+
+            <div class="spec">
+              <div class="cell">
+                <div class="lab">Model</div>
+                <div class="val">Llama 3.2<small>1B</small></div>
+              </div>
+              <div class="cell">
+                <div class="lab">Quant</div>
+                <div class="val">Q4_K_M<small>0.8 GB</small></div>
+              </div>
+              <div class="cell">
+                <div class="lab">Runtime</div>
+                <div class="val">Ollama<small>local</small></div>
+              </div>
+            </div>
+          </article>
+
+        </section>
+
+        <!-- RECENT ACTIVITY -->
+        <section class="panel">
+          <header class="panel-head">
+            <h2>Recent activity <em>— last 24h</em><small>· 12 items</small></h2>
+            <div class="controls">
+              <button class="ghost on">All</button>
+              <button class="ghost">Drafts</button>
+              <button class="ghost">Dictations</button>
+            </div>
+          </header>
+
+          <div class="activity">
+
+            <div class="a-row">
+              <span class="ic">
+                <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.2"/><path d="M3.5 6.5l8.5 6 8.5-6"/></svg>
+              </span>
+              <div class="text"><span class="pre">Olá,</span>escrevo para informar que os materiais já foram postos no sítio que combinámos.</div>
+              <span class="tag">Draft</span>
+              <span class="meta">36 words</span>
+              <span class="meta right">14:22</span>
+              <button class="copy" aria-label="Copy">
+                <svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+              </button>
+            </div>
+
+            <div class="a-row">
+              <span class="ic">
+                <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.2"/><path d="M3.5 6.5l8.5 6 8.5-6"/></svg>
+              </span>
+              <div class="text"><span class="pre">Olá,</span>escrevo para informar que e aí. Caso seja necessário ajustar algum detalhe…</div>
+              <span class="tag">Draft</span>
+              <span class="meta">42 words</span>
+              <span class="meta right">11:08</span>
+              <button class="copy" aria-label="Copy">
+                <svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+              </button>
+            </div>
+
+            <div class="a-row">
+              <span class="ic">
+                <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>
+              </span>
+              <div class="text">faz-me um email a dizer que hoje vou lá às cinco da tarde para o senhor Bruno Rodrigues</div>
+              <span class="tag dict">Dictation</span>
+              <span class="meta">18 words</span>
+              <span class="meta right">09:54</span>
+              <button class="copy" aria-label="Copy">
+                <svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+              </button>
+            </div>
+
+            <div class="a-row">
+              <span class="ic">
+                <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.2"/><path d="M3.5 6.5l8.5 6 8.5-6"/></svg>
+              </span>
+              <div class="text"><span class="pre">Following up</span>on the offensive security position discussed last week.</div>
+              <span class="tag">Draft</span>
+              <span class="meta">54 words</span>
+              <span class="meta right">yesterday</span>
+              <button class="copy" aria-label="Copy">
+                <svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+              </button>
+            </div>
+
+          </div>
+
+          <!-- 24h pulse -->
+          <div class="pulse">
+            <div class="pulse-head">
+              <span class="lab">24h activity · <b>local time</b></span>
+              <span class="lab"><b>peak</b> 14:00</span>
+            </div>
+            <div class="pulse-bars">
+              <i style="height: 8%"></i>
+              <i style="height: 6%"  class="low"></i>
+              <i style="height: 4%"  class="low"></i>
+              <i style="height: 4%"  class="low"></i>
+              <i style="height: 6%"  class="low"></i>
+              <i style="height: 12%" class="low"></i>
+              <i style="height: 24%" class="med"></i>
+              <i style="height: 36%" class="med"></i>
+              <i style="height: 48%" class="med"></i>
+              <i style="height: 62%" class="tall"></i>
+              <i style="height: 54%" class="tall"></i>
+              <i style="height: 38%" class="med"></i>
+              <i style="height: 46%" class="med"></i>
+              <i style="height: 78%" class="tall"></i>
+              <i style="height: 92%" class="tall"></i>
+              <i style="height: 84%" class="tall"></i>
+              <i style="height: 56%" class="med"></i>
+              <i style="height: 42%" class="med"></i>
+              <i style="height: 28%" class="med"></i>
+              <i style="height: 18%" class="low"></i>
+              <i style="height: 14%" class="low"></i>
+              <i style="height: 10%" class="low"></i>
+              <i style="height: 8%"  class="low"></i>
+              <i style="height: 6%"  class="low"></i>
+            </div>
+            <div class="pulse-axis">
+              <span>00</span><span>06</span><span>12</span><span>18</span><span>now</span>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+  </div>
+</div>
+
+</body>
+</html>

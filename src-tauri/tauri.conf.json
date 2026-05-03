@@ -20,6 +20,8 @@
         "minHeight": 500,
         "resizable": true,
         "decorations": false,
+        "transparent": true,
+        "shadow": false,
         "theme": "Light",
         "titleBarStyle": "Overlay",
         "hiddenTitle": true
