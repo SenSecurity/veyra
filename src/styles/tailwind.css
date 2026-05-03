@@ -132,24 +132,6 @@
     }
 }
 
-@keyframes typr-wave {
-  0% {
-    transform: scaleY(0.55);
-  }
-  45% {
-    transform: scaleY(var(--typr-wave-scale, 1.6));
-  }
-  100% {
-    transform: scaleY(0.7);
-  }
-}
-
-.typr-wave-bar {
-  animation: typr-wave 520ms ease-in-out infinite;
-  transform-origin: center;
-  will-change: transform;
-}
-
 .typr-transcribing-label {
   animation: typr-transcribing-pulse 1200ms ease-in-out infinite;
 }

@@ -22,7 +22,8 @@ export function OverlayApp() {
     void ipc.getRecordingState().then((recordingState) => {
       setState(mapState(recordingState));
     }).catch(() => {});
-  }, [setState]);
+    void ipc.getRecordingMode().then(setMode).catch(() => {});
+  }, [setMode, setState]);
 
   useEffect(() => {
     const un = listen<RecordingState>("overlay:state", (e) => setState(mapState(e.payload)));
@@ -39,9 +40,10 @@ export function OverlayApp() {
       void ipc.getRecordingState().then((recordingState) => {
         setState(mapState(recordingState));
       }).catch(() => {});
+      void ipc.getRecordingMode().then(setMode).catch(() => {});
     }, 180);
     return () => window.clearInterval(timer);
-  }, [setState]);
+  }, [setMode, setState]);
 
   useEffect(() => {
     const un = listen<{ level: number }>("overlay:level", (e) => setLevel(e.payload.level));

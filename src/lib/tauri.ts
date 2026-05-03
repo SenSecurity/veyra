@@ -29,6 +29,7 @@ export const ipc = {
   listMicrophones: () => invoke<MicDevice[]>("list_microphones"),
   getRecordingState: () => invoke<RecordingState>("get_recording_state"),
   getRecordingLevel: () => invoke<number>("get_recording_level"),
+  getRecordingMode: () => invoke<"dictation" | "command">("get_recording_mode"),
   checkModelDownloaded: (modelSize: string) =>
     invoke<boolean>("check_model_downloaded", { modelSize }),
   downloadModel: (modelSize: string) =>
