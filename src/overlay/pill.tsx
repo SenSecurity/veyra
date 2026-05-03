@@ -52,7 +52,7 @@ export function OverlayPill({ state, mode }: { state: OverlayState; mode: Overla
             bars.map((height, index) => (
               <motion.span
                 key={`${height}-${index}`}
-                className="w-0.5 rounded-full bg-white"
+                className="block w-0.5 rounded-full bg-white"
                 animate={{
                   height:
                     state === "recording"
