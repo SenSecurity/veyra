@@ -641,8 +641,12 @@ fn save_settings(
 }
 
 /// Apply the configured overlay (style, size) to the live overlay window:
-/// resize via `set_size` and re-center against the work-area bottom margin.
-/// No-op when the overlay window does not exist yet.
+/// resize via `set_size`, re-center against the work-area bottom margin,
+/// and emit `overlay:layout` so the overlay webview's React tree switches
+/// components without waiting for an unrelated settings refresh. The
+/// overlay webview has its own zustand store, isolated from the main
+/// window — without this event the React tree would render the previous
+/// style inside the freshly-resized OS window.
 fn apply_overlay_layout(app: &tauri::AppHandle, style: &str, size: &str) {
     let (w, h) = overlay_dims(style, size);
     if let Some(overlay) = app.get_webview_window("overlay") {
@@ -651,6 +655,11 @@ fn apply_overlay_layout(app: &tauri::AppHandle, style: &str, size: &str) {
             let _ = overlay.set_position(position);
         }
     }
+    let _ = app.emit_to(
+        "overlay",
+        "overlay:layout",
+        serde_json::json!({ "style": style, "size": size }),
+    );
 }
 
 #[tauri::command]
