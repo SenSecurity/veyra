@@ -69,6 +69,7 @@ vi.mock("@/hooks/use-settings", () => ({
       commandHotkey: "Pause",
       overlayStyle: "capsule",
       overlaySize: "medium",
+      overlayPosition: "bottom-center",
     },
     update: mockUpdate,
     reload: mockReload,

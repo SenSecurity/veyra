@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SettingsOverlayRoute } from "./overlay";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -23,6 +23,7 @@ const defaultSettings: Settings = {
   commandHotkey: "Pause",
   overlayStyle: "capsule",
   overlaySize: "medium",
+  overlayPosition: "bottom-center",
 };
 
 vi.mock("@/lib/tauri", () => ({
@@ -56,11 +57,22 @@ describe("SettingsOverlayRoute", () => {
 
   it("renders all four size segments", () => {
     render(<SettingsOverlayRoute />);
-    expect(screen.getAllByRole("radio")).toHaveLength(4);
+    const sizeGroup = screen.getByRole("radiogroup", { name: /overlay size/i });
+    expect(within(sizeGroup).getAllByRole("radio")).toHaveLength(4);
     expect(screen.getByText("Smaller")).toBeInTheDocument();
     expect(screen.getByText("Small")).toBeInTheDocument();
     expect(screen.getByText("Medium")).toBeInTheDocument();
     expect(screen.getByText("Large")).toBeInTheDocument();
+  });
+
+  it("renders the nine screen position anchors", () => {
+    render(<SettingsOverlayRoute />);
+    const positionGroup = screen.getByRole("radiogroup", { name: /overlay position/i });
+    expect(within(positionGroup).getAllByRole("radio")).toHaveLength(9);
+    expect(within(positionGroup).getByRole("radio", { name: /bottom center/i })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
   });
 
   it("calls update with overlayStyle: 'orb' when the Halo Orb card is clicked", async () => {
@@ -77,12 +89,24 @@ describe("SettingsOverlayRoute", () => {
 
   it("calls update with overlaySize: 'large' when the Large segment is clicked", async () => {
     render(<SettingsOverlayRoute />);
-    fireEvent.click(screen.getByRole("radio", { name: /large/i }));
+    const sizeGroup = screen.getByRole("radiogroup", { name: /overlay size/i });
+    fireEvent.click(within(sizeGroup).getByRole("radio", { name: /large/i }));
     expect(mockSaveSettings).toHaveBeenCalledWith({
       ...defaultSettings,
       overlaySize: "large",
     });
     await waitFor(() => expect(mockSetOverlayLayout).toHaveBeenCalledWith("capsule", "large"));
+  });
+
+  it("calls update with overlayPosition when a position anchor is clicked", async () => {
+    render(<SettingsOverlayRoute />);
+    const positionGroup = screen.getByRole("radiogroup", { name: /overlay position/i });
+    fireEvent.click(within(positionGroup).getByRole("radio", { name: /top right/i }));
+    expect(mockSaveSettings).toHaveBeenCalledWith({
+      ...defaultSettings,
+      overlayPosition: "top-right",
+    });
+    await waitFor(() => expect(mockSetOverlayLayout).toHaveBeenCalledWith("capsule", "medium"));
   });
 
   it("renders the capsule dimension caption when style is capsule", () => {
@@ -94,8 +118,9 @@ describe("SettingsOverlayRoute", () => {
     render(<SettingsOverlayRoute />);
     const capsuleCard = screen.getByText("Capsule").closest("button");
     expect(capsuleCard?.getAttribute("aria-pressed")).toBe("true");
+    const sizeGroup = screen.getByRole("radiogroup", { name: /overlay size/i });
     expect(
-      screen.getByRole("radio", { name: /medium/i }).getAttribute("aria-checked"),
+      within(sizeGroup).getByRole("radio", { name: /medium/i }).getAttribute("aria-checked"),
     ).toBe("true");
   });
 
@@ -138,7 +163,8 @@ describe("SettingsOverlayRoute", () => {
 
   it("previews the newly selected size instead of stale medium state", () => {
     render(<SettingsOverlayRoute />);
-    fireEvent.click(screen.getByRole("radio", { name: /smaller/i }));
+    const sizeGroup = screen.getByRole("radiogroup", { name: /overlay size/i });
+    fireEvent.click(within(sizeGroup).getByRole("radio", { name: /smaller/i }));
     fireEvent.click(screen.getByRole("button", { name: /show preview/i }));
     expect(mockPreviewOverlay).toHaveBeenCalledWith(
       "capsule",

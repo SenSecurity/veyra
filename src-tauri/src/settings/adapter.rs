@@ -21,6 +21,17 @@ use crate::settings::keyring::{KeyringBackend, KeyringError};
 use crate::settings::legacy_v1;
 use crate::settings::schema::Settings;
 
+fn normalize_overlay_position(value: &str) -> String {
+    match value {
+        "top-left" | "top-center" | "top-right" | "center-left" | "center" | "center-right"
+        | "bottom-left" | "bottom-center" | "bottom-right" => value.to_string(),
+        // Older v2 configs used "near-cursor"; Veyra now deliberately anchors
+        // to a stable screen position so the overlay does not chase the caret.
+        "near-cursor" | "" => "bottom-center".to_string(),
+        _ => "bottom-center".to_string(),
+    }
+}
+
 /// Project the in-memory v2 settings + keyring secret into a v1-shaped struct
 /// suitable for `serde_json` serialisation back to the existing frontend.
 ///
@@ -50,6 +61,7 @@ pub fn to_v1_view(v2: &Settings, backend: &dyn KeyringBackend) -> legacy_v1::Set
         command_hotkey: v2.hotkeys.command_mode.clone(),
         overlay_style: v2.overlay.style.clone(),
         overlay_size: v2.overlay.size.clone(),
+        overlay_position: normalize_overlay_position(&v2.overlay.position),
     }
 }
 
@@ -67,6 +79,7 @@ pub fn apply_v1_v2_fields(target: &mut Settings, payload: &legacy_v1::Settings) 
     target.hotkeys.command_mode = payload.command_hotkey.clone();
     target.overlay.style = payload.overlay_style.clone();
     target.overlay.size = payload.overlay_size.clone();
+    target.overlay.position = normalize_overlay_position(&payload.overlay_position);
 }
 
 /// Write the keyring half of a v1 payload. Empty `groq_api_key` ⇒ `delete`;
@@ -143,6 +156,7 @@ mod tests {
             command_hotkey: "F12".to_string(),
             overlay_style: "capsule".to_string(),
             overlay_size: "medium".to_string(),
+            overlay_position: "bottom-left".to_string(),
         };
         apply_v1_payload(&mut v2, payload, &kr).unwrap();
         assert_eq!(v2.microphone, "Built-in");
@@ -172,6 +186,7 @@ mod tests {
             command_hotkey: v2.hotkeys.command_mode.clone(),
             overlay_style: v2.overlay.style.clone(),
             overlay_size: v2.overlay.size.clone(),
+            overlay_position: v2.overlay.position.clone(),
         };
         apply_v1_payload(&mut v2, payload, &kr).unwrap();
         assert_eq!(kr.peek(), None);
@@ -217,6 +232,7 @@ mod tests {
             command_hotkey: "F12".to_string(),
             overlay_style: "orb".to_string(),
             overlay_size: "large".to_string(),
+            overlay_position: "top-right".to_string(),
         };
         apply_v1_payload(&mut v2, original.clone(), &kr).unwrap();
 

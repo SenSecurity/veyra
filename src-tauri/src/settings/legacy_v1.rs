@@ -23,6 +23,8 @@ pub struct Settings {
     pub overlay_style: String,
     #[serde(rename = "overlaySize", default = "default_overlay_size")]
     pub overlay_size: String,
+    #[serde(rename = "overlayPosition", default = "default_overlay_position")]
+    pub overlay_position: String,
 }
 
 fn default_command_hotkey() -> String {
@@ -45,6 +47,10 @@ fn default_overlay_size() -> String {
     "medium".to_string()
 }
 
+fn default_overlay_position() -> String {
+    "bottom-center".to_string()
+}
+
 impl Default for Settings {
     fn default() -> Self {
         Self {
@@ -59,6 +65,7 @@ impl Default for Settings {
             command_hotkey: default_command_hotkey(),
             overlay_style: default_overlay_style(),
             overlay_size: default_overlay_size(),
+            overlay_position: default_overlay_position(),
         }
     }
 }
@@ -103,6 +110,7 @@ mod tests {
         assert_eq!(settings.command_hotkey, "Pause");
         assert_eq!(settings.overlay_style, "capsule");
         assert_eq!(settings.overlay_size, "medium");
+        assert_eq!(settings.overlay_position, "bottom-center");
     }
 
     #[test]
@@ -123,6 +131,7 @@ mod tests {
         let parsed: Settings = serde_json::from_str(legacy_json).expect("legacy parse");
         assert_eq!(parsed.overlay_style, "capsule");
         assert_eq!(parsed.overlay_size, "medium");
+        assert_eq!(parsed.overlay_position, "bottom-center");
     }
 
     #[test]
@@ -130,10 +139,12 @@ mod tests {
         let mut settings = Settings::default();
         settings.overlay_style = "orb".to_string();
         settings.overlay_size = "large".to_string();
+        settings.overlay_position = "top-right".to_string();
         let json = serde_json::to_string(&settings).expect("serialize");
         let restored: Settings = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(restored.overlay_style, "orb");
         assert_eq!(restored.overlay_size, "large");
+        assert_eq!(restored.overlay_position, "top-right");
     }
 
     #[test]

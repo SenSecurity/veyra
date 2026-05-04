@@ -40,6 +40,7 @@ use typr_lib::transcribe_local;
 // Halo Orb: transparent box sized to the largest concentric ring plus optional
 // chip/hint clearance. The "smaller" orb is intentionally just a tiny orb.
 const OVERLAY_BOTTOM_MARGIN: i32 = 12;
+const OVERLAY_EDGE_MARGIN: i32 = 18;
 
 /// Returns (width, height) for the (style, size) pair, falling back to
 /// capsule + medium for unknown values. Mirrors SIZE_SPECS in
@@ -86,7 +87,11 @@ fn play_transition_sound(state: &RecordingState) {
 fn play_transition_sound(_state: &RecordingState) {}
 
 #[cfg(target_os = "windows")]
-fn active_monitor_bottom_position(width: i32, height: i32) -> Option<tauri::PhysicalPosition<i32>> {
+fn active_monitor_position(
+    width: i32,
+    height: i32,
+    placement: &str,
+) -> Option<tauri::PhysicalPosition<i32>> {
     use windows_sys::Win32::Foundation::POINT;
     use windows_sys::Win32::Graphics::Gdi::{
         ClientToScreen, GetMonitorInfoW, MonitorFromPoint, MONITORINFO, MONITOR_DEFAULTTONEAREST,
@@ -130,10 +135,11 @@ fn active_monitor_bottom_position(width: i32, height: i32) -> Option<tauri::Phys
         Some(point)
     }
 
-    unsafe fn bottom_center_for_screen_point(
+    unsafe fn position_for_screen_point(
         point: POINT,
         width: i32,
         height: i32,
+        placement: &str,
     ) -> Option<tauri::PhysicalPosition<i32>> {
         let monitor = MonitorFromPoint(point, MONITOR_DEFAULTTONEAREST);
         if monitor.is_null() {
@@ -151,8 +157,22 @@ fn active_monitor_bottom_position(width: i32, height: i32) -> Option<tauri::Phys
         }
 
         let work = info.rcWork;
-        let x = work.left + ((work.right - work.left - width) / 2);
-        let y = work.bottom - OVERLAY_BOTTOM_MARGIN - height;
+        let work_width = work.right - work.left;
+        let work_height = work.bottom - work.top;
+        let x = if placement.ends_with("-left") {
+            work.left + OVERLAY_EDGE_MARGIN
+        } else if placement.ends_with("-right") {
+            work.right - OVERLAY_EDGE_MARGIN - width
+        } else {
+            work.left + ((work_width - width) / 2)
+        };
+        let y = if placement.starts_with("top-") {
+            work.top + OVERLAY_EDGE_MARGIN
+        } else if placement.starts_with("center-") || placement == "center" {
+            work.top + ((work_height - height) / 2)
+        } else {
+            work.bottom - OVERLAY_BOTTOM_MARGIN - height
+        };
         Some(tauri::PhysicalPosition::new(x, y))
     }
 
@@ -165,12 +185,16 @@ fn active_monitor_bottom_position(width: i32, height: i32) -> Option<tauri::Phys
                 None
             }
         })?;
-        bottom_center_for_screen_point(point, width, height)
+        position_for_screen_point(point, width, height, placement)
     }
 }
 
 #[cfg(not(target_os = "windows"))]
-fn active_monitor_bottom_position(_width: i32, _height: i32) -> Option<tauri::PhysicalPosition<i32>> {
+fn active_monitor_position(
+    _width: i32,
+    _height: i32,
+    _placement: &str,
+) -> Option<tauri::PhysicalPosition<i32>> {
     None
 }
 
@@ -504,8 +528,8 @@ fn parse_preview_recording_state(state: &str) -> Result<RecordingState, String> 
 
 fn preview_level_at(tick: u64) -> f32 {
     const LEVELS: [f32; 16] = [
-        0.10, 0.34, 0.58, 0.42, 0.72, 0.28, 0.49, 0.84, 0.38, 0.64, 0.18, 0.52, 0.76, 0.31,
-        0.46, 0.68,
+        0.10, 0.34, 0.58, 0.42, 0.72, 0.28, 0.49, 0.84, 0.38, 0.64, 0.18, 0.52, 0.76, 0.31, 0.46,
+        0.68,
     ];
     LEVELS[(tick as usize) % LEVELS.len()]
 }
@@ -537,7 +561,7 @@ fn update_overlay(app: &tauri::AppHandle, state: &RecordingState) {
                 apply_overlay_layout(app, &style, &size);
                 if *state == RecordingState::Recording {
                     let (w, h) = current_overlay_dims(app);
-                    if let Some(position) = active_monitor_bottom_position(w, h) {
+                    if let Some(position) = active_monitor_overlay_position(app, w, h) {
                         let _ = overlay.set_position(position);
                     }
                 }
@@ -565,6 +589,30 @@ fn current_overlay_layout(app: &tauri::AppHandle) -> (String, String) {
     let state: tauri::State<AppState> = app.state::<AppState>();
     let s = state.settings.lock().unwrap();
     (s.overlay.style.clone(), s.overlay.size.clone())
+}
+
+fn current_overlay_position(app: &tauri::AppHandle) -> String {
+    let state: tauri::State<AppState> = app.state::<AppState>();
+    let s = state.settings.lock().unwrap();
+    normalize_overlay_position(&s.overlay.position)
+}
+
+fn normalize_overlay_position(value: &str) -> String {
+    match value {
+        "top-left" | "top-center" | "top-right" | "center-left" | "center" | "center-right"
+        | "bottom-left" | "bottom-center" | "bottom-right" => value.to_string(),
+        "near-cursor" | "" => "bottom-center".to_string(),
+        _ => "bottom-center".to_string(),
+    }
+}
+
+fn active_monitor_overlay_position(
+    app: &tauri::AppHandle,
+    width: i32,
+    height: i32,
+) -> Option<tauri::PhysicalPosition<i32>> {
+    let placement = current_overlay_position(app);
+    active_monitor_position(width, height, &placement)
 }
 
 fn spawn_level_emitter(app: tauri::AppHandle) {
@@ -648,7 +696,9 @@ fn save_settings(
         let snapshot = v2.clone();
 
         layout_changed = snapshot.overlay.style != settings.overlay_style
-            || snapshot.overlay.size != settings.overlay_size;
+            || snapshot.overlay.size != settings.overlay_size
+            || normalize_overlay_position(&snapshot.overlay.position)
+                != normalize_overlay_position(&settings.overlay_position);
         new_style = settings.overlay_style.clone();
         new_size = settings.overlay_size.clone();
 
@@ -680,7 +730,7 @@ fn save_settings(
 }
 
 /// Apply the configured overlay (style, size) to the live overlay window:
-/// resize via `set_size`, re-center against the work-area bottom margin,
+/// resize via `set_size`, anchor against the configured work-area position,
 /// and emit `overlay:layout` so the overlay webview's React tree switches
 /// components without waiting for an unrelated settings refresh. The
 /// overlay webview has its own zustand store, isolated from the main
@@ -690,7 +740,7 @@ fn apply_overlay_layout(app: &tauri::AppHandle, style: &str, size: &str) -> u64 
     let (w, h) = overlay_dims(style, size);
     if let Some(overlay) = app.get_webview_window("overlay") {
         let _ = overlay.set_size(tauri::LogicalSize::new(w as f64, h as f64));
-        if let Some(position) = active_monitor_bottom_position(w, h) {
+        if let Some(position) = active_monitor_overlay_position(app, w, h) {
             let _ = overlay.set_position(position);
         }
     }
@@ -768,7 +818,7 @@ fn preview_overlay(
     let layout_revision = apply_overlay_layout(&app, &style, &size);
     let (w, h) = overlay_dims(&style, &size);
     if let Some(overlay) = app.get_webview_window("overlay") {
-        if let Some(position) = active_monitor_bottom_position(w, h) {
+        if let Some(position) = active_monitor_overlay_position(&app, w, h) {
             let _ = overlay.set_position(position);
         }
         let _ = overlay.show();
@@ -825,7 +875,9 @@ fn preview_overlay(
 
         let state = app_for_task.state::<AppState>();
         if state.overlay_preview_generation.load(Ordering::SeqCst) == generation {
-            state.overlay_preview_generation.fetch_add(1, Ordering::SeqCst);
+            state
+                .overlay_preview_generation
+                .fetch_add(1, Ordering::SeqCst);
             let _ = app_for_task.emit_to(
                 "overlay",
                 "overlay:preview",
@@ -849,7 +901,9 @@ fn preview_overlay(
 
 #[tauri::command]
 fn hide_overlay_preview(app: tauri::AppHandle, state: State<AppState>) -> Result<(), String> {
-    state.overlay_preview_generation.fetch_add(1, Ordering::SeqCst);
+    state
+        .overlay_preview_generation
+        .fetch_add(1, Ordering::SeqCst);
     let _ = app.emit_to(
         "overlay",
         "overlay:preview",
@@ -1662,7 +1716,9 @@ async fn install_ollama_runtime_windows() -> Result<(), String> {
                 break;
             }
             None if std::time::Instant::now() >= deadline => {
-                tracing::warn!("silent Ollama installer is still running; wizard will keep polling");
+                tracing::warn!(
+                    "silent Ollama installer is still running; wizard will keep polling"
+                );
                 return Ok(());
             }
             None => {
@@ -1892,7 +1948,7 @@ fn main() {
             // the persisted overlay style/size and may be resized later via
             // the `set_overlay_layout` Tauri command.
             let (overlay_w, overlay_h) = current_overlay_dims(app.handle());
-            let (x, y) = active_monitor_bottom_position(overlay_w, overlay_h)
+            let (x, y) = active_monitor_overlay_position(app.handle(), overlay_w, overlay_h)
                 .map(|pos| (pos.x, pos.y))
                 .unwrap_or((640, 720));
 

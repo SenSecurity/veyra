@@ -32,6 +32,7 @@ vi.mock("@/hooks/use-settings", () => ({
       emailDraftModel: "llama3.2:1b",
       overlayStyle: "orb",
       overlaySize: "medium",
+      overlayPosition: "bottom-center",
     },
   }),
 }));

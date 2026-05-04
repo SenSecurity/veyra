@@ -34,7 +34,8 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
       // immediately rather than waiting for the next dictation cycle.
       const layoutChanged =
         current.overlayStyle !== next.overlayStyle ||
-        current.overlaySize !== next.overlaySize;
+        current.overlaySize !== next.overlaySize ||
+        current.overlayPosition !== next.overlayPosition;
       if (layoutChanged) {
         ipc
           .setOverlayLayout(next.overlayStyle, next.overlaySize)

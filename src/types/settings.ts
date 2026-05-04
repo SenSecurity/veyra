@@ -7,6 +7,16 @@
 // pipeline ever introduces a new value, widen the union here first.
 export type OverlayStyle = "capsule" | "orb";
 export type OverlaySize = "smaller" | "small" | "medium" | "large";
+export type OverlayPosition =
+  | "top-left"
+  | "top-center"
+  | "top-right"
+  | "center-left"
+  | "center"
+  | "center-right"
+  | "bottom-left"
+  | "bottom-center"
+  | "bottom-right";
 
 export interface Settings {
   microphone: string;
@@ -23,4 +33,6 @@ export interface Settings {
   overlayStyle: OverlayStyle;
   /** Three-step size for the chosen overlay style. */
   overlaySize: OverlaySize;
+  /** Screen anchor for the floating overlay. */
+  overlayPosition: OverlayPosition;
 }

@@ -4,7 +4,7 @@ import { useSettings } from "@/hooks/use-settings";
 import { ipc } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { SettingsPanel } from "./general";
-import type { OverlaySize, OverlayStyle } from "@/types/settings";
+import type { OverlayPosition, OverlaySize, OverlayStyle } from "@/types/settings";
 
 const STYLE_OPTIONS: {
   value: OverlayStyle;
@@ -33,6 +33,18 @@ const SIZES: { value: OverlaySize; label: string; capsule: string; orb: string }
   { value: "large", label: "Large", capsule: "352 x 64", orb: "172 x 184" },
 ];
 
+const POSITION_OPTIONS: { value: OverlayPosition; label: string }[] = [
+  { value: "top-left", label: "Top left" },
+  { value: "top-center", label: "Top center" },
+  { value: "top-right", label: "Top right" },
+  { value: "center-left", label: "Middle left" },
+  { value: "center", label: "Center" },
+  { value: "center-right", label: "Middle right" },
+  { value: "bottom-left", label: "Bottom left" },
+  { value: "bottom-center", label: "Bottom center" },
+  { value: "bottom-right", label: "Bottom right" },
+];
+
 export function SettingsOverlayRoute() {
   const { settings, update, error, reload } = useSettings();
   const [previewActive, setPreviewActive] = useState(false);
@@ -52,6 +64,7 @@ export function SettingsOverlayRoute() {
 
   const currentStyle = settings.overlayStyle;
   const currentSize = settings.overlaySize;
+  const currentPosition = settings.overlayPosition ?? "bottom-center";
 
   async function togglePreview() {
     setPreviewError(null);
@@ -157,6 +170,51 @@ export function SettingsOverlayRoute() {
         </div>
         <p className="text-xs text-muted-foreground">
           Changes apply to the next dictation; the live overlay window resizes immediately.
+        </p>
+      </div>
+
+      {/* Position selector */}
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-medium text-foreground">Position</span>
+        <div
+          className="grid w-fit grid-cols-3 gap-1 rounded-xl border border-border bg-white p-1"
+          role="radiogroup"
+          aria-label="Overlay position"
+        >
+          {POSITION_OPTIONS.map((pos) => {
+            const active = currentPosition === pos.value;
+            return (
+              <button
+                key={pos.value}
+                type="button"
+                role="radio"
+                aria-label={pos.label}
+                aria-checked={active}
+                onClick={() => void update({ overlayPosition: pos.value })}
+                className={cn(
+                  "grid h-10 w-12 place-items-center rounded-lg transition-all duration-200 ease-out",
+                  "hover:-translate-y-0.5 active:translate-y-0",
+                  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
+                  active
+                    ? "bg-[var(--ice-50)] shadow-[inset_0_0_0_1px_var(--cyan-deep)]"
+                    : "hover:bg-frost",
+                )}
+              >
+                <span
+                  className={cn(
+                    "h-2.5 w-2.5 rounded-full transition-all duration-200",
+                    active
+                      ? "bg-[var(--cyan-deep)] shadow-[0_0_0_4px_var(--halo)]"
+                      : "bg-muted-foreground/35",
+                  )}
+                  aria-hidden="true"
+                />
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Preview and live dictation use the selected monitor and this screen anchor.
         </p>
       </div>
 

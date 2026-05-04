@@ -141,7 +141,7 @@ impl Default for Settings {
             overlay: Overlay {
                 style: "capsule".to_string(),
                 size: default_overlay_size(),
-                position: "near-cursor".to_string(),
+                position: "bottom-center".to_string(),
                 custom_pos: None,
             },
             formatting: Formatting {
@@ -202,6 +202,7 @@ mod tests {
         assert_eq!(s.hotkeys.recording_mode, "push-to-talk");
         assert_eq!(s.overlay.style, "capsule");
         assert_eq!(s.overlay.size, "medium");
+        assert_eq!(s.overlay.position, "bottom-center");
         assert_eq!(s.data.word_count_cap, 500_000);
         assert!(s.data.purge_on_exceed);
         assert_eq!(s.ui.theme, "system");
