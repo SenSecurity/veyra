@@ -17,10 +17,10 @@ interface SizeSpec {
 }
 
 const SIZE_SPECS: Record<OverlaySize, SizeSpec> = {
-  smaller: { orb: 56, ring1: 76, ring2: 96, ring3: 116 },
-  small: { orb: 72, ring1: 100, ring2: 130, ring3: 160 },
-  medium: { orb: 96, ring1: 130, ring2: 170, ring3: 210 },
-  large: { orb: 128, ring1: 170, ring2: 220, ring3: 270 },
+  smaller: { orb: 34, ring1: 44, ring2: 54, ring3: 64 },
+  small: { orb: 42, ring1: 58, ring2: 72, ring3: 86 },
+  medium: { orb: 52, ring1: 74, ring2: 92, ring3: 110 },
+  large: { orb: 64, ring1: 92, ring2: 116, ring3: 140 },
 };
 
 /**
@@ -55,6 +55,7 @@ export function HaloOrb({
   const showHint = useHintVisibility(recordingStartedAt, state);
 
   const spec = SIZE_SPECS[size];
+  const showChip = size !== "smaller";
 
   const primaryAction = busy
     ? () => void ipc.cancelRecording().catch(() => {})
@@ -65,7 +66,7 @@ export function HaloOrb({
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.16 }}
-      className="flex flex-col items-center gap-3 overflow-visible"
+      className="flex flex-col items-center gap-1.5 overflow-visible"
     >
       <div
         className="veyra-orb-wrap relative grid place-items-center"
@@ -134,19 +135,21 @@ export function HaloOrb({
         </button>
       </div>
 
+      {showChip ? (
       <div
         className="veyra-orb-chip"
         role="status"
         aria-live="polite"
       >
         <span className={cn("veyra-orb-led", busy && "veyra-orb-led-busy")} aria-hidden="true" />
-        <span className="font-mono text-[9px] tracking-[0.2em] uppercase text-muted-foreground">
+        <span className="font-mono text-[8px] tracking-[0.16em] uppercase text-muted-foreground">
           {busy ? "working" : recording ? "rec" : "ready"}
         </span>
-        <strong className="font-mono text-[11px] tabular-nums text-foreground">
+        <strong className="font-mono text-[10px] tabular-nums text-foreground">
           {busy ? "transcribing…" : elapsedLabel}
         </strong>
       </div>
+      ) : null}
 
       <AnimatePresence>
         {showHint ? (

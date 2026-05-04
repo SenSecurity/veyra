@@ -34,12 +34,11 @@ use typr_lib::transcribe_local;
 // so these constants only define the size and bottom-margin of the
 // transparent webview that hosts the React overlay tree.
 //
-// Capsule (docs/mockups/overlay-01-capsule.html): horizontal pill,
-// 520 px body + ~40 px shadow halo, 56 px capsule body + ~24 px
-// hotkey-hint area + ~16 px shadow halo.
+// Capsule: compact horizontal pill, sized closer to Wispr Flow than the
+// earlier full-width Glacier mockup. Window includes small shadow/hint slack.
 //
-// Halo Orb (docs/mockups/overlay-03-halo-orb.html): transparent box sized
-// to the largest concentric ring + chip + short hotkey hint clearance.
+// Halo Orb: transparent box sized to the largest concentric ring plus optional
+// chip/hint clearance. The "smaller" orb is intentionally just a tiny orb.
 const OVERLAY_BOTTOM_MARGIN: i32 = 12;
 
 /// Returns (width, height) for the (style, size) pair, falling back to
@@ -48,16 +47,16 @@ const OVERLAY_BOTTOM_MARGIN: i32 = 12;
 /// `src/overlay/pill.tsx`. Keep these in lock-step.
 pub fn overlay_dims(style: &str, size: &str) -> (i32, i32) {
     match (style, size) {
-        ("capsule", "smaller") => (380, 88),
-        ("capsule", "small") => (460, 92),
-        ("capsule", "medium") => (560, 96),
-        ("capsule", "large") => (680, 104),
-        ("orb", "smaller") => (180, 200),
-        ("orb", "small") => (240, 240),
-        ("orb", "medium") => (290, 300),
-        ("orb", "large") => (360, 380),
+        ("capsule", "smaller") => (212, 54),
+        ("capsule", "small") => (244, 56),
+        ("capsule", "medium") => (292, 60),
+        ("capsule", "large") => (352, 64),
+        ("orb", "smaller") => (92, 92),
+        ("orb", "small") => (112, 124),
+        ("orb", "medium") => (140, 152),
+        ("orb", "large") => (172, 184),
         // Fallback: capsule + medium.
-        _ => (560, 96),
+        _ => (292, 60),
     }
 }
 
@@ -1979,9 +1978,9 @@ mod tests {
 
     #[test]
     fn halo_orb_overlay_dims_fit_full_orb_chrome() {
-        assert_eq!(overlay_dims("orb", "smaller"), (180, 200));
-        assert_eq!(overlay_dims("orb", "small"), (240, 240));
-        assert_eq!(overlay_dims("orb", "medium"), (290, 300));
-        assert_eq!(overlay_dims("orb", "large"), (360, 380));
+        assert_eq!(overlay_dims("orb", "smaller"), (92, 92));
+        assert_eq!(overlay_dims("orb", "small"), (112, 124));
+        assert_eq!(overlay_dims("orb", "medium"), (140, 152));
+        assert_eq!(overlay_dims("orb", "large"), (172, 184));
     }
 }

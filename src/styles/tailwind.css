@@ -515,8 +515,8 @@
     --accent-deep: var(--cyan-deep);
     --accent-soft: var(--cyan-soft);
     --accent-glow: var(--halo);
-    height: 56px;
-    border-radius: 28px;
+    height: var(--capsule-height, 36px);
+    border-radius: calc(var(--capsule-height, 36px) / 2);
     background:
       linear-gradient(180deg, rgb(255 255 255 / 0.92) 0%, rgb(241 245 250 / 0.78) 100%);
     backdrop-filter: blur(28px) saturate(170%);
@@ -525,8 +525,8 @@
     box-shadow:
       0 0 0 1px rgb(12 17 28 / 0.05),
       0 1px 0 rgb(255 255 255 / 0.95) inset,
-      0 18px 40px -16px rgb(12 17 28 / 0.55),
-      0 6px 16px -8px var(--accent-glow);
+      0 12px 28px -16px rgb(12 17 28 / 0.5),
+      0 4px 12px -8px var(--accent-glow);
     color: var(--ink);
     position: relative;
   }
@@ -538,7 +538,7 @@
   }
 
   .veyra-capsule-led {
-    width: 10px; height: 10px; border-radius: 50%;
+    width: 7px; height: 7px; border-radius: 50%;
     background: var(--accent);
     box-shadow: 0 0 10px var(--accent-glow);
     animation: veyra-cap-led 1.4s ease-in-out infinite;
@@ -560,7 +560,7 @@
 
   /* Live waveform — wider than the home wave, ~40 cells. */
   .veyra-capsule-wave {
-    height: 28px;
+    height: calc(var(--capsule-height, 36px) - 12px);
     display: flex; gap: 2px; align-items: center;
     overflow: hidden;
   }
@@ -569,7 +569,7 @@
     border-radius: 1.5px;
     background: linear-gradient(180deg, var(--accent-soft), var(--accent), var(--accent-deep));
     box-shadow: 0 0 4px var(--accent-glow);
-    min-width: 2px;
+    min-width: 1.5px;
     animation: veyra-cap-amp 1.4s ease-in-out infinite;
   }
   .veyra-capsule-wave > i:nth-child(odd)  { animation-duration: 1.05s; }
@@ -682,8 +682,8 @@
   .veyra-orb-chip {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 4px 10px 4px 8px;
+    gap: 5px;
+    padding: 3px 8px 3px 7px;
     border-radius: 999px;
     background: linear-gradient(180deg, rgb(255 255 255 / 0.92) 0%, rgb(241 245 250 / 0.78) 100%);
     backdrop-filter: blur(20px) saturate(170%);

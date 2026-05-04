@@ -44,10 +44,24 @@ export function calculateWaveBarHeights({
 }
 
 const CAPSULE_WIDTHS: Record<OverlaySize, number> = {
-  smaller: 340,
-  small: 420,
-  medium: 520,
-  large: 640,
+  smaller: 188,
+  small: 220,
+  medium: 260,
+  large: 320,
+};
+
+const CAPSULE_HEIGHTS: Record<OverlaySize, number> = {
+  smaller: 32,
+  small: 34,
+  medium: 36,
+  large: 38,
+};
+
+const CAPSULE_WAVE_COUNTS: Record<OverlaySize, number> = {
+  smaller: 22,
+  small: 26,
+  medium: 32,
+  large: CAPSULE_BAR_COUNT,
 };
 
 export function OverlayPill({
@@ -90,6 +104,16 @@ export function OverlayPill({
   const hotkey = commandMode ? commandHotkey : dictationHotkey;
   const hintVerb = commandMode ? "draft" : "stop";
   const showHint = useHintVisibility(recordingStartedAt, state);
+  const compact = size === "smaller";
+  const showText = !compact;
+  const showTimer = size === "medium" || size === "large";
+  const actionSize = compact ? 24 : size === "small" ? 26 : 28;
+  const waveBars = CAPSULE_WAVE_COUNTS[size];
+  const gridTemplateColumns = compact
+    ? "7px 1fr 24px"
+    : showTimer
+      ? "8px auto 1fr 42px 28px"
+      : "8px auto 1fr 26px";
 
   const primaryAction = busy
     ? () => void ipc.cancelRecording().catch(() => {})
@@ -104,13 +128,15 @@ export function OverlayPill({
       style={{ width: CAPSULE_WIDTHS[size] }}
     >
       <div
-        className="veyra-capsule grid w-full items-center gap-3.5 px-2.5 pl-3.5"
+        className="veyra-capsule grid w-full items-center gap-2 px-2"
         style={{
-          gridTemplateColumns: "12px auto 1fr 56px 36px",
+          gridTemplateColumns,
+          ["--capsule-height" as string]: `${CAPSULE_HEIGHTS[size]}px`,
           ["--cap-amp" as string]: capAmp.toFixed(3),
         }}
         data-mode={dataMode}
         data-state={state}
+        data-size={size}
         role="status"
         aria-live="polite"
         aria-label={
@@ -122,32 +148,37 @@ export function OverlayPill({
         }
       >
         <span className="veyra-capsule-led" aria-hidden="true" />
-        <span className="flex flex-col leading-tight">
+        {showText ? (
+        <span className="flex min-w-0 flex-col leading-tight">
           <span
-            className="font-mono text-[10px] uppercase tracking-[0.2em] font-medium"
+            className="font-mono text-[8px] uppercase tracking-[0.18em] font-medium"
             style={{ color: "var(--accent-deep)" }}
           >
-            {commandMode ? "Drafter" : "STT"}
+            {commandMode ? "Mail" : "STT"}
           </span>
-          <span className="text-[12.5px] font-semibold tracking-[-0.005em] text-[var(--ink,#0c111c)]">
+          <span className="max-w-[64px] truncate text-[10px] font-semibold tracking-[-0.005em] text-[var(--ink,#0c111c)]">
             {busy ? "Transcribing…" : recording ? engineName : "Listening…"}
           </span>
         </span>
+        ) : null}
         <div className="veyra-capsule-wave" aria-hidden="true">
-          {Array.from({ length: CAPSULE_BAR_COUNT }).map((_, i) => (
+          {Array.from({ length: waveBars }).map((_, i) => (
             <i key={i} />
           ))}
         </div>
+        {showTimer ? (
         <span
-          className="text-right font-mono text-[12px] tabular-nums tracking-[0.04em]"
+          className="text-right font-mono text-[10px] tabular-nums tracking-[0.02em]"
           style={{ color: busy ? "var(--slate-400, #8b95a6)" : "var(--ink, #0c111c)" }}
         >
           {elapsedLabel}
         </span>
+        ) : null}
         <button
           type="button"
           onClick={primaryAction}
-          className="grid h-9 w-9 place-items-center rounded-full bg-[#0c111c] text-white shadow-[inset_0_1px_0_rgb(255_255_255_/_0.15),0_4px_10px_-2px_rgb(12_17_28_/_0.45)] transition-colors hover:bg-[#1a212e] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
+          className="grid place-items-center rounded-full bg-[#0c111c] text-white shadow-[inset_0_1px_0_rgb(255_255_255_/_0.15),0_4px_10px_-2px_rgb(12_17_28_/_0.45)] transition-colors hover:bg-[#1a212e] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-400"
+          style={{ width: actionSize, height: actionSize }}
           aria-label={busy ? "Cancel transcription" : "Stop recording"}
         >
           {busy ? (

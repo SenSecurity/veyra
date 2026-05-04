@@ -87,7 +87,7 @@ describe("SettingsOverlayRoute", () => {
 
   it("renders the capsule dimension caption when style is capsule", () => {
     render(<SettingsOverlayRoute />);
-    expect(screen.getByText("560 × 96")).toBeInTheDocument();
+    expect(screen.getByText("292 x 60")).toBeInTheDocument();
   });
 
   it("marks the current selection as aria-pressed/aria-checked", () => {

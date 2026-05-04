@@ -27,10 +27,10 @@ const STYLE_OPTIONS: {
 ];
 
 const SIZES: { value: OverlaySize; label: string; capsule: string; orb: string }[] = [
-  { value: "smaller", label: "Smaller", capsule: "380 × 88", orb: "180 × 200" },
-  { value: "small", label: "Small", capsule: "460 × 92", orb: "240 × 240" },
-  { value: "medium", label: "Medium", capsule: "560 × 96", orb: "290 × 300" },
-  { value: "large", label: "Large", capsule: "680 × 104", orb: "360 × 380" },
+  { value: "smaller", label: "Smaller", capsule: "212 x 54", orb: "92 x 92" },
+  { value: "small", label: "Small", capsule: "244 x 56", orb: "112 x 124" },
+  { value: "medium", label: "Medium", capsule: "292 x 60", orb: "140 x 152" },
+  { value: "large", label: "Large", capsule: "352 x 64", orb: "172 x 184" },
 ];
 
 export function SettingsOverlayRoute() {

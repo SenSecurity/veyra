@@ -51,14 +51,14 @@ describe("OverlayPill capsule", () => {
     expect(screen.getByText(/Whisper.*Turbo/)).toBeInTheDocument();
   });
 
-  it("renders the Drafter chip and the Llama engine name in command mode", () => {
+  it("renders the Mail chip and the Llama engine name in command mode", () => {
     useOverlayStore.setState({
       state: "recording",
       mode: "command",
       recordingStartedAt: Date.now(),
     });
     render(<OverlayPill state="recording" mode="command" />);
-    expect(screen.getByText("Drafter")).toBeInTheDocument();
+    expect(screen.getByText("Mail")).toBeInTheDocument();
     expect(screen.getByText(/Llama.*3\.2.*1B/)).toBeInTheDocument();
   });
 
@@ -100,11 +100,11 @@ describe("OverlayPill capsule", () => {
     expect(capsule).not.toBeNull();
   });
 
-  it("renders 40 wave-bar cells inside the wave area", () => {
+  it("renders the medium wave-bar cells inside the wave area", () => {
     const { container } = render(<OverlayPill state="recording" mode="dictation" />);
     const wave = container.querySelector(".veyra-capsule-wave");
     expect(wave).not.toBeNull();
-    expect(wave!.children.length).toBe(40);
+    expect(wave!.children.length).toBe(32);
   });
 
   it("freezes the timer at the recording-end value when transitioning to transcribing", () => {
