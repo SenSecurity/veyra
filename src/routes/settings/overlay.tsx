@@ -35,6 +35,7 @@ const SIZES: { value: OverlaySize; label: string; capsule: string; orb: string }
 
 export function SettingsOverlayRoute() {
   const { settings, update, error, reload } = useSettings();
+  const [previewActive, setPreviewActive] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
   if (!settings) {
@@ -52,22 +53,16 @@ export function SettingsOverlayRoute() {
   const currentStyle = settings.overlayStyle;
   const currentSize = settings.overlaySize;
 
-  async function preview(
-    mode: "dictation" | "command",
-    recordingState: "Recording" | "Transcribing",
-  ) {
+  async function togglePreview() {
     setPreviewError(null);
     try {
-      await ipc.previewOverlay(currentStyle, currentSize, mode, recordingState);
-    } catch (error) {
-      setPreviewError(String(error));
-    }
-  }
-
-  async function hidePreview() {
-    setPreviewError(null);
-    try {
-      await ipc.hideOverlayPreview();
+      if (previewActive) {
+        await ipc.hideOverlayPreview();
+        setPreviewActive(false);
+        return;
+      }
+      await ipc.previewOverlay(currentStyle, currentSize, "dictation", "Recording");
+      setPreviewActive(true);
     } catch (error) {
       setPreviewError(String(error));
     }
@@ -88,7 +83,8 @@ export function SettingsOverlayRoute() {
               type="button"
               onClick={() => void update({ overlayStyle: opt.value })}
               className={cn(
-                "group relative flex flex-col gap-3 rounded-xl border bg-white p-4 text-left shadow-sm transition-all",
+                "group relative flex flex-col gap-3 rounded-xl border bg-white p-4 text-left shadow-sm transition-all duration-200 ease-out",
+                "hover:-translate-y-0.5 hover:shadow-[0_18px_36px_-28px_rgb(15_23_42_/_0.45)] active:translate-y-0",
                 "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
                 active
                   ? "border-[var(--cyan-deep)] shadow-[0_0_0_1px_var(--cyan-deep),0_8px_22px_-12px_var(--halo)]"
@@ -143,7 +139,8 @@ export function SettingsOverlayRoute() {
                 aria-checked={active}
                 onClick={() => void update({ overlaySize: s.value })}
                 className={cn(
-                  "flex flex-col gap-0.5 rounded-lg px-4 py-2 text-center transition-colors",
+                  "flex flex-col gap-0.5 rounded-lg px-4 py-2 text-center transition-all duration-200 ease-out",
+                  "hover:-translate-y-0.5 active:translate-y-0",
                   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
                   active
                     ? "bg-[var(--ice-50)] text-foreground shadow-[inset_0_0_0_1px_var(--cyan-deep)]"
@@ -173,35 +170,32 @@ export function SettingsOverlayRoute() {
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            className="veyra-select inline-flex w-auto items-center gap-2 px-3"
-            onClick={() => void preview("dictation", "Recording")}
+            aria-pressed={previewActive}
+            className={cn(
+              "veyra-select group inline-flex w-auto items-center gap-2 px-3 transition-all duration-200 ease-out",
+              "hover:-translate-y-0.5 hover:shadow-[0_14px_28px_-20px_rgb(15_23_42_/_0.45)] active:translate-y-0",
+              previewActive
+                ? "border-[var(--cyan-deep)] bg-[var(--ice-50)] text-foreground shadow-[inset_0_0_0_1px_var(--cyan-deep)]"
+                : "bg-white/85",
+            )}
+            onClick={() => void togglePreview()}
           >
-            <Eye className="h-3.5 w-3.5" />
-            Preview STT
-          </button>
-          <button
-            type="button"
-            className="veyra-select inline-flex w-auto items-center gap-2 px-3"
-            onClick={() => void preview("command", "Recording")}
-          >
-            <Eye className="h-3.5 w-3.5" />
-            Preview Drafter
-          </button>
-          <button
-            type="button"
-            className="veyra-select inline-flex w-auto items-center gap-2 px-3"
-            onClick={() => void preview("dictation", "Transcribing")}
-          >
-            <Eye className="h-3.5 w-3.5" />
-            Preview Transcribing
-          </button>
-          <button
-            type="button"
-            className="veyra-select inline-flex w-auto items-center gap-2 px-3"
-            onClick={() => void hidePreview()}
-          >
-            <EyeOff className="h-3.5 w-3.5" />
-            Hide preview
+            <span
+              aria-hidden="true"
+              className={cn(
+                "grid h-5 w-5 place-items-center rounded-full transition-all duration-200",
+                previewActive
+                  ? "bg-[var(--cyan-deep)] text-white group-hover:scale-105"
+                  : "bg-frost text-muted-foreground group-hover:bg-[var(--ice-50)] group-hover:text-[var(--cyan-deep)]",
+              )}
+            >
+              {previewActive ? (
+                <EyeOff className="h-3.5 w-3.5" />
+              ) : (
+                <Eye className="h-3.5 w-3.5" />
+              )}
+            </span>
+            {previewActive ? "Hide preview" : "Show preview"}
           </button>
         </div>
         {previewError ? (

@@ -99,21 +99,35 @@ describe("SettingsOverlayRoute", () => {
     ).toBe("true");
   });
 
-  it("previews STT recording with the current style and size", () => {
+  it("renders a single preview toggle button", () => {
     render(<SettingsOverlayRoute />);
-    fireEvent.click(screen.getByRole("button", { name: /preview stt/i }));
+    expect(screen.getByRole("button", { name: /show preview/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /preview stt/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /preview drafter/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /preview transcribing/i })).not.toBeInTheDocument();
+  });
+
+  it("toggles the live overlay preview with the same button", async () => {
+    render(<SettingsOverlayRoute />);
+    fireEvent.click(screen.getByRole("button", { name: /show preview/i }));
     expect(mockPreviewOverlay).toHaveBeenCalledWith(
       "capsule",
       "medium",
       "dictation",
       "Recording",
     );
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /hide preview/i })).toBeInTheDocument(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /hide preview/i }));
+    expect(mockHideOverlayPreview).toHaveBeenCalledTimes(1);
   });
 
   it("previews the newly selected Halo Orb style instead of stale capsule state", () => {
     render(<SettingsOverlayRoute />);
     fireEvent.click(screen.getByText("Halo Orb").closest("button")!);
-    fireEvent.click(screen.getByRole("button", { name: /preview stt/i }));
+    fireEvent.click(screen.getByRole("button", { name: /show preview/i }));
     expect(mockPreviewOverlay).toHaveBeenCalledWith(
       "orb",
       "medium",
@@ -125,7 +139,7 @@ describe("SettingsOverlayRoute", () => {
   it("previews the newly selected size instead of stale medium state", () => {
     render(<SettingsOverlayRoute />);
     fireEvent.click(screen.getByRole("radio", { name: /smaller/i }));
-    fireEvent.click(screen.getByRole("button", { name: /preview stt/i }));
+    fireEvent.click(screen.getByRole("button", { name: /show preview/i }));
     expect(mockPreviewOverlay).toHaveBeenCalledWith(
       "capsule",
       "smaller",
@@ -134,31 +148,4 @@ describe("SettingsOverlayRoute", () => {
     );
   });
 
-  it("previews email drafter recording with the current style and size", () => {
-    render(<SettingsOverlayRoute />);
-    fireEvent.click(screen.getByRole("button", { name: /preview drafter/i }));
-    expect(mockPreviewOverlay).toHaveBeenCalledWith(
-      "capsule",
-      "medium",
-      "command",
-      "Recording",
-    );
-  });
-
-  it("previews transcribing state with the current style and size", () => {
-    render(<SettingsOverlayRoute />);
-    fireEvent.click(screen.getByRole("button", { name: /preview transcribing/i }));
-    expect(mockPreviewOverlay).toHaveBeenCalledWith(
-      "capsule",
-      "medium",
-      "dictation",
-      "Transcribing",
-    );
-  });
-
-  it("hides the live overlay preview", () => {
-    render(<SettingsOverlayRoute />);
-    fireEvent.click(screen.getByRole("button", { name: /hide preview/i }));
-    expect(mockHideOverlayPreview).toHaveBeenCalledTimes(1);
-  });
 });
