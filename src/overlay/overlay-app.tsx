@@ -35,6 +35,7 @@ export function OverlayApp() {
   const [overlayStyle, setOverlayStyle] = useState<OverlayStyle>("capsule");
   const [overlaySize, setOverlaySize] = useState<OverlaySize>("medium");
   const [layoutRevision, setLayoutRevision] = useState(0);
+  const layoutRevisionRef = useRef(0);
   const [previewActive, setPreviewActive] = useState(false);
   const previewActiveRef = useRef(false);
 
@@ -47,6 +48,12 @@ export function OverlayApp() {
     size?: unknown;
     revision?: unknown;
   }) {
+    if (
+      typeof payload.revision === "number" &&
+      payload.revision < layoutRevisionRef.current
+    ) {
+      return;
+    }
     if (isOverlayStyle(payload.style)) {
       setOverlayStyle(payload.style);
     }
@@ -54,11 +61,13 @@ export function OverlayApp() {
       setOverlaySize(payload.size);
     }
     if (typeof payload.revision === "number") {
+      layoutRevisionRef.current = payload.revision;
       setLayoutRevision(payload.revision);
     }
   }
 
   useEffect(() => {
+    void ipc.getOverlayLayout().then(applyLayoutPayload).catch(() => {});
     const un = listen<{ style: OverlayStyle; size: OverlaySize; revision?: number }>(
       "overlay:layout",
       (e) => applyLayoutPayload(e.payload),
@@ -126,6 +135,7 @@ export function OverlayApp() {
 
   useEffect(() => {
     const timer = window.setInterval(() => {
+      void ipc.getOverlayLayout().then(applyLayoutPayload).catch(() => {});
       void ipc.getRecordingState().then((recordingState) => {
         if (previewActiveRef.current) return;
         setState(mapState(recordingState));

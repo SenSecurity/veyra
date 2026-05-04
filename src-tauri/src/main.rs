@@ -400,7 +400,15 @@ struct AppState {
     active_pipeline_mode: Mutex<PipelineMode>,
     model_download_cancel: AtomicBool,
     overlay_layout_revision: AtomicU64,
+    overlay_layout: Mutex<OverlayLayoutPayload>,
     overlay_preview_generation: AtomicU64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct OverlayLayoutPayload {
+    style: String,
+    size: String,
+    revision: u64,
 }
 
 fn show_main_window(app: &tauri::AppHandle) {
@@ -689,14 +697,27 @@ fn apply_overlay_layout(app: &tauri::AppHandle, style: &str, size: &str) -> u64 
     }
     let revision = app
         .try_state::<AppState>()
-        .map(|state| state.overlay_layout_revision.fetch_add(1, Ordering::SeqCst) + 1)
+        .map(|state| {
+            let revision = state.overlay_layout_revision.fetch_add(1, Ordering::SeqCst) + 1;
+            if let Ok(mut layout) = state.overlay_layout.lock() {
+                *layout = OverlayLayoutPayload {
+                    style: style.to_string(),
+                    size: size.to_string(),
+                    revision,
+                };
+            }
+            revision
+        })
         .unwrap_or(0);
-    let payload = serde_json::json!({ "style": style, "size": size, "revision": revision });
+    let payload = OverlayLayoutPayload {
+        style: style.to_string(),
+        size: size.to_string(),
+        revision,
+    };
     let _ = app.emit_to("overlay", "overlay:layout", payload.clone());
 
     let app_for_retry = app.clone();
-    let style_for_retry = style.to_string();
-    let size_for_retry = size.to_string();
+    let payload_for_retry = payload.clone();
     tauri::async_runtime::spawn(async move {
         tokio::time::sleep(std::time::Duration::from_millis(120)).await;
         let current_revision = app_for_retry
@@ -704,18 +725,23 @@ fn apply_overlay_layout(app: &tauri::AppHandle, style: &str, size: &str) -> u64 
             .map(|state| state.overlay_layout_revision.load(Ordering::SeqCst))
             .unwrap_or(revision);
         if current_revision == revision {
-            let _ = app_for_retry.emit_to(
-                "overlay",
-                "overlay:layout",
-                serde_json::json!({
-                    "style": style_for_retry,
-                    "size": size_for_retry,
-                    "revision": revision
-                }),
-            );
+            let _ = app_for_retry.emit_to("overlay", "overlay:layout", payload_for_retry);
         }
     });
     revision
+}
+
+#[tauri::command]
+fn get_overlay_layout(state: State<AppState>) -> OverlayLayoutPayload {
+    state
+        .overlay_layout
+        .lock()
+        .map(|layout| layout.clone())
+        .unwrap_or_else(|_| OverlayLayoutPayload {
+            style: "capsule".to_string(),
+            size: "medium".to_string(),
+            revision: 0,
+        })
 }
 
 #[tauri::command]
@@ -757,7 +783,24 @@ fn preview_overlay(
         "size": size,
         "revision": layout_revision,
     });
-    let _ = app.emit_to("overlay", "overlay:preview", payload);
+    let _ = app.emit_to("overlay", "overlay:preview", payload.clone());
+
+    let app_for_preview_retry = app.clone();
+    let payload_for_preview_retry = payload.clone();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_millis(180)).await;
+        let current_generation = app_for_preview_retry
+            .state::<AppState>()
+            .overlay_preview_generation
+            .load(Ordering::SeqCst);
+        if current_generation == generation {
+            let _ = app_for_preview_retry.emit_to(
+                "overlay",
+                "overlay:preview",
+                payload_for_preview_retry,
+            );
+        }
+    });
 
     let app_for_task = app.clone();
     tauri::async_runtime::spawn(async move {
@@ -1695,6 +1738,11 @@ fn main() {
     }
     let dictation_hotkey = v2_settings.hotkeys.dictation.clone();
     let command_hotkey = v2_settings.hotkeys.command_mode.clone();
+    let initial_overlay_layout = OverlayLayoutPayload {
+        style: v2_settings.overlay.style.clone(),
+        size: v2_settings.overlay.size.clone(),
+        revision: 0,
+    };
     let migration_events = outcome.events;
 
     // Boot-time tmp sweep: any *.wav / *.txt left in the per-session tmp dir
@@ -1719,6 +1767,7 @@ fn main() {
             active_pipeline_mode: Mutex::new(PipelineMode::Dictation),
             model_download_cancel: AtomicBool::new(false),
             overlay_layout_revision: AtomicU64::new(0),
+            overlay_layout: Mutex::new(initial_overlay_layout),
             overlay_preview_generation: AtomicU64::new(0),
         })
         .invoke_handler(tauri::generate_handler![
@@ -1737,6 +1786,7 @@ fn main() {
             cancel_model_download,
             cancel_recording,
             toggle_recording,
+            get_overlay_layout,
             set_overlay_layout,
             preview_overlay,
             hide_overlay_preview,

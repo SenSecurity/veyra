@@ -11,6 +11,7 @@ import type {
   Transcription,
   WizardStatus,
 } from "@/types/ipc";
+import type { OverlaySize, OverlayStyle } from "@/types/settings";
 
 // Typed wrapper over the Tauri command surface used by the current UI.
 // UI code consumes `ipc` from this adapter; no raw `invoke` calls in components.
@@ -37,6 +38,10 @@ export const ipc = {
   cancelModelDownload: () => invoke<void>("cancel_model_download"),
   cancelRecording: () => invoke<void>("cancel_recording"),
   toggleRecording: () => invoke<string>("toggle_recording"),
+  getOverlayLayout: () =>
+    invoke<{ style: OverlayStyle; size: OverlaySize; revision: number }>(
+      "get_overlay_layout",
+    ),
   setOverlayLayout: (style: string, size: string) =>
     invoke<void>("set_overlay_layout", { style, size }),
   previewOverlay: (

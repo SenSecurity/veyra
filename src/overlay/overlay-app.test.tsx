@@ -4,6 +4,9 @@ import { OverlayApp } from "./overlay-app";
 import { useOverlayStore } from "@/stores/overlay-store";
 
 const listeners = vi.hoisted(() => new Map<string, Array<(event: { payload: unknown }) => void>>());
+const getOverlayLayoutMock = vi.hoisted(() =>
+  vi.fn(() => Promise.resolve({ style: "capsule", size: "medium", revision: 0 })),
+);
 
 vi.mock("@tauri-apps/api/event", () => ({
   listen: vi.fn((event: string, handler: (event: { payload: unknown }) => void) => {
@@ -23,6 +26,7 @@ vi.mock("@/lib/tauri", () => ({
   ipc: {
     getRecordingState: vi.fn(() => Promise.resolve("Ready")),
     getRecordingMode: vi.fn(() => Promise.resolve("dictation")),
+    getOverlayLayout: getOverlayLayoutMock,
     toggleRecording: vi.fn(() => Promise.resolve()),
     cancelRecording: vi.fn(() => Promise.resolve()),
   },
@@ -59,9 +63,27 @@ afterEach(() => {
 
 beforeEach(() => {
   listeners.clear();
+  getOverlayLayoutMock.mockReset();
+  getOverlayLayoutMock.mockResolvedValue({ style: "capsule", size: "medium", revision: 0 });
 });
 
 describe("OverlayApp", () => {
+  it("bootstraps Halo Orb from the backend layout when no event arrives", async () => {
+    getOverlayLayoutMock.mockResolvedValue({
+      style: "orb",
+      size: "smaller",
+      revision: 9,
+    });
+
+    const { container } = render(<OverlayApp />);
+
+    await waitFor(() => {
+      expect(container.querySelector(".veyra-orb")).not.toBeNull();
+      expect(container.querySelector(".veyra-capsule")).toBeNull();
+      expect(container.querySelector("[data-size='smaller']")).not.toBeNull();
+    });
+  });
+
   it("renders Halo Orb from preview payload style even if no layout event arrives", async () => {
     const { container } = render(<OverlayApp />);
 
