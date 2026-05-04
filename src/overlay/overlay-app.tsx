@@ -14,6 +14,14 @@ function mapState(state: RecordingState): OverlayState {
   return "idle";
 }
 
+function isOverlayStyle(value: unknown): value is OverlayStyle {
+  return value === "capsule" || value === "orb";
+}
+
+function isOverlaySize(value: unknown): value is OverlaySize {
+  return value === "smaller" || value === "small" || value === "medium" || value === "large";
+}
+
 export function OverlayApp() {
   const state = useOverlayStore((s) => s.state);
   const mode = useOverlayStore((s) => s.mode);
@@ -34,24 +42,26 @@ export function OverlayApp() {
     previewActiveRef.current = previewActive;
   }, [previewActive]);
 
+  function applyLayoutPayload(payload: {
+    style?: unknown;
+    size?: unknown;
+    revision?: unknown;
+  }) {
+    if (isOverlayStyle(payload.style)) {
+      setOverlayStyle(payload.style);
+    }
+    if (isOverlaySize(payload.size)) {
+      setOverlaySize(payload.size);
+    }
+    if (typeof payload.revision === "number") {
+      setLayoutRevision(payload.revision);
+    }
+  }
+
   useEffect(() => {
     const un = listen<{ style: OverlayStyle; size: OverlaySize; revision?: number }>(
       "overlay:layout",
-      (e) => {
-        if (e.payload.style === "capsule" || e.payload.style === "orb") {
-          setOverlayStyle(e.payload.style);
-        }
-        if (
-          e.payload.size === "small" ||
-          e.payload.size === "medium" ||
-          e.payload.size === "large"
-        ) {
-          setOverlaySize(e.payload.size);
-        }
-        if (typeof e.payload.revision === "number") {
-          setLayoutRevision(e.payload.revision);
-        }
-      },
+      (e) => applyLayoutPayload(e.payload),
     );
     return () => void un.then((fn) => fn()).catch(() => {});
   }, []);
@@ -90,6 +100,9 @@ export function OverlayApp() {
       active: boolean;
       mode?: OverlayMode;
       state?: RecordingState;
+      style?: OverlayStyle;
+      size?: OverlaySize;
+      revision?: number;
     }>("overlay:preview", (e) => {
       if (!e.payload.active) {
         setPreviewActive(false);
@@ -100,6 +113,7 @@ export function OverlayApp() {
       }
 
       setPreviewActive(true);
+      applyLayoutPayload(e.payload);
       if (e.payload.mode === "dictation" || e.payload.mode === "command") {
         setMode(e.payload.mode);
       }

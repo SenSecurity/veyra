@@ -48,9 +48,11 @@ const OVERLAY_BOTTOM_MARGIN: i32 = 12;
 /// `src/overlay/pill.tsx`. Keep these in lock-step.
 pub fn overlay_dims(style: &str, size: &str) -> (i32, i32) {
     match (style, size) {
+        ("capsule", "smaller") => (380, 88),
         ("capsule", "small") => (460, 92),
         ("capsule", "medium") => (560, 96),
         ("capsule", "large") => (680, 104),
+        ("orb", "smaller") => (180, 200),
         ("orb", "small") => (240, 240),
         ("orb", "medium") => (290, 300),
         ("orb", "large") => (360, 380),
@@ -677,7 +679,7 @@ fn save_settings(
 /// overlay webview has its own zustand store, isolated from the main
 /// window — without this event the React tree would render the previous
 /// style inside the freshly-resized OS window.
-fn apply_overlay_layout(app: &tauri::AppHandle, style: &str, size: &str) {
+fn apply_overlay_layout(app: &tauri::AppHandle, style: &str, size: &str) -> u64 {
     let (w, h) = overlay_dims(style, size);
     if let Some(overlay) = app.get_webview_window("overlay") {
         let _ = overlay.set_size(tauri::LogicalSize::new(w as f64, h as f64));
@@ -689,11 +691,31 @@ fn apply_overlay_layout(app: &tauri::AppHandle, style: &str, size: &str) {
         .try_state::<AppState>()
         .map(|state| state.overlay_layout_revision.fetch_add(1, Ordering::SeqCst) + 1)
         .unwrap_or(0);
-    let _ = app.emit_to(
-        "overlay",
-        "overlay:layout",
-        serde_json::json!({ "style": style, "size": size, "revision": revision }),
-    );
+    let payload = serde_json::json!({ "style": style, "size": size, "revision": revision });
+    let _ = app.emit_to("overlay", "overlay:layout", payload.clone());
+
+    let app_for_retry = app.clone();
+    let style_for_retry = style.to_string();
+    let size_for_retry = size.to_string();
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_millis(120)).await;
+        let current_revision = app_for_retry
+            .try_state::<AppState>()
+            .map(|state| state.overlay_layout_revision.load(Ordering::SeqCst))
+            .unwrap_or(revision);
+        if current_revision == revision {
+            let _ = app_for_retry.emit_to(
+                "overlay",
+                "overlay:layout",
+                serde_json::json!({
+                    "style": style_for_retry,
+                    "size": size_for_retry,
+                    "revision": revision
+                }),
+            );
+        }
+    });
+    revision
 }
 
 #[tauri::command]
@@ -718,7 +740,7 @@ fn preview_overlay(
         .fetch_add(1, Ordering::SeqCst)
         + 1;
 
-    apply_overlay_layout(&app, &style, &size);
+    let layout_revision = apply_overlay_layout(&app, &style, &size);
     let (w, h) = overlay_dims(&style, &size);
     if let Some(overlay) = app.get_webview_window("overlay") {
         if let Some(position) = active_monitor_bottom_position(w, h) {
@@ -731,6 +753,9 @@ fn preview_overlay(
         "active": true,
         "mode": pipeline_mode_label(mode),
         "state": recording_state,
+        "style": style,
+        "size": size,
+        "revision": layout_revision,
     });
     let _ = app.emit_to("overlay", "overlay:preview", payload);
 
@@ -1904,6 +1929,7 @@ mod tests {
 
     #[test]
     fn halo_orb_overlay_dims_fit_full_orb_chrome() {
+        assert_eq!(overlay_dims("orb", "smaller"), (180, 200));
         assert_eq!(overlay_dims("orb", "small"), (240, 240));
         assert_eq!(overlay_dims("orb", "medium"), (290, 300));
         assert_eq!(overlay_dims("orb", "large"), (360, 380));

@@ -17,6 +17,7 @@ interface SizeSpec {
 }
 
 const SIZE_SPECS: Record<OverlaySize, SizeSpec> = {
+  smaller: { orb: 56, ring1: 76, ring2: 96, ring3: 116 },
   small: { orb: 72, ring1: 100, ring2: 130, ring3: 160 },
   medium: { orb: 96, ring1: 130, ring2: 170, ring3: 210 },
   large: { orb: 128, ring1: 170, ring2: 220, ring3: 270 },

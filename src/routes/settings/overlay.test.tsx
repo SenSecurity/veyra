@@ -54,11 +54,13 @@ describe("SettingsOverlayRoute", () => {
     expect(screen.getByText("Halo Orb")).toBeInTheDocument();
   });
 
-  it("renders all three size segments", () => {
+  it("renders all four size segments", () => {
     render(<SettingsOverlayRoute />);
-    expect(screen.getByRole("radio", { name: /small/i })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: /medium/i })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: /large/i })).toBeInTheDocument();
+    expect(screen.getAllByRole("radio")).toHaveLength(4);
+    expect(screen.getByText("Smaller")).toBeInTheDocument();
+    expect(screen.getByText("Small")).toBeInTheDocument();
+    expect(screen.getByText("Medium")).toBeInTheDocument();
+    expect(screen.getByText("Large")).toBeInTheDocument();
   });
 
   it("calls update with overlayStyle: 'orb' when the Halo Orb card is clicked", async () => {
@@ -122,11 +124,11 @@ describe("SettingsOverlayRoute", () => {
 
   it("previews the newly selected size instead of stale medium state", () => {
     render(<SettingsOverlayRoute />);
-    fireEvent.click(screen.getByRole("radio", { name: /small/i }));
+    fireEvent.click(screen.getByRole("radio", { name: /smaller/i }));
     fireEvent.click(screen.getByRole("button", { name: /preview stt/i }));
     expect(mockPreviewOverlay).toHaveBeenCalledWith(
       "capsule",
-      "small",
+      "smaller",
       "dictation",
       "Recording",
     );

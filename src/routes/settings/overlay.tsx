@@ -27,6 +27,7 @@ const STYLE_OPTIONS: {
 ];
 
 const SIZES: { value: OverlaySize; label: string; capsule: string; orb: string }[] = [
+  { value: "smaller", label: "Smaller", capsule: "380 × 88", orb: "180 × 200" },
   { value: "small", label: "Small", capsule: "460 × 92", orb: "240 × 240" },
   { value: "medium", label: "Medium", capsule: "560 × 96", orb: "290 × 300" },
   { value: "large", label: "Large", capsule: "680 × 104", orb: "360 × 380" },

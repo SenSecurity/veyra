@@ -6,7 +6,7 @@
 // the values the legacy frontend actually writes (see `src/main.ts`). If the
 // pipeline ever introduces a new value, widen the union here first.
 export type OverlayStyle = "capsule" | "orb";
-export type OverlaySize = "small" | "medium" | "large";
+export type OverlaySize = "smaller" | "small" | "medium" | "large";
 
 export interface Settings {
   microphone: string;

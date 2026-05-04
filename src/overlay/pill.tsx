@@ -44,6 +44,7 @@ export function calculateWaveBarHeights({
 }
 
 const CAPSULE_WIDTHS: Record<OverlaySize, number> = {
+  smaller: 340,
   small: 420,
   medium: 520,
   large: 640,

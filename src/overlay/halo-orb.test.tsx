@@ -76,6 +76,12 @@ describe("HaloOrb", () => {
   });
 
   it("scales the squircle for each size variant", () => {
+    const { container: c0 } = render(<HaloOrb state="recording" mode="dictation" size="smaller" />);
+    const orb0 = c0.querySelector(".veyra-orb") as HTMLElement;
+    expect(orb0.style.width).toBe("56px");
+
+    cleanup();
+
     const { container: c1 } = render(<HaloOrb state="recording" mode="dictation" size="small" />);
     const orb1 = c1.querySelector(".veyra-orb") as HTMLElement;
     expect(orb1.style.width).toBe("72px");
