@@ -31,7 +31,6 @@ pub async fn transcribe_groq(
 
     let form = multipart::Form::new()
         .text("model", "whisper-large-v3-turbo")
-        .text("language", "en")
         .text("response_format", "json")
         .part("file", file_part);
 

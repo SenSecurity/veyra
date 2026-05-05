@@ -175,7 +175,11 @@ pub async fn run_session(deps: PipelineDeps<'_>, mode: PipelineMode) -> Result<i
     // 4. Inject (best-effort; an empty final_text skips the keystroke but
     // still proceeds to persist so stats reflect the empty session).
     let inject_method = if !final_text.is_empty() {
-        match inject::paste(&final_text) {
+        let inject_strategy = match mode {
+            PipelineMode::Dictation => inject::InjectStrategy::DirectText,
+            PipelineMode::Command => inject::InjectStrategy::ClipboardPaste,
+        };
+        match inject::insert(&final_text, inject_strategy) {
             Ok(method) => method,
             Err(e) if mode == PipelineMode::Command => {
                 tracing::warn!(
@@ -313,5 +317,6 @@ mod tests {
         use super::inject::InjectMethod;
         let m = InjectMethod::Enigo;
         assert_eq!(m.clone(), InjectMethod::Enigo);
+        assert_eq!(InjectMethod::DirectText.clone(), InjectMethod::DirectText);
     }
 }
